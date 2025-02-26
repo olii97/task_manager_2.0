@@ -54,10 +54,19 @@ export function StravaActivities() {
   const fetchActivities = async () => {
     try {
       setIsLoading(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No session found');
+      }
+
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
         {
           body: { action: "get_activities" },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
       );
 
@@ -79,15 +88,32 @@ export function StravaActivities() {
   const connectStrava = async () => {
     try {
       setIsConnecting(true);
-      const { data, error } = await supabase.functions.invoke<{ url: string }>(
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No session found');
+      }
+
+      const response = await supabase.functions.invoke<{ url: string }>(
         "strava-auth",
         {
           body: { action: "get_auth_url" },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
       );
 
-      if (error) throw error;
-      window.location.href = data.url;
+      if (response.error) {
+        throw response.error;
+      }
+
+      if (!response.data?.url) {
+        throw new Error("No authorization URL received");
+      }
+
+      // Open the URL in the current window
+      window.location.href = response.data.url;
     } catch (error: any) {
       console.error("Error connecting to Strava:", error);
       toast.error("Failed to connect to Strava");
