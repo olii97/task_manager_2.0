@@ -9,6 +9,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -26,16 +27,20 @@ serve(async (req) => {
         // Create a new thread
         const thread = await openai.beta.threads.create()
         return new Response(
-          JSON.stringify({ threadId: thread.id }),
+          JSON.stringify({ 
+            threadId: thread.id,
+            messages: [] 
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
       // Add the message to the thread
       if (messages?.length > 0) {
+        const lastMessage = messages[messages.length - 1]
         await openai.beta.threads.messages.create(threadId, {
           role: 'user',
-          content: messages[messages.length - 1].content[0],
+          content: lastMessage.content[0],
         })
       }
 
@@ -75,7 +80,7 @@ serve(async (req) => {
         JSON.stringify({ 
           messages: [{
             role: 'assistant',
-            content: completion.choices[0].message.content
+            content: [completion.choices[0].message.content]
           }] 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -21,6 +21,10 @@ interface JournalEntry {
     dinner?: string;
     snacks?: string;
     water?: number;
+    meals?: string;
+    protein?: boolean;
+    calories?: number;
+    feelings?: string;
   } | null;
   created_at: string;
   updated_at: string;
@@ -85,6 +89,18 @@ export function JournalEntryCard({ entry }: Props) {
                   )}
                   {entry.nutrition.water && (
                     <p>Water intake: {entry.nutrition.water} glasses</p>
+                  )}
+                  {entry.nutrition.meals && (
+                    <p>Meals: {entry.nutrition.meals}</p>
+                  )}
+                  {entry.nutrition.calories && (
+                    <p>Calories: {entry.nutrition.calories}</p>
+                  )}
+                  {entry.nutrition.feelings && (
+                    <p>Feelings: {entry.nutrition.feelings}</p>
+                  )}
+                  {entry.nutrition.protein !== undefined && (
+                    <p>Protein goal met: {entry.nutrition.protein ? 'Yes' : 'No'}</p>
                   )}
                 </div>
               </section>
