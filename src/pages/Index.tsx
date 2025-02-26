@@ -10,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { ChatBot } from "@/components/ChatBot";
 
 const Index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -55,7 +56,7 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr,auto] gap-8">
           <div className="space-y-8">
             <div>
               <Button onClick={() => setShowForm(!showForm)} className="gap-2">
@@ -113,6 +114,10 @@ const Index = () => {
           
           <div className="space-y-8">
             <StravaActivities />
+          </div>
+
+          <div>
+            <ChatBot />
           </div>
         </div>
       </main>
