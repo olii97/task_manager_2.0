@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { JournalEntryCard } from "@/components/JournalEntryCard";
 import { JournalEntryForm } from "@/components/JournalEntryForm";
+import { StravaActivities } from "@/components/StravaActivities";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, Plus } from "lucide-react";
@@ -54,57 +55,65 @@ const Index = () => {
           </Button>
         </div>
 
-        <div className="mb-8">
-          <Button onClick={() => setShowForm(!showForm)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            {showForm ? "Close Form" : "New Entry"}
-          </Button>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-8">
+          <div className="space-y-8">
+            <div>
+              <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                {showForm ? "Close Form" : "New Entry"}
+              </Button>
+            </div>
 
-        <AnimatePresence>
-          {showForm && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="overflow-hidden"
-            >
-              <JournalEntryForm />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="mt-8 space-y-6">
-          <h2 className="text-2xl font-semibold">Recent Entries</h2>
-          {isLoading ? (
-            <p>Loading entries...</p>
-          ) : (
-            <motion.div
-              className="grid gap-6"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                visible: {
-                  transition: {
-                    staggerChildren: 0.1,
-                  },
-                },
-              }}
-            >
-              {entries?.map((entry) => (
+            <AnimatePresence>
+              {showForm && (
                 <motion.div
-                  key={entry.id}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden"
+                >
+                  <JournalEntryForm />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="space-y-6">
+              <h2 className="text-2xl font-semibold">Recent Entries</h2>
+              {isLoading ? (
+                <p>Loading entries...</p>
+              ) : (
+                <motion.div
+                  className="grid gap-6"
+                  initial="hidden"
+                  animate="visible"
                   variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    visible: { opacity: 1, y: 0 },
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.1,
+                      },
+                    },
                   }}
                 >
-                  <JournalEntryCard entry={entry} />
+                  {entries?.map((entry) => (
+                    <motion.div
+                      key={entry.id}
+                      variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0 },
+                      }}
+                    >
+                      <JournalEntryCard entry={entry} />
+                    </motion.div>
+                  ))}
                 </motion.div>
-              ))}
-            </motion.div>
-          )}
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-8">
+            <StravaActivities />
+          </div>
         </div>
       </main>
     </div>
