@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,11 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 
 const MoodOptions = ["😔", "😐", "🙂", "😊", "😃"] as const;
 
 export const JournalEntryForm = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { session } = useAuth();
   const [mood, setMood] = useState<(typeof MoodOptions)[number]>("🙂");
   const [energyLevel, setEnergyLevel] = useState(50);
   const [form, setForm] = useState({
@@ -32,17 +35,47 @@ export const JournalEntryForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Trigger confetti
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
+    try {
+      const { error } = await supabase.from("journal_entries").insert({
+        user_id: session?.user.id,
+        date: new Date(),
+        mood: MoodOptions.indexOf(mood) + 1,
+        energy: Math.round(energyLevel / 20),
+        intentions: form.intentions,
+        gratitude: form.gratefulness,
+        challenges: form.challenges,
+        reflection: form.reflection,
+        nutrition: {
+          meals: form.nutrition.meals,
+          feelings: form.nutrition.feelings,
+          calories: parseInt(form.nutrition.calories as string) || 0,
+          protein: form.nutrition.proteinTarget,
+        },
+      });
 
-    toast({
-      title: "Journal Entry Saved",
-      description: "Your reflection has been recorded successfully.",
-    });
+      if (error) throw error;
+
+      // Trigger confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+
+      toast({
+        title: "Journal Entry Saved",
+        description: "Your reflection has been recorded successfully.",
+      });
+
+      // Navigate back to home
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
