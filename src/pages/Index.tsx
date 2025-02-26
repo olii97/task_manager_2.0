@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ChatBot } from "@/components/ChatBot";
+import type { Database } from "@/integrations/supabase/types";
+
+type JournalEntry = Database['public']['Tables']['journal_entries']['Row'];
 
 const Index = () => {
   const [showForm, setShowForm] = useState(false);
