@@ -54,10 +54,19 @@ export function StravaActivities() {
   const fetchActivities = async () => {
     try {
       setIsLoading(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No session found');
+      }
+
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
         {
           body: { action: "get_activities" },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
       );
 
@@ -79,10 +88,19 @@ export function StravaActivities() {
   const connectStrava = async () => {
     try {
       setIsConnecting(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No session found');
+      }
+
       const response = await supabase.functions.invoke<{ url: string }>(
         "strava-auth",
         {
           body: { action: "get_auth_url" },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         }
       );
 
