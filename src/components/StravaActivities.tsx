@@ -79,15 +79,23 @@ export function StravaActivities() {
   const connectStrava = async () => {
     try {
       setIsConnecting(true);
-      const { data, error } = await supabase.functions.invoke<{ url: string }>(
+      const response = await supabase.functions.invoke<{ url: string }>(
         "strava-auth",
         {
           body: { action: "get_auth_url" },
         }
       );
 
-      if (error) throw error;
-      window.location.href = data.url;
+      if (response.error) {
+        throw response.error;
+      }
+
+      if (!response.data?.url) {
+        throw new Error("No authorization URL received");
+      }
+
+      // Open the URL in the current window
+      window.location.href = response.data.url;
     } catch (error: any) {
       console.error("Error connecting to Strava:", error);
       toast.error("Failed to connect to Strava");
