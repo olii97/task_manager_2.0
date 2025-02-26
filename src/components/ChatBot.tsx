@@ -7,6 +7,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Send } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { toast } from "sonner"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface Message {
   role: 'user' | 'assistant'
@@ -18,25 +25,35 @@ export function ChatBot() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [threadId, setThreadId] = useState<string | null>(null)
+  const [chatModel, setChatModel] = useState<'assistant' | 'gpt'>('gpt')
 
   useEffect(() => {
-    // Initialize thread
-    const initThread = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('openai-chat', {
-          body: { messages: [] },
-        })
-        if (error) throw error
-        setThreadId(data.threadId)
-      } catch (error: any) {
-        toast.error("Error initializing chat: " + error.message)
+    // Initialize thread if using assistant
+    if (chatModel === 'assistant') {
+      const initThread = async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('openai-chat', {
+            body: { 
+              messages: [],
+              useAssistant: true 
+            },
+          })
+          if (error) throw error
+          setThreadId(data.threadId)
+        } catch (error: any) {
+          toast.error("Error initializing chat: " + error.message)
+        }
       }
+      initThread()
     }
-    initThread()
-  }, [])
+  }, [chatModel])
 
   const sendMessage = async () => {
-    if (!input.trim() || !threadId) return
+    if (!input.trim()) return
+    if (chatModel === 'assistant' && !threadId) {
+      toast.error("Chat not initialized yet. Please wait a moment and try again.")
+      return
+    }
 
     setIsLoading(true)
     const newMessage = { role: 'user' as const, content: [input] }
@@ -48,6 +65,7 @@ export function ChatBot() {
         body: {
           threadId,
           messages: [...messages, newMessage],
+          useAssistant: chatModel === 'assistant'
         },
       })
 
@@ -57,7 +75,9 @@ export function ChatBot() {
         .filter((msg: any) => msg.role === 'assistant')
         .map((msg: any) => ({
           role: 'assistant' as const,
-          content: msg.content.map((c: any) => c.text.value),
+          content: chatModel === 'assistant' 
+            ? msg.content.map((c: any) => c.text.value)
+            : [msg.content],
         }))
 
       setMessages(prev => {
@@ -74,7 +94,24 @@ export function ChatBot() {
   return (
     <Card className="flex flex-col h-[calc(100vh-2rem)] w-96">
       <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold">AI Assistant</h2>
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">AI Assistant</h2>
+          <Select
+            value={chatModel}
+            onValueChange={(value: 'assistant' | 'gpt') => {
+              setChatModel(value)
+              setMessages([]) // Clear messages when switching models
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select chat model" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gpt">ChatGPT</SelectItem>
+              <SelectItem value="assistant">Custom Assistant</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       
       <ScrollArea className="flex-1 p-4">

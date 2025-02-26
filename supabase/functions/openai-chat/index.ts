@@ -18,47 +18,69 @@ serve(async (req) => {
       apiKey: Deno.env.get('OPENAI_API_KEY')!,
     })
 
-    const { messages, threadId } = await req.json()
+    const { messages, threadId, useAssistant } = await req.json()
 
-    if (!threadId) {
-      // Create a new thread
-      const thread = await openai.beta.threads.create()
+    if (useAssistant) {
+      // Assistant mode
+      if (!threadId) {
+        // Create a new thread
+        const thread = await openai.beta.threads.create()
+        return new Response(
+          JSON.stringify({ threadId: thread.id }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Add the message to the thread
+      if (messages?.length > 0) {
+        await openai.beta.threads.messages.create(threadId, {
+          role: 'user',
+          content: messages[messages.length - 1].content[0],
+        })
+      }
+
+      // Run the assistant
+      const run = await openai.beta.threads.runs.create(threadId, {
+        assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
+      })
+
+      // Poll for the run completion
+      let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+      while (runStatus.status !== 'completed') {
+        if (runStatus.status === 'failed') {
+          throw new Error('Assistant run failed')
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+      }
+
+      // Get the messages
+      const messageList = await openai.beta.threads.messages.list(threadId)
+      
       return new Response(
-        JSON.stringify({ threadId: thread.id }),
+        JSON.stringify({ messages: messageList.data }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    } else {
+      // Standard ChatGPT mode
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content[0]
+        }))
+      })
+
+      return new Response(
+        JSON.stringify({ 
+          messages: [{
+            role: 'assistant',
+            content: completion.choices[0].message.content
+          }] 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    // Add the message to the thread
-    if (messages?.length > 0) {
-      await openai.beta.threads.messages.create(threadId, {
-        role: 'user',
-        content: messages[messages.length - 1].content,
-      })
-    }
-
-    // Run the assistant
-    const run = await openai.beta.threads.runs.create(threadId, {
-      assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
-    })
-
-    // Poll for the run completion
-    let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
-    while (runStatus.status !== 'completed') {
-      if (runStatus.status === 'failed') {
-        throw new Error('Assistant run failed')
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
-    }
-
-    // Get the messages
-    const messageList = await openai.beta.threads.messages.list(threadId)
-    
-    return new Response(
-      JSON.stringify({ messages: messageList.data }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
   } catch (error) {
     console.error('Error:', error)
     return new Response(
