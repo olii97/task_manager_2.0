@@ -18,7 +18,7 @@ interface StravaActivity {
 export const StravaActivities = () => {
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const { data: activities, isLoading } = useQuery({
+  const { data: activities, isLoading, error } = useQuery({
     queryKey: ["strava-activities"],
     queryFn: async () => {
       const { data: activities, error } = await supabase.functions.invoke<StravaActivity[]>("strava-auth", {
@@ -38,11 +38,12 @@ export const StravaActivities = () => {
       });
 
       if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      }
+      if (!data?.url) throw new Error("No authorization URL returned");
+      
+      window.location.href = data.url;
     } catch (error: any) {
-      toast.error("Error connecting to Strava: " + error.message);
+      console.error("Strava connection error:", error);
+      toast.error("Error connecting to Strava: " + (error.message || "Unknown error"));
     } finally {
       setIsConnecting(false);
     }
@@ -65,6 +66,20 @@ export const StravaActivities = () => {
 
   if (isLoading) {
     return <div>Loading activities...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border p-6 bg-card">
+        <h3 className="text-lg font-semibold mb-4">Connect Strava</h3>
+        <p className="text-muted-foreground mb-4">
+          {error instanceof Error ? error.message : "Failed to load Strava activities"}
+        </p>
+        <Button onClick={handleConnect} disabled={isConnecting}>
+          {isConnecting ? "Connecting..." : "Connect Strava"}
+        </Button>
+      </div>
+    );
   }
 
   if (!activities || activities.length === 0) {

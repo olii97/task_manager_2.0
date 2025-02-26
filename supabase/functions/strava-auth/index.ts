@@ -7,14 +7,14 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const STRAVA_CLIENT_ID = Deno.env.get('STRAVA_CLIENT_ID')!;
 const STRAVA_CLIENT_SECRET = Deno.env.get('STRAVA_CLIENT_SECRET')!;
-const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/strava-auth/callback`;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/strava-auth`;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,84 +22,33 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const url = new URL(req.url);
-  const path = url.pathname.split('/').pop();
-
   try {
-    // Initial OAuth flow - redirect to Strava
-    if (path === 'authorize') {
+    const { action } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      throw new Error('Error getting user');
+    }
+
+    console.log(`Processing ${action} for user ${user.id}`);
+
+    if (action === "auth-url") {
       const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=activity:read`;
-      return new Response(JSON.stringify({ url: authUrl }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ url: authUrl }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Handle OAuth callback
-    if (path === 'callback') {
-      const code = url.searchParams.get('code');
-      if (!code) {
-        throw new Error('No authorization code provided');
-      }
-
-      // Exchange code for tokens
-      const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: STRAVA_CLIENT_ID,
-          client_secret: STRAVA_CLIENT_SECRET,
-          code,
-          grant_type: 'authorization_code',
-        }),
-      });
-
-      const tokenData = await tokenResponse.json();
-      
-      // Get the user's ID from the auth header
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        throw new Error('No authorization header');
-      }
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      if (userError || !user) {
-        throw new Error('Error getting user');
-      }
-
-      // Store tokens in Supabase
-      const { error: storageError } = await supabase
-        .from('strava_tokens')
-        .upsert({
-          user_id: user.id,
-          access_token: tokenData.access_token,
-          refresh_token: tokenData.refresh_token,
-          expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
-        });
-
-      if (storageError) {
-        throw new Error('Error storing tokens');
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Fetch activities endpoint
-    if (path === 'activities') {
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        throw new Error('No authorization header');
-      }
-      const token = authHeader.replace('Bearer ', '');
-      
-      // Get user from auth token
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      if (userError || !user) {
-        throw new Error('Error getting user');
-      }
-
-      // Get Strava tokens
+    if (action === "get-activities") {
+      // Get stored tokens
       const { data: tokens, error: tokenError } = await supabase
         .from('strava_tokens')
         .select('*')
@@ -112,6 +61,7 @@ serve(async (req) => {
 
       // Check if token needs refresh
       if (new Date(tokens.expires_at) <= new Date()) {
+        console.log('Refreshing token...');
         const refreshResponse = await fetch('https://www.strava.com/oauth/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -143,6 +93,7 @@ serve(async (req) => {
       }
 
       // Fetch activities from Strava
+      console.log('Fetching activities...');
       const activitiesResponse = await fetch(
         'https://www.strava.com/api/v3/athlete/activities?per_page=5',
         {
@@ -150,13 +101,71 @@ serve(async (req) => {
         }
       );
 
+      if (!activitiesResponse.ok) {
+        throw new Error(`Strava API error: ${activitiesResponse.statusText}`);
+      }
+
       const activities = await activitiesResponse.json();
-      return new Response(JSON.stringify(activities), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(
+        JSON.stringify(activities),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle OAuth callback
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const code = url.searchParams.get('code');
+      
+      if (!code) {
+        throw new Error('No authorization code provided');
+      }
+
+      // Exchange code for tokens
+      console.log('Exchanging code for tokens...');
+      const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: STRAVA_CLIENT_ID,
+          client_secret: STRAVA_CLIENT_SECRET,
+          code,
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenResponse.ok) {
+        throw new Error(`Strava token error: ${tokenData.message || tokenResponse.statusText}`);
+      }
+
+      // Store tokens in Supabase
+      const { error: storageError } = await supabase
+        .from('strava_tokens')
+        .upsert({
+          user_id: user.id,
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
+        });
+
+      if (storageError) {
+        throw new Error('Error storing tokens');
+      }
+
+      // Redirect back to the application
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          'Location': '/',
+        },
       });
     }
 
-    throw new Error('Invalid endpoint');
+    throw new Error('Invalid action');
+
   } catch (error) {
     console.error('Error:', error.message);
     return new Response(
@@ -168,3 +177,4 @@ serve(async (req) => {
     );
   }
 });
+

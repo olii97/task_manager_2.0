@@ -4,3 +4,4 @@ project_id = "aaljgkftxgldycpceywj"
 [[functions]]
 name = "strava-auth"
 verify_jwt = false
+
