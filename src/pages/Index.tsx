@@ -4,12 +4,15 @@ import { JournalEntryCard } from "@/components/JournalEntryCard";
 import { JournalEntryForm } from "@/components/JournalEntryForm";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus } from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Index = () => {
   const [showForm, setShowForm] = useState(false);
+  const navigate = useNavigate();
 
   const { data: entries, isLoading } = useQuery({
     queryKey: ["journal-entries"],
@@ -24,14 +27,31 @@ const Index = () => {
     },
   });
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate("/auth");
+      toast.success("Logged out successfully");
+    } catch (error: any) {
+      toast.error("Error logging out: " + error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <main className="container py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tight">Daily Journal</h1>
-          <p className="mt-2 text-muted-foreground">
-            Record your daily reflections and track your wellness journey
-          </p>
+        <div className="flex justify-between items-center mb-8">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold tracking-tight">Daily Journal</h1>
+            <p className="mt-2 text-muted-foreground">
+              Record your daily reflections and track your wellness journey
+            </p>
+          </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
         </div>
 
         <div className="mb-8">
