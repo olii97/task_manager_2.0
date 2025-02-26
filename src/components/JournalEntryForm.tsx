@@ -39,7 +39,7 @@ export const JournalEntryForm = () => {
     try {
       const { error } = await supabase.from("journal_entries").insert({
         user_id: session?.user.id,
-        date: new Date(),
+        date: new Date().toISOString(),
         mood: MoodOptions.indexOf(mood) + 1,
         energy: Math.round(energyLevel / 20),
         intentions: form.intentions,
@@ -249,10 +249,7 @@ export const JournalEntryForm = () => {
           </div>
         </Card>
 
-        <Button
-          type="submit"
-          className="w-full"
-        >
+        <Button type="submit" className="w-full">
           Save Journal Entry
         </Button>
       </form>
