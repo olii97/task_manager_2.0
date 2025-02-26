@@ -29,18 +29,6 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Missing authorization header');
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      throw new Error('Invalid user');
-    }
-
     // Handle GET requests (OAuth callback)
     if (req.method === 'GET') {
       const url = new URL(req.url);
@@ -63,13 +51,29 @@ serve(async (req) => {
       });
 
       if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error('Strava token exchange failed:', errorData);
         throw new Error('Failed to exchange code for tokens');
       }
 
       const tokenData = await tokenResponse.json();
+      console.log('Token exchange successful');
+
+      // Get user from Authorization header
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('Missing authorization header');
+      }
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      
+      if (userError || !user) {
+        console.error('User auth error:', userError);
+        throw new Error('Invalid user');
+      }
 
       // Store tokens in Supabase
-      await supabase
+      const { error: upsertError } = await supabase
         .from('strava_tokens')
         .upsert({
           user_id: user.id,
@@ -77,6 +81,11 @@ serve(async (req) => {
           refresh_token: tokenData.refresh_token,
           expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
         });
+
+      if (upsertError) {
+        console.error('Token storage error:', upsertError);
+        throw new Error('Failed to store tokens');
+      }
 
       // Redirect back to the application
       return new Response(null, {
@@ -91,11 +100,25 @@ serve(async (req) => {
     // Handle POST requests (API actions)
     if (req.method === 'POST') {
       const { action } = await req.json();
+      
+      // Get user from Authorization header
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        throw new Error('Missing authorization header');
+      }
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      
+      if (userError || !user) {
+        throw new Error('Invalid user');
+      }
+
       console.log(`Processing ${action} for user ${user.id}`);
 
       if (action === "get_auth_url") {
+        const state = crypto.randomUUID(); // Generate a random state
         const scope = 'read,activity:read';
-        const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${scope}`;
+        const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${scope}&state=${state}`;
         
         return new Response(JSON.stringify({ url: authUrl }), { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -128,6 +151,12 @@ serve(async (req) => {
             }),
           });
 
+          if (!refreshResponse.ok) {
+            const errorData = await refreshResponse.text();
+            console.error('Token refresh failed:', errorData);
+            throw new Error('Failed to refresh token');
+          }
+
           const refreshData = await refreshResponse.json();
           
           // Update tokens in database
@@ -153,6 +182,8 @@ serve(async (req) => {
         );
 
         if (!activitiesResponse.ok) {
+          const errorData = await activitiesResponse.text();
+          console.error('Activities fetch failed:', errorData);
           throw new Error(`Strava API error: ${activitiesResponse.statusText}`);
         }
 
