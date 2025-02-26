@@ -9,7 +9,8 @@ import { useToast } from "@/components/ui/use-toast";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 const MoodOptions = ["😔", "😐", "🙂", "😊", "😃"] as const;
 
