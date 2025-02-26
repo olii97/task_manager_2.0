@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface StravaActivity {
   id: number;
@@ -17,6 +18,7 @@ interface StravaActivity {
 export function StravaActivities() {
   const [activities, setActivities] = useState<StravaActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -25,10 +27,20 @@ export function StravaActivities() {
 
   const checkConnection = async () => {
     try {
-      const { data: tokens } = await supabase
+      const { data: tokens, error } = await supabase
         .from("strava_tokens")
         .select("*")
         .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') { // Not the "no rows returned" error
+          console.error("Error checking Strava connection:", error);
+          toast.error("Error checking Strava connection");
+        }
+        setIsConnected(false);
+        return;
+      }
+
       setIsConnected(!!tokens);
       if (tokens) {
         fetchActivities();
@@ -42,7 +54,7 @@ export function StravaActivities() {
   const fetchActivities = async () => {
     try {
       setIsLoading(true);
-      const { data: activities, error } = await supabase.functions.invoke(
+      const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
         {
           body: { action: "get_activities" },
@@ -51,10 +63,14 @@ export function StravaActivities() {
 
       if (error) throw error;
 
-      setActivities(activities);
+      setActivities(data || []);
     } catch (error: any) {
       console.error("Error fetching activities:", error);
       toast.error("Failed to fetch Strava activities");
+      // If we get an authorization error, we should disconnect
+      if (error.message?.includes('No Strava tokens found')) {
+        setIsConnected(false);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -62,15 +78,20 @@ export function StravaActivities() {
 
   const connectStrava = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("strava-auth", {
-        body: { action: "get_auth_url" },
-      });
+      setIsConnecting(true);
+      const { data, error } = await supabase.functions.invoke<{ url: string }>(
+        "strava-auth",
+        {
+          body: { action: "get_auth_url" },
+        }
+      );
 
       if (error) throw error;
       window.location.href = data.url;
     } catch (error: any) {
       console.error("Error connecting to Strava:", error);
       toast.error("Failed to connect to Strava");
+      setIsConnecting(false);
     }
   };
 
@@ -100,13 +121,27 @@ export function StravaActivities() {
           <p className="text-muted-foreground mb-4">
             Connect your Strava account to track your activities
           </p>
-          <Button onClick={connectStrava}>Connect Strava</Button>
+          <Button onClick={connectStrava} disabled={isConnecting}>
+            {isConnecting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              "Connect Strava"
+            )}
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
           {isLoading ? (
-            <p className="text-center text-muted-foreground">
-              Loading activities...
+            <div className="text-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p className="text-muted-foreground">Loading activities...</p>
+            </div>
+          ) : activities.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              No activities found. Start tracking your workouts on Strava!
             </p>
           ) : (
             <div className="divide-y">

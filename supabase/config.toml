@@ -2,9 +2,9 @@
 project_id = "aaljgkftxgldycpceywj"
 
 [[functions]]
-name = "openai-chat"
+name = "strava-auth"
 verify_jwt = false
 
 [[functions]]
-name = "strava-auth"
+name = "openai-chat"
 verify_jwt = false
