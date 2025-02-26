@@ -1,10 +1,14 @@
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { format } from "date-fns";
+import { formatRelative } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+const MoodOptions = ["😢", "😕", "😐", "🙂", "😊"];
+const EnergyOptions = ["Very Low", "Low", "Moderate", "High", "Very High"];
 
 interface JournalEntry {
   id: string;
-  date: Date;
+  date: string;
   mood: number;
   energy: number;
   intentions: string;
@@ -12,80 +16,82 @@ interface JournalEntry {
   challenges: string;
   reflection: string;
   nutrition: {
-    meals: string;
-    feelings: string;
-    calories: number;
-    protein: number;
+    breakfast?: string;
+    lunch?: string;
+    dinner?: string;
+    snacks?: string;
+    water?: number;
   };
+  created_at: string;
+  updated_at: string;
+  user_id: string;
 }
 
-export const JournalEntryCard = ({ entry }: { entry: JournalEntry }) => {
-  const getMoodEmoji = (mood: number) => {
-    const emojis = ["😢", "😕", "😐", "🙂", "😊"];
-    return emojis[mood - 1] || "😐";
-  };
+interface Props {
+  entry: JournalEntry;
+}
 
-  const getEnergyEmoji = (energy: number) => {
-    const emojis = ["🔋", "🔋🔋", "🔋🔋🔋", "🔋🔋🔋🔋", "🔋🔋🔋🔋🔋"];
-    return emojis[energy - 1] || "🔋🔋🔋";
-  };
+export function JournalEntryCard({ entry }: Props) {
+  const moodEmoji = MoodOptions[entry.mood - 1];
+  const energyLevel = EnergyOptions[entry.energy - 1];
+  const formattedDate = formatRelative(new Date(entry.date), new Date());
 
   return (
-    <Card className="w-full transition-all hover:shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="space-y-1">
-          <h3 className="text-2xl font-semibold">
-            {format(new Date(entry.date), "MMMM d, yyyy")}
-          </h3>
-          <div className="flex gap-4 text-muted-foreground">
-            <span title="Mood">
-              {getMoodEmoji(entry.mood)} {entry.mood}/5
-            </span>
-            <span title="Energy">
-              {getEnergyEmoji(entry.energy)} {entry.energy}/5
-            </span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {entry.intentions && (
-          <div>
-            <h4 className="mb-2 font-medium">Today's Intentions</h4>
-            <p className="text-muted-foreground">{entry.intentions}</p>
-          </div>
-        )}
-        {entry.gratitude && (
-          <div>
-            <h4 className="mb-2 font-medium">Gratitude</h4>
-            <p className="text-muted-foreground">{entry.gratitude}</p>
-          </div>
-        )}
-        {entry.challenges && (
-          <div>
-            <h4 className="mb-2 font-medium">Challenges</h4>
-            <p className="text-muted-foreground">{entry.challenges}</p>
-          </div>
-        )}
-        {entry.reflection && (
-          <div>
-            <h4 className="mb-2 font-medium">Reflection</h4>
-            <p className="text-muted-foreground">{entry.reflection}</p>
-          </div>
-        )}
-        {entry.nutrition && (
-          <div>
-            <h4 className="mb-2 font-medium">Nutrition</h4>
-            <div className="space-y-2">
-              <p className="text-muted-foreground">Meals: {entry.nutrition.meals}</p>
-              <p className="text-muted-foreground">Feelings: {entry.nutrition.feelings}</p>
-              <div className="flex gap-4 text-muted-foreground">
-                <span>Calories: {entry.nutrition.calories}</span>
-                <span>Protein: {entry.nutrition.protein}g</span>
-              </div>
+    <Card>
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <time className="text-sm text-muted-foreground">{formattedDate}</time>
+            <div className="flex gap-2">
+              <Badge variant="outline">{moodEmoji}</Badge>
+              <Badge variant="outline">{energyLevel}</Badge>
             </div>
           </div>
-        )}
+
+          <div className="space-y-2">
+            <section>
+              <h3 className="font-medium">Intentions</h3>
+              <p className="text-sm text-muted-foreground">{entry.intentions}</p>
+            </section>
+
+            <section>
+              <h3 className="font-medium">Gratitude</h3>
+              <p className="text-sm text-muted-foreground">{entry.gratitude}</p>
+            </section>
+
+            <section>
+              <h3 className="font-medium">Challenges</h3>
+              <p className="text-sm text-muted-foreground">{entry.challenges}</p>
+            </section>
+
+            <section>
+              <h3 className="font-medium">Reflection</h3>
+              <p className="text-sm text-muted-foreground">{entry.reflection}</p>
+            </section>
+
+            {entry.nutrition && (
+              <section>
+                <h3 className="font-medium">Nutrition</h3>
+                <div className="grid gap-1 text-sm text-muted-foreground">
+                  {entry.nutrition.breakfast && (
+                    <p>Breakfast: {entry.nutrition.breakfast}</p>
+                  )}
+                  {entry.nutrition.lunch && <p>Lunch: {entry.nutrition.lunch}</p>}
+                  {entry.nutrition.dinner && (
+                    <p>Dinner: {entry.nutrition.dinner}</p>
+                  )}
+                  {entry.nutrition.snacks && (
+                    <p>Snacks: {entry.nutrition.snacks}</p>
+                  )}
+                  {entry.nutrition.water && (
+                    <p>Water intake: {entry.nutrition.water} glasses</p>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
-};
+}

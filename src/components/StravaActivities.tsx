@@ -1,10 +1,9 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarDays } from "lucide-react";
 
 interface StravaActivity {
   id: number;
@@ -12,114 +11,127 @@ interface StravaActivity {
   type: string;
   distance: number;
   moving_time: number;
-  start_date: string;
+  start_date_local: string;
 }
 
-export const StravaActivities = () => {
-  const [isConnecting, setIsConnecting] = useState(false);
+export function StravaActivities() {
+  const [activities, setActivities] = useState<StravaActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
-  const { data: activities, isLoading, error } = useQuery({
-    queryKey: ["strava-activities"],
-    queryFn: async () => {
-      const { data: activities, error } = await supabase.functions.invoke<StravaActivity[]>("strava-auth", {
-        body: { action: "get-activities" }
-      });
+  useEffect(() => {
+    checkConnection();
+  }, []);
 
-      if (error) throw error;
-      return activities || [];
-    },
-  });
-
-  const handleConnect = async () => {
+  const checkConnection = async () => {
     try {
-      setIsConnecting(true);
-      const { data, error } = await supabase.functions.invoke<{ url: string }>("strava-auth", {
-        body: { action: "auth-url" }
-      });
-
-      if (error) throw error;
-      if (!data?.url) throw new Error("No authorization URL returned");
-      
-      window.location.href = data.url;
-    } catch (error: any) {
-      console.error("Strava connection error:", error);
-      toast.error("Error connecting to Strava: " + (error.message || "Unknown error"));
-    } finally {
-      setIsConnecting(false);
+      const { data: tokens } = await supabase
+        .from("strava_tokens")
+        .select("*")
+        .single();
+      setIsConnected(!!tokens);
+      if (tokens) {
+        fetchActivities();
+      }
+    } catch (error) {
+      console.error("Error checking Strava connection:", error);
+      setIsConnected(false);
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString();
+  const fetchActivities = async () => {
+    try {
+      setIsLoading(true);
+      const { data: activities, error } = await supabase.functions.invoke(
+        "strava-auth",
+        {
+          body: { action: "get_activities" },
+        }
+      );
+
+      if (error) throw error;
+
+      setActivities(activities);
+    } catch (error: any) {
+      console.error("Error fetching activities:", error);
+      toast.error("Failed to fetch Strava activities");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const connectStrava = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("strava-auth", {
+        body: { action: "get_auth_url" },
+      });
+
+      if (error) throw error;
+      window.location.href = data.url;
+    } catch (error: any) {
+      console.error("Error connecting to Strava:", error);
+      toast.error("Failed to connect to Strava");
+    }
   };
 
   const formatDistance = (meters: number) => {
-    const kilometers = meters / 1000;
-    return `${kilometers.toFixed(2)} km`;
+    const kilometers = (meters / 1000).toFixed(2);
+    return `${kilometers} km`;
   };
 
-  const formatDuration = (seconds: number) => {
+  const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
   };
 
-  if (isLoading) {
-    return <div>Loading activities...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg border p-6 bg-card">
-        <h3 className="text-lg font-semibold mb-4">Connect Strava</h3>
-        <p className="text-muted-foreground mb-4">
-          {error instanceof Error ? error.message : "Failed to load Strava activities"}
-        </p>
-        <Button onClick={handleConnect} disabled={isConnecting}>
-          {isConnecting ? "Connecting..." : "Connect Strava"}
-        </Button>
-      </div>
-    );
-  }
-
-  if (!activities || activities.length === 0) {
-    return (
-      <div className="rounded-lg border p-6 bg-card">
-        <h3 className="text-lg font-semibold mb-4">Connect Strava</h3>
-        <p className="text-muted-foreground mb-4">
-          Connect your Strava account to see your recent activities in your journal.
-        </p>
-        <Button onClick={handleConnect} disabled={isConnecting}>
-          {isConnecting ? "Connecting..." : "Connect Strava"}
-        </Button>
-      </div>
-    );
-  }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Recent Strava Activities</h3>
-      <div className="grid gap-4">
-        {activities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex items-start gap-4 rounded-lg border p-4 bg-card"
-          >
-            <div className="flex-1">
-              <h4 className="font-medium">{activity.name}</h4>
-              <div className="text-sm text-muted-foreground mt-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" />
-                  {formatDate(activity.start_date)}
+    <Card className="p-4">
+      <h2 className="text-2xl font-semibold mb-4">Strava Activities</h2>
+      {!isConnected ? (
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">
+            Connect your Strava account to track your activities
+          </p>
+          <Button onClick={connectStrava}>Connect Strava</Button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {isLoading ? (
+            <p className="text-center text-muted-foreground">
+              Loading activities...
+            </p>
+          ) : (
+            <div className="divide-y">
+              {activities.map((activity) => (
+                <div key={activity.id} className="py-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium">{activity.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.type} • {formatDate(activity.start_date_local)}
+                      </p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p>{formatDistance(activity.distance)}</p>
+                      <p className="text-muted-foreground">
+                        {formatTime(activity.moving_time)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p>
-                  {activity.type} • {formatDistance(activity.distance)} • {formatDuration(activity.moving_time)}
-                </p>
-              </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
-};
+}
