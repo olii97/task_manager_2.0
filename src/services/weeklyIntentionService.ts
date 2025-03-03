@@ -14,9 +14,9 @@ export async function getCurrentWeekIntentions(userId: string): Promise<WeeklyIn
       .select("*")
       .eq("user_id", userId)
       .eq("week_start", formattedWeekStart)
-      .single();
+      .maybeSingle();
     
-    if (error && error.code !== "PGRST116") {
+    if (error) {
       console.error("Error fetching weekly intentions:", error);
       throw error;
     }

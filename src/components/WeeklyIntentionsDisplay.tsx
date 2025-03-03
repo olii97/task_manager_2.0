@@ -64,6 +64,7 @@ export function WeeklyIntentionsDisplay() {
   };
 
   if (error) {
+    console.error("Error in WeeklyIntentionsDisplay:", error);
     return (
       <Card className="mb-6">
         <CardHeader>
