@@ -146,51 +146,6 @@ export type Database = {
         }
         Relationships: []
       }
-      weekly_intentions: {
-        Row: {
-          created_at: string
-          id: string
-          intention_1: string | null
-          intention_2: string | null
-          intention_3: string | null
-          reflection_1: string | null
-          reflection_2: string | null
-          reflection_3: string | null
-          status: string
-          updated_at: string
-          user_id: string
-          week_start: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          intention_1?: string | null
-          intention_2?: string | null
-          intention_3?: string | null
-          reflection_1?: string | null
-          reflection_2?: string | null
-          reflection_3?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-          week_start: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          intention_1?: string | null
-          intention_2?: string | null
-          intention_3?: string | null
-          reflection_1?: string | null
-          reflection_2?: string | null
-          reflection_3?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-          week_start?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
