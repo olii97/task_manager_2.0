@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 
 interface StravaActivity {
@@ -21,6 +21,7 @@ export function StravaActivities() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { session } = useAuth();
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export function StravaActivities() {
     
     try {
       setIsLoading(true);
+      setError(null);
       
       const { data: tokens, error } = await supabase
         .from("strava_tokens")
@@ -67,31 +69,42 @@ export function StravaActivities() {
     
     try {
       setIsLoading(true);
+      setError(null);
       
-      // Make sure to pass the Authorization header with the JWT token
+      // Important change: Now passing the userId in the request body
+      // instead of relying on the Authorization header
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
         {
-          body: { action: "get_activities" },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
+          body: { 
+            action: "get_activities",
+            userId: session.user.id 
+          }
         }
       );
 
       if (error) {
         console.error("Strava function error:", error);
+        setError("Failed to fetch Strava activities. Please try reconnecting your account.");
         throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.log("No activities found");
+      } else {
+        console.log("Fetched activities:", data.length);
       }
 
       setActivities(data || []);
     } catch (error: any) {
       console.error("Error fetching activities:", error);
       toast.error("Failed to fetch Strava activities");
+      setError(error.message || "Failed to fetch activities");
+      
       // If we get an authorization error, we should disconnect
       if (error.message?.includes('No Strava tokens found') || 
-          error.message?.includes('Missing authorization header') ||
-          error.message?.includes('Failed to exchange code for tokens')) {
+          error.message?.includes('User not connected to Strava') ||
+          error.message?.includes('Failed to refresh token')) {
         setIsConnected(false);
       }
     } finally {
@@ -107,6 +120,7 @@ export function StravaActivities() {
     
     try {
       setIsConnecting(true);
+      setError(null);
 
       // Make sure to pass the Authorization header with the JWT token
       const response = await supabase.functions.invoke<{ url: string }>(
@@ -133,7 +147,35 @@ export function StravaActivities() {
     } catch (error: any) {
       console.error("Error connecting to Strava:", error);
       toast.error("Failed to connect to Strava");
+      setError(error.message || "Failed to connect to Strava");
       setIsConnecting(false);
+    }
+  };
+
+  const disconnectStrava = async () => {
+    if (!session) return;
+    
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from("strava_tokens")
+        .delete()
+        .eq("user_id", session.user.id);
+
+      if (error) {
+        console.error("Error disconnecting Strava:", error);
+        toast.error("Error disconnecting Strava");
+        throw error;
+      }
+
+      setIsConnected(false);
+      setActivities([]);
+      toast.success("Disconnected from Strava");
+    } catch (error) {
+      console.error("Error disconnecting from Strava:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -174,6 +216,9 @@ export function StravaActivities() {
           <p className="text-muted-foreground mb-4">
             Connect your Strava account to track your activities
           </p>
+          {error && (
+            <p className="text-red-500 mb-4 text-sm">{error}</p>
+          )}
           <Button onClick={connectStrava} disabled={isConnecting}>
             {isConnecting ? (
               <>
@@ -187,54 +232,107 @@ export function StravaActivities() {
         </div>
       ) : (
         <div className="space-y-4">
+          {error && (
+            <div className="bg-red-50 p-3 rounded border border-red-200 mb-4">
+              <p className="text-red-600 text-sm">{error}</p>
+              <div className="mt-2 flex gap-2">
+                <Button 
+                  onClick={fetchActivities} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isLoading}
+                >
+                  Try Again
+                </Button>
+                <Button 
+                  onClick={disconnectStrava} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isLoading}
+                >
+                  Disconnect
+                </Button>
+              </div>
+            </div>
+          )}
+          
           {isLoading ? (
             <div className="text-center py-4">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
               <p className="text-muted-foreground">Loading activities...</p>
             </div>
           ) : activities.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              No activities found. Start tracking your workouts on Strava!
-            </p>
+            <div className="text-center text-muted-foreground py-4">
+              <p className="mb-3">No activities found. Start tracking your workouts on Strava!</p>
+              <Button 
+                onClick={fetchActivities} 
+                variant="outline" 
+                size="sm"
+                className="mr-2"
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
+              <Button 
+                onClick={disconnectStrava} 
+                variant="outline" 
+                size="sm"
+              >
+                Disconnect
+              </Button>
+            </div>
           ) : (
-            <div className="divide-y">
-              {activities.map((activity) => (
-                <div key={activity.id} className="py-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-medium">{activity.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {activity.type} • {formatDate(activity.start_date_local)}
-                      </p>
-                    </div>
-                    <div className="text-right text-sm">
-                      <p>{formatDistance(activity.distance)}</p>
-                      <p className="text-muted-foreground">
-                        {formatTime(activity.moving_time)}
-                      </p>
+            <>
+              <div className="divide-y">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="py-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium">{activity.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {activity.type} • {formatDate(activity.start_date_local)}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm">
+                        <p>{formatDistance(activity.distance)}</p>
+                        <p className="text-muted-foreground">
+                          {formatTime(activity.moving_time)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <div className="pt-4 flex justify-between">
+                <Button 
+                  onClick={fetchActivities} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-3 w-3" />
+                      Refresh
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  onClick={disconnectStrava} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isLoading}
+                >
+                  Disconnect
+                </Button>
+              </div>
+            </>
           )}
-          <div className="pt-4">
-            <Button 
-              onClick={fetchActivities} 
-              variant="outline" 
-              size="sm"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                  Refreshing...
-                </>
-              ) : (
-                "Refresh Activities"
-              )}
-            </Button>
-          </div>
         </div>
       )}
     </Card>
