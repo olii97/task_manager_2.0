@@ -62,6 +62,8 @@ export function StravaActivities() {
         throw new Error('No session found');
       }
 
+      console.log("Calling Strava function with token:", session.access_token);
+
       // Make sure to pass the Authorization header with the JWT token
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
@@ -84,7 +86,8 @@ export function StravaActivities() {
       toast.error("Failed to fetch Strava activities");
       // If we get an authorization error, we should disconnect
       if (error.message?.includes('No Strava tokens found') || 
-          error.message?.includes('Missing authorization header')) {
+          error.message?.includes('Missing authorization header') ||
+          error.message?.includes('Failed to exchange code for tokens')) {
         setIsConnected(false);
       }
     } finally {
@@ -103,6 +106,8 @@ export function StravaActivities() {
         toast.error("You must be logged in to connect Strava");
         throw new Error('No session found');
       }
+
+      console.log("Getting auth URL with token:", session.access_token);
 
       // Make sure to pass the Authorization header with the JWT token
       const response = await supabase.functions.invoke<{ url: string }>(

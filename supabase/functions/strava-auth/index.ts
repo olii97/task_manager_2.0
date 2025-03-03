@@ -22,7 +22,12 @@ serve(async (req) => {
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
     const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/strava-auth`;
 
+    console.log("Function triggered, method:", req.method);
+    console.log("SUPABASE_URL:", SUPABASE_URL);
+    console.log("REDIRECT_URI:", REDIRECT_URI);
+
     if (!STRAVA_CLIENT_ID || !STRAVA_CLIENT_SECRET) {
+      console.error("Missing Strava environment variables");
       throw new Error('Missing Strava configuration');
     }
 
@@ -33,8 +38,15 @@ serve(async (req) => {
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const code = url.searchParams.get('code');
+      const error = url.searchParams.get('error');
+      
+      if (error) {
+        console.error("Strava auth error:", error);
+        throw new Error(`Strava authorization error: ${error}`);
+      }
       
       if (!code) {
+        console.error("No authorization code provided");
         throw new Error('No authorization code provided');
       }
 
@@ -50,20 +62,25 @@ serve(async (req) => {
         }),
       });
 
+      const responseText = await tokenResponse.text();
+      console.log("Token response status:", tokenResponse.status);
+      console.log("Token response:", responseText);
+
       if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.text();
-        console.error('Strava token exchange failed:', errorData);
+        console.error('Strava token exchange failed:', responseText);
         throw new Error('Failed to exchange code for tokens');
       }
 
-      const tokenData = await tokenResponse.json();
-      console.log('Token exchange successful');
+      const tokenData = JSON.parse(responseText);
+      console.log('Token exchange successful, access token length:', tokenData.access_token?.length);
 
       // Get user from Authorization header
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
+        console.error("Missing authorization header in callback");
         throw new Error('Missing authorization header');
       }
+      
       const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       
@@ -72,6 +89,8 @@ serve(async (req) => {
         throw new Error('Invalid user');
       }
 
+      console.log("Storing tokens for user:", user.id);
+
       // Store tokens in Supabase
       const { error: upsertError } = await supabase
         .from('strava_tokens')
@@ -79,7 +98,7 @@ serve(async (req) => {
           user_id: user.id,
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
-          expires_at: new Date(tokenData.expires_at * 1000).toISOString(),
+          expires_at: tokenData.expires_at,
         });
 
       if (upsertError) {
@@ -99,17 +118,29 @@ serve(async (req) => {
 
     // Handle POST requests (API actions)
     if (req.method === 'POST') {
-      const { action } = await req.json();
+      let requestBody;
+      try {
+        requestBody = await req.json();
+      } catch (e) {
+        console.error("Failed to parse request body:", e);
+        throw new Error("Invalid request body");
+      }
+      
+      const { action } = requestBody;
+      console.log("Action requested:", action);
       
       // Get user from Authorization header
       const authHeader = req.headers.get('Authorization');
       if (!authHeader) {
+        console.error("Missing authorization header");
         throw new Error('Missing authorization header');
       }
+      
       const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       
       if (userError || !user) {
+        console.error('User auth error:', userError);
         throw new Error('Invalid user');
       }
 
@@ -118,7 +149,9 @@ serve(async (req) => {
       if (action === "get_auth_url") {
         const state = crypto.randomUUID(); // Generate a random state
         const scope = 'read,activity:read';
-        const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${scope}&state=${state}`;
+        const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&approval_prompt=force&scope=${scope}&state=${state}`;
+        
+        console.log("Generated auth URL:", authUrl);
         
         return new Response(JSON.stringify({ url: authUrl }), { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -134,11 +167,13 @@ serve(async (req) => {
           .single();
 
         if (tokenError || !tokens) {
+          console.error('No Strava tokens found:', tokenError);
           throw new Error('No Strava tokens found');
         }
 
         // Check if token needs refresh
-        if (new Date(tokens.expires_at) <= new Date()) {
+        const now = Math.floor(Date.now() / 1000);
+        if (tokens.expires_at <= now) {
           console.log('Refreshing token...');
           const refreshResponse = await fetch('https://www.strava.com/oauth/token', {
             method: 'POST',
@@ -158,6 +193,7 @@ serve(async (req) => {
           }
 
           const refreshData = await refreshResponse.json();
+          console.log('Token refreshed successfully');
           
           // Update tokens in database
           await supabase
@@ -165,7 +201,7 @@ serve(async (req) => {
             .update({
               access_token: refreshData.access_token,
               refresh_token: refreshData.refresh_token,
-              expires_at: new Date(refreshData.expires_at * 1000).toISOString(),
+              expires_at: refreshData.expires_at,
             })
             .eq('user_id', user.id);
           
@@ -188,6 +224,8 @@ serve(async (req) => {
         }
 
         const activities = await activitiesResponse.json();
+        console.log(`Fetched ${activities.length} activities`);
+        
         return new Response(JSON.stringify(activities), { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
