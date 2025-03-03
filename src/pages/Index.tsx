@@ -12,7 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { JournalEntryCard } from "@/components/JournalEntryCard";
 import { StravaActivityList } from "@/components/StravaActivityList";
-import { getStravaActivities, isConnectedToStrava } from "@/services/stravaService";
+import { isConnectedToStrava, getStravaActivities } from "@/services/stravaService";
+import { mapDatabaseEntryToJournalEntry } from "@/types/journal";
 
 const Index = () => {
   const { session } = useAuth();
@@ -42,7 +43,7 @@ const Index = () => {
         throw error;
       }
       
-      return data;
+      return data ? mapDatabaseEntryToJournalEntry(data) : null;
     },
     enabled: !!userId,
   });
@@ -57,7 +58,14 @@ const Index = () => {
   // Fetch Strava activities
   const { data: activities, isLoading: isLoadingActivities } = useQuery({
     queryKey: ["strava-activities", userId],
-    queryFn: () => getStravaActivities(userId!),
+    queryFn: async () => {
+      try {
+        return await getStravaActivities(userId!);
+      } catch (err) {
+        console.error("Error loading Strava activities:", err);
+        return [];
+      }
+    },
     enabled: !!userId && !!isConnected,
   });
 

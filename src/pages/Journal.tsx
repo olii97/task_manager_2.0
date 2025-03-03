@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format } from "date-fns";
+import { mapDatabaseEntryToJournalEntry } from "@/types/journal";
 
 const Journal = () => {
   const { session } = useAuth();
@@ -34,7 +35,7 @@ const Journal = () => {
         throw error;
       }
       
-      return data;
+      return data ? mapDatabaseEntryToJournalEntry(data) : null;
     },
     enabled: !!userId,
   });

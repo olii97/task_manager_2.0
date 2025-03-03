@@ -7,15 +7,17 @@ import { Loader2, RefreshCw } from "lucide-react";
 interface StravaActivityListProps {
   activities: StravaActivity[];
   isLoading: boolean;
-  onRefresh: () => void;
-  onDisconnect: () => void;
+  onRefresh?: () => void;
+  onDisconnect?: () => void;
+  compact?: boolean;
 }
 
 export function StravaActivityList({ 
   activities, 
   isLoading, 
-  onRefresh, 
-  onDisconnect 
+  onRefresh,
+  onDisconnect,
+  compact = false
 }: StravaActivityListProps) {
   if (isLoading) {
     return (
@@ -30,61 +32,75 @@ export function StravaActivityList({
     return (
       <div className="text-center text-muted-foreground py-4">
         <p className="mb-3">No activities found. Start tracking your workouts on Strava!</p>
-        <Button 
-          onClick={onRefresh} 
-          variant="outline" 
-          size="sm"
-          className="mr-2"
-        >
-          <RefreshCw className="h-4 w-4 mr-1" />
-          Refresh
-        </Button>
-        <Button 
-          onClick={onDisconnect} 
-          variant="outline" 
-          size="sm"
-        >
-          Disconnect
-        </Button>
+        {onRefresh && (
+          <Button 
+            onClick={onRefresh} 
+            variant="outline" 
+            size="sm"
+            className="mr-2"
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
+          </Button>
+        )}
+        {onDisconnect && (
+          <Button 
+            onClick={onDisconnect} 
+            variant="outline" 
+            size="sm"
+          >
+            Disconnect
+          </Button>
+        )}
       </div>
     );
   }
 
   return (
     <>
-      <div className="divide-y">
+      <div className={`divide-y ${compact ? 'space-y-2' : ''}`}>
         {activities.map((activity) => (
-          <StravaActivityItem key={activity.id} activity={activity} />
+          <StravaActivityItem 
+            key={activity.id} 
+            activity={activity} 
+            compact={compact}
+          />
         ))}
       </div>
-      <div className="pt-4 flex justify-between">
-        <Button 
-          onClick={onRefresh} 
-          variant="outline" 
-          size="sm"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-3 w-3" />
-              Refresh
-            </>
+      {(onRefresh || onDisconnect) && (
+        <div className="pt-4 flex justify-between">
+          {onRefresh && (
+            <Button 
+              onClick={onRefresh} 
+              variant="outline" 
+              size="sm"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-3 w-3" />
+                  Refresh
+                </>
+              )}
+            </Button>
           )}
-        </Button>
-        <Button 
-          onClick={onDisconnect} 
-          variant="outline" 
-          size="sm"
-          disabled={isLoading}
-        >
-          Disconnect
-        </Button>
-      </div>
+          {onDisconnect && (
+            <Button 
+              onClick={onDisconnect} 
+              variant="outline" 
+              size="sm"
+              disabled={isLoading}
+            >
+              Disconnect
+            </Button>
+          )}
+        </div>
+      )}
     </>
   );
 }

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StravaActivity } from "@/types/strava";
 import { toast } from "sonner";
 
-export const checkStravaConnection = async (userId: string) => {
+export const isConnectedToStrava = async (userId: string) => {
   try {
     const { data: tokens, error } = await supabase
       .from("strava_tokens")
@@ -16,13 +16,30 @@ export const checkStravaConnection = async (userId: string) => {
         console.error("Error checking Strava connection:", error);
         toast.error("Error checking Strava connection");
       }
-      return { isConnected: false, tokens: null };
+      return false;
     }
 
-    return { isConnected: !!tokens, tokens };
+    return !!tokens;
   } catch (error) {
     console.error("Error checking Strava connection:", error);
-    return { isConnected: false, tokens: null };
+    return false;
+  }
+};
+
+export const getStravaActivities = async (userId: string) => {
+  try {
+    console.log("Fetching activities for user:", userId);
+    
+    const { activities, error } = await fetchStravaActivities(userId);
+    
+    if (error) {
+      throw new Error(error);
+    }
+
+    return activities;
+  } catch (error: any) {
+    console.error("Error fetching activities:", error);
+    throw error;
   }
 };
 

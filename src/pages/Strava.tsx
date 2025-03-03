@@ -5,13 +5,15 @@ import { StravaConnectForm } from "@/components/StravaConnectForm";
 import { StravaActivityList } from "@/components/StravaActivityList";
 import { StravaErrorDisplay } from "@/components/StravaErrorDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isConnectedToStrava, getStravaActivities } from "@/services/stravaService";
+import { isConnectedToStrava, getStravaActivities, disconnectFromStrava, connectToStrava } from "@/services/stravaService";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 const Strava = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
   const [error, setError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     document.title = "Strava | Daily Driver";
@@ -26,19 +28,65 @@ const Strava = () => {
   const { 
     data: activities, 
     isLoading: isLoadingActivities,
-    error: activitiesError,
     refetch: refetchActivities
   } = useQuery({
     queryKey: ["strava-activities", userId],
-    queryFn: () => getStravaActivities(userId!),
-    enabled: !!userId && !!isConnected,
-    onError: (err: any) => {
-      setError(err.message || "Failed to load Strava activities");
+    queryFn: async () => {
+      try {
+        return await getStravaActivities(userId!);
+      } catch (err: any) {
+        setError(err.message || "Failed to load Strava activities");
+        throw err;
+      }
     },
+    enabled: !!userId && !!isConnected,
   });
 
-  const handleConnectionSuccess = () => {
+  const handleConnectStrava = async () => {
+    if (!session) return;
+    
+    setIsConnecting(true);
+    try {
+      const { url, error } = await connectToStrava(session.access_token);
+      
+      if (error) {
+        setError(error);
+        return;
+      }
+      
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to connect to Strava");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!userId) return;
+    
+    try {
+      const { success, error } = await disconnectFromStrava(userId);
+      
+      if (error) {
+        toast.error(`Failed to disconnect: ${error}`);
+        return;
+      }
+      
+      if (success) {
+        toast.success("Successfully disconnected from Strava");
+        window.location.reload();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to disconnect from Strava");
+    }
+  };
+
+  const handleRefresh = () => {
     refetchActivities();
+    setError(null);
   };
 
   return (
@@ -50,7 +98,14 @@ const Strava = () => {
         </p>
       </div>
 
-      {error && <StravaErrorDisplay error={error} />}
+      {error && (
+        <StravaErrorDisplay 
+          error={error} 
+          onRetry={handleRefresh} 
+          onDisconnect={handleDisconnect} 
+          isLoading={isLoadingActivities} 
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
@@ -64,7 +119,8 @@ const Strava = () => {
               ) : (
                 <StravaConnectForm 
                   isConnected={!!isConnected} 
-                  onSuccess={handleConnectionSuccess} 
+                  isConnecting={isConnecting}
+                  onConnect={handleConnectStrava}
                 />
               )}
             </CardContent>
@@ -84,7 +140,9 @@ const Strava = () => {
               ) : (
                 <StravaActivityList 
                   activities={activities || []} 
-                  isLoading={isLoadingActivities} 
+                  isLoading={isLoadingActivities}
+                  onRefresh={handleRefresh}
+                  onDisconnect={handleDisconnect}
                 />
               )}
             </CardContent>
