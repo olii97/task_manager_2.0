@@ -48,7 +48,7 @@ const Index = () => {
       <main className="container py-8">
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold tracking-tight">Daily Journal</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-blue-700">Daily Journal</h1>
             <p className="mt-2 text-muted-foreground">
               Record your daily reflections and track your wellness journey
             </p>
@@ -62,7 +62,7 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr,auto] gap-8">
           <div className="space-y-8">
             <div>
-              <Button onClick={() => setShowForm(!showForm)} className="gap-2">
+              <Button onClick={() => setShowForm(!showForm)} className="gap-2 bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4" />
                 {showForm ? "Close Form" : "New Entry"}
               </Button>
@@ -83,7 +83,7 @@ const Index = () => {
             </AnimatePresence>
 
             <div className="space-y-6">
-              <h2 className="text-2xl font-semibold">Recent Entries</h2>
+              <h2 className="text-2xl font-semibold text-blue-600">Recent Entries</h2>
               {isLoading ? (
                 <p>Loading entries...</p>
               ) : (
