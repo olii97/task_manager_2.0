@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ const Index = () => {
     document.title = "Home | Daily Driver";
   }, []);
 
-  // Fetch today's journal entry
   const { data: todayEntry, isLoading: isLoadingJournal } = useQuery({
     queryKey: ["today-journal-entry", today, userId],
     queryFn: async () => {
@@ -48,14 +46,12 @@ const Index = () => {
     enabled: !!userId,
   });
 
-  // Check if connected to Strava
   const { data: isConnected } = useQuery({
     queryKey: ["strava-connected", userId],
     queryFn: () => isConnectedToStrava(userId!),
     enabled: !!userId,
   });
 
-  // Fetch Strava activities
   const { data: activities, isLoading: isLoadingActivities } = useQuery({
     queryKey: ["strava-activities", userId],
     queryFn: async () => {
@@ -81,7 +77,6 @@ const Index = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* First column - Featured Goal */}
         <div className="space-y-6">
           <FeaturedGoal />
           <Card>
@@ -114,7 +109,6 @@ const Index = () => {
           </Card>
         </div>
         
-        {/* Second column - Journal */}
         <div className="space-y-6">
           <Card>
             <CardHeader className="space-y-1">
@@ -155,7 +149,6 @@ const Index = () => {
             </CardContent>
           </Card>
           
-          {/* Strava Link */}
           <Card>
             <CardHeader className="space-y-1">
               <CardTitle className="text-lg">Strava Integration</CardTitle>
@@ -175,7 +168,6 @@ const Index = () => {
           </Card>
         </div>
         
-        {/* Third column - Strava Activities */}
         <div className="space-y-6">
           <Card>
             <CardHeader className="space-y-1">
