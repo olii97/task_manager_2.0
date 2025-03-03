@@ -71,8 +71,8 @@ export function StravaActivities() {
       setIsLoading(true);
       setError(null);
       
-      // Important change: Now passing the userId in the request body
-      // instead of relying on the Authorization header
+      console.log("Fetching activities for user:", session.user.id);
+      
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
         {

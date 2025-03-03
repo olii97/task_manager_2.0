@@ -161,6 +161,7 @@ serve(async (req) => {
       let requestBody;
       try {
         requestBody = await req.json();
+        console.log("Received request body:", JSON.stringify(requestBody));
       } catch (e) {
         console.error("Failed to parse request body:", e);
         return new Response(JSON.stringify({ error: "Invalid request body" }), { 
@@ -169,8 +170,9 @@ serve(async (req) => {
         });
       }
       
-      const { action } = requestBody;
+      const { action, userId } = requestBody;
       console.log("Action requested:", action);
+      console.log("User ID received:", userId);
       
       if (action === "get_auth_url") {
         const authHeader = req.headers.get('Authorization');
@@ -205,8 +207,6 @@ serve(async (req) => {
       }
 
       if (action === "get_activities") {
-        const { userId } = requestBody;
-        
         if (!userId) {
           console.error("get_activities: No user ID provided in request body");
           return new Response(JSON.stringify({ error: 'User ID is required' }), { 
