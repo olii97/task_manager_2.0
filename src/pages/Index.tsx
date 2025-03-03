@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,14 +8,58 @@ import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
 import { useAuth } from "@/components/AuthProvider";
 import { FeaturedGoal } from "@/components/FeaturedGoal";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { JournalEntryCard } from "@/components/JournalEntryCard";
+import { StravaActivityList } from "@/components/StravaActivityList";
+import { getStravaActivities, isConnectedToStrava } from "@/services/stravaService";
 
 const Index = () => {
   const { session } = useAuth();
+  const userId = session?.user.id;
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const today = format(new Date(), "yyyy-MM-dd");
 
   useEffect(() => {
     document.title = "Home | Daily Driver";
   }, []);
+
+  // Fetch today's journal entry
+  const { data: todayEntry, isLoading: isLoadingJournal } = useQuery({
+    queryKey: ["today-journal-entry", today, userId],
+    queryFn: async () => {
+      if (!userId) return null;
+      
+      const { data, error } = await supabase
+        .from("journal_entries")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("date", today)
+        .single();
+      
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching journal entry:", error);
+        throw error;
+      }
+      
+      return data;
+    },
+    enabled: !!userId,
+  });
+
+  // Check if connected to Strava
+  const { data: isConnected } = useQuery({
+    queryKey: ["strava-connected", userId],
+    queryFn: () => isConnectedToStrava(userId!),
+    enabled: !!userId,
+  });
+
+  // Fetch Strava activities
+  const { data: activities, isLoading: isLoadingActivities } = useQuery({
+    queryKey: ["strava-activities", userId],
+    queryFn: () => getStravaActivities(userId!),
+    enabled: !!userId && !!isConnected,
+  });
 
   return (
     <div className="container py-6">
@@ -65,34 +110,81 @@ const Index = () => {
         <div className="space-y-6">
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-lg">Daily Journal</CardTitle>
+              <CardTitle className="text-lg">Today's Journal</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Reflect on your day, capture your thoughts, and track your
-                progress.
-              </p>
-              <Button asChild>
-                <Link to="/journal">Open Journal</Link>
-              </Button>
+              {isLoadingJournal ? (
+                <div className="h-24 bg-muted animate-pulse rounded-md"></div>
+              ) : todayEntry ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">
+                      Mood: {todayEntry.mood}/10
+                    </span>
+                    <span className="text-sm font-medium">
+                      Energy: {todayEntry.energy}/10
+                    </span>
+                  </div>
+                  {todayEntry.reflection && (
+                    <p className="text-sm line-clamp-3">{todayEntry.reflection}</p>
+                  )}
+                  <div className="flex justify-end">
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/journal">View Full Journal</Link>
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-muted-foreground mb-2">
+                    You haven't logged your journal entry for today.
+                  </p>
+                  <Button asChild>
+                    <Link to="/journal">Add Journal Entry</Link>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
-        
-        {/* Third column - Strava */}
-        <div className="space-y-6">
+          
+          {/* Strava Link */}
           <Card>
             <CardHeader className="space-y-1">
               <CardTitle className="text-lg">Strava Integration</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground mb-4">
-                Connect your Strava account to track your activities and fitness
-                progress.
+                {isConnected 
+                  ? "Your Strava account is connected. View all your activities." 
+                  : "Connect your Strava account to track your activities and fitness progress."}
               </p>
               <Button asChild>
-                <Link to="/strava">Connect Strava</Link>
+                <Link to="/strava">
+                  {isConnected ? "View Activities" : "Connect Strava"}
+                </Link>
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Third column - Strava Activities */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg">Recent Activities</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isConnected ? (
+                <StravaActivityList 
+                  activities={activities?.slice(0, 5) || []} 
+                  isLoading={isLoadingActivities}
+                  compact={true} 
+                />
+              ) : (
+                <p className="text-muted-foreground">
+                  Connect your Strava account to see your recent activities here.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

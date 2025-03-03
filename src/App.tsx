@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
+import Journal from "./pages/Journal";
+import Strava from "./pages/Strava";
 import NotFound from "./pages/NotFound";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
 
@@ -50,6 +52,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Goals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journal"
+              element={
+                <ProtectedRoute>
+                  <Journal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/strava"
+              element={
+                <ProtectedRoute>
+                  <Strava />
                 </ProtectedRoute>
               }
             />
