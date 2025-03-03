@@ -71,14 +71,16 @@ export function StravaActivities() {
       setIsLoading(true);
       setError(null);
       
-      console.log("Fetching activities for user:", session.user.id);
+      const userId = session.user.id;
+      console.log("Fetching activities for user:", userId);
       
+      // Make sure we're explicitly sending the userId in the request body
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
         {
           body: { 
             action: "get_activities",
-            userId: session.user.id 
+            userId: userId  // Explicitly use the userId variable
           }
         }
       );
