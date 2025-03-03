@@ -24,14 +24,14 @@ export async function getCurrentWeekIntentions(userId: string): Promise<WeeklyIn
     return data ? mapDatabaseIntentionToWeeklyIntention(data) : null;
   } catch (error) {
     console.error("Error in getCurrentWeekIntentions:", error);
-    throw error;
+    return null; // Return null instead of throwing to prevent app crashes
   }
 }
 
 export async function createWeeklyIntentions(
   userId: string,
   formData: WeeklyIntentionFormData
-): Promise<WeeklyIntention> {
+): Promise<WeeklyIntention | null> {
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const formattedWeekStart = format(weekStart, "yyyy-MM-dd");
@@ -58,14 +58,14 @@ export async function createWeeklyIntentions(
     return mapDatabaseIntentionToWeeklyIntention(data);
   } catch (error) {
     console.error("Error in createWeeklyIntentions:", error);
-    throw error;
+    return null; // Return null instead of throwing to prevent app crashes
   }
 }
 
 export async function updateWeeklyIntentions(
   intentionId: string,
   formData: WeeklyIntentionFormData
-): Promise<WeeklyIntention> {
+): Promise<WeeklyIntention | null> {
   try {
     const { data, error } = await supabase
       .from("weekly_intentions")
@@ -86,14 +86,14 @@ export async function updateWeeklyIntentions(
     return mapDatabaseIntentionToWeeklyIntention(data);
   } catch (error) {
     console.error("Error in updateWeeklyIntentions:", error);
-    throw error;
+    return null; // Return null instead of throwing to prevent app crashes
   }
 }
 
 export async function submitWeeklyReflections(
   intentionId: string,
   reflections: WeeklyReflectionFormData
-): Promise<WeeklyIntention> {
+): Promise<WeeklyIntention | null> {
   try {
     const { data, error } = await supabase
       .from("weekly_intentions")
@@ -115,7 +115,7 @@ export async function submitWeeklyReflections(
     return mapDatabaseIntentionToWeeklyIntention(data);
   } catch (error) {
     console.error("Error in submitWeeklyReflections:", error);
-    throw error;
+    return null; // Return null instead of throwing to prevent app crashes
   }
 }
 

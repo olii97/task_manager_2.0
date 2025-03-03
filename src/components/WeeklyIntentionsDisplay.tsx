@@ -114,10 +114,14 @@ export function WeeklyIntentionsDisplay() {
           <CardTitle>Set Your Intentions for This Week</CardTitle>
         </CardHeader>
         <CardContent>
-          <WeeklyIntentionsForm 
-            onSuccess={handleIntentionsUpdated}
-            onCancel={() => {}}
-          />
+          {userId ? (
+            <WeeklyIntentionsForm 
+              onSuccess={handleIntentionsUpdated}
+              onCancel={() => {}}
+            />
+          ) : (
+            <p>Please log in to set weekly intentions.</p>
+          )}
         </CardContent>
       </Card>
     );
