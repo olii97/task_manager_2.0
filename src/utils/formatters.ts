@@ -16,3 +16,8 @@ export const formatTime = (seconds: number) => {
 export const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString();
 };
+
+export const formatQuarter = (quarter: number, year: number) => {
+  const quarterNames = ["First", "Second", "Third", "Fourth"];
+  return `${quarterNames[quarter - 1]} Quarter ${year}`;
+};

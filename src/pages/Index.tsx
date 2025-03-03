@@ -5,12 +5,15 @@ import { JournalEntryForm } from "@/components/JournalEntryForm";
 import { StravaActivities } from "@/components/StravaActivities";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, LayoutGrid } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ChatBot } from "@/components/ChatBot";
+import { FeaturedGoal } from "@/components/FeaturedGoal";
+import { QuarterEndReminder } from "@/components/QuarterEndReminder";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const [showForm, setShowForm] = useState(false);
@@ -42,6 +45,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Quarter end reminder doesn't render anything visible but shows notifications when needed */}
+      <QuarterEndReminder />
+      
       <main className="container py-8">
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-1">
@@ -50,10 +56,18 @@ const Index = () => {
               Record your daily reflections and track your wellness journey
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild className="gap-2">
+              <Link to="/goals">
+                <LayoutGrid className="h-4 w-4" />
+                Goals
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr,auto] gap-8">
@@ -113,6 +127,7 @@ const Index = () => {
           </div>
           
           <div className="space-y-8">
+            <FeaturedGoal />
             <StravaActivities />
           </div>
 
