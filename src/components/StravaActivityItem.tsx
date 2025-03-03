@@ -19,7 +19,7 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
             <div className="text-xs text-muted-foreground flex gap-2 mt-1">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(activity.start_date), "MMM d")}
+                {format(new Date(activity.start_date_local), "MMM d")}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -61,7 +61,7 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
         <div>
           <p className="text-xs text-muted-foreground">Date</p>
           <p className="text-sm font-medium">
-            {format(new Date(activity.start_date), "MMM d, yyyy")}
+            {format(new Date(activity.start_date || activity.start_date_local), "MMM d, yyyy")}
           </p>
         </div>
         <div>
@@ -72,19 +72,19 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
           <p className="text-xs text-muted-foreground">Distance</p>
           <p className="text-sm font-medium">{formatDistance(activity.distance)}</p>
         </div>
-        {activity.average_speed > 0 && (
+        {activity.average_speed && activity.average_speed > 0 && (
           <div>
             <p className="text-xs text-muted-foreground">Avg Pace</p>
             <p className="text-sm font-medium">{formatPace(activity.average_speed)}</p>
           </div>
         )}
-        {activity.total_elevation_gain > 0 && (
+        {activity.total_elevation_gain && activity.total_elevation_gain > 0 && (
           <div>
             <p className="text-xs text-muted-foreground">Elevation</p>
             <p className="text-sm font-medium">{Math.round(activity.total_elevation_gain)}m</p>
           </div>
         )}
-        {activity.average_heartrate > 0 && (
+        {activity.average_heartrate && activity.average_heartrate > 0 && (
           <div>
             <p className="text-xs text-muted-foreground">Avg HR</p>
             <p className="text-sm font-medium">{Math.round(activity.average_heartrate)} bpm</p>

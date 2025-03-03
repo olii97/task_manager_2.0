@@ -59,7 +59,7 @@ const Journal = () => {
               <CardContent className="h-64 animate-pulse bg-gray-200 rounded-md"></CardContent>
             </Card>
           ) : todayEntry ? (
-            <JournalEntryCard entry={todayEntry} showEdit={true} />
+            <JournalEntryCard entry={todayEntry} />
           ) : (
             <Card>
               <CardHeader>
@@ -75,7 +75,7 @@ const Journal = () => {
         </div>
         
         <div>
-          <JournalEntryForm existingEntry={todayEntry} />
+          <JournalEntryForm />
         </div>
       </div>
     </div>

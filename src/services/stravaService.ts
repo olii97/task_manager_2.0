@@ -26,6 +26,17 @@ export const isConnectedToStrava = async (userId: string) => {
   }
 };
 
+// Add checkStravaConnection function for the StravaActivities component
+export const checkStravaConnection = async (userId: string) => {
+  try {
+    const isConnected = await isConnectedToStrava(userId);
+    return { isConnected, error: null };
+  } catch (error: any) {
+    console.error("Error checking Strava connection:", error);
+    return { isConnected: false, error: error.message || "Failed to check Strava connection" };
+  }
+};
+
 export const getStravaActivities = async (userId: string) => {
   try {
     console.log("Fetching activities for user:", userId);
