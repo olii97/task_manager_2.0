@@ -5,30 +5,46 @@ import { Button } from "@/components/ui/button";
 import { PencilIcon, CheckCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { WeeklyIntention } from "@/types/weeklyIntentions";
-import { canEditIntentions, getCurrentWeekIntentions } from "@/services/weeklyIntentionService";
+import { canEditIntentions, getCurrentWeekIntentions, shouldShowReflection } from "@/services/weeklyIntentionService";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import WeeklyIntentionsForm from "./WeeklyIntentionsForm";
 
 export function WeeklyIntentionsDisplay() {
   const { session } = useAuth();
-  const userId = session?.user.id;
+  const userId = session?.user?.id;
   const [isEditing, setIsEditing] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
+  const [showReflection, setShowReflection] = useState(true);
 
-  const { data: weeklyIntentions, isLoading, refetch } = useQuery({
+  const { data: weeklyIntentions, isLoading, error, refetch } = useQuery({
     queryKey: ["weekly-intentions"],
     queryFn: async () => {
       if (!userId) return null;
-      return getCurrentWeekIntentions(userId);
+      try {
+        return await getCurrentWeekIntentions(userId);
+      } catch (err) {
+        console.error("Error fetching weekly intentions:", err);
+        return null;
+      }
     },
     enabled: !!userId,
   });
 
   useEffect(() => {
     const checkEditPermission = async () => {
-      const editAllowed = await canEditIntentions();
-      setCanEdit(editAllowed);
+      try {
+        const editAllowed = await canEditIntentions();
+        setCanEdit(editAllowed);
+        
+        const showReflectionButton = await shouldShowReflection();
+        setShowReflection(showReflectionButton);
+      } catch (err) {
+        console.error("Error checking permissions:", err);
+        // Default to allowing edits if there's an error
+        setCanEdit(true);
+        setShowReflection(true);
+      }
     };
     
     checkEditPermission();
@@ -46,6 +62,19 @@ export function WeeklyIntentionsDisplay() {
     setIsEditing(false);
     refetch();
   };
+
+  if (error) {
+    return (
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Your Intentions for This Week</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-red-500">Error loading weekly intentions. Please try again later.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -136,19 +165,21 @@ export function WeeklyIntentionsDisplay() {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-center">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-2"
-              asChild
-            >
-              <Link to="/weekly-reflection">
-                <CheckCircle className="h-4 w-4" />
-                Review Your Week
-              </Link>
-            </Button>
-          </div>
+          {showReflection && (
+            <div className="mt-4 flex justify-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                asChild
+              >
+                <Link to="/weekly-reflection">
+                  <CheckCircle className="h-4 w-4" />
+                  Review Your Week
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
