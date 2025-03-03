@@ -39,17 +39,51 @@ serve(async (req) => {
       const url = new URL(req.url);
       const code = url.searchParams.get('code');
       const error = url.searchParams.get('error');
+      const state = url.searchParams.get('state');
       
       if (error) {
         console.error("Strava auth error:", error);
-        throw new Error(`Strava authorization error: ${error}`);
+        return new Response(
+          `<html><body><h1>Authentication Failed</h1><p>Strava authentication error: ${error}</p><p><a href="/">Return to app</a></p></body></html>`,
+          { 
+            status: 400, 
+            headers: { 
+              ...corsHeaders,
+              'Content-Type': 'text/html'
+            }
+          }
+        );
       }
       
       if (!code) {
         console.error("No authorization code provided");
-        throw new Error('No authorization code provided');
+        return new Response(
+          `<html><body><h1>Missing Code</h1><p>No authorization code was provided</p><p><a href="/">Return to app</a></p></body></html>`,
+          { 
+            status: 400, 
+            headers: { 
+              ...corsHeaders,
+              'Content-Type': 'text/html'
+            }
+          }
+        );
       }
-
+      
+      // Get user_id from state parameter
+      if (!state) {
+        console.error("No state parameter provided");
+        return new Response(
+          `<html><body><h1>Missing State</h1><p>No state parameter was provided</p><p><a href="/">Return to app</a></p></body></html>`,
+          { 
+            status: 400, 
+            headers: { 
+              ...corsHeaders,
+              'Content-Type': 'text/html'
+            }
+          }
+        );
+      }
+      
       console.log('Exchanging code for tokens...');
       const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
         method: 'POST',
@@ -68,34 +102,29 @@ serve(async (req) => {
 
       if (!tokenResponse.ok) {
         console.error('Strava token exchange failed:', responseText);
-        throw new Error('Failed to exchange code for tokens');
+        return new Response(
+          `<html><body><h1>Token Exchange Failed</h1><p>Failed to exchange code for tokens. Please try again.</p><p><a href="/">Return to app</a></p></body></html>`,
+          { 
+            status: 400, 
+            headers: { 
+              ...corsHeaders,
+              'Content-Type': 'text/html'
+            }
+          }
+        );
       }
 
       const tokenData = JSON.parse(responseText);
       console.log('Token exchange successful, access token length:', tokenData.access_token?.length);
 
-      // Get user from Authorization header
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        console.error("Missing authorization header in callback");
-        throw new Error('Missing authorization header');
-      }
-      
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      
-      if (userError || !user) {
-        console.error('User auth error:', userError);
-        throw new Error('Invalid user');
-      }
+      // Store tokens in Supabase using the user_id from state
+      const userId = state;
+      console.log("Storing tokens for user:", userId);
 
-      console.log("Storing tokens for user:", user.id);
-
-      // Store tokens in Supabase
       const { error: upsertError } = await supabase
         .from('strava_tokens')
         .upsert({
-          user_id: user.id,
+          user_id: userId,
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           expires_at: tokenData.expires_at,
@@ -103,17 +132,28 @@ serve(async (req) => {
 
       if (upsertError) {
         console.error('Token storage error:', upsertError);
-        throw new Error('Failed to store tokens');
+        return new Response(
+          `<html><body><h1>Token Storage Failed</h1><p>Failed to store tokens. Please try again.</p><p><a href="/">Return to app</a></p></body></html>`,
+          { 
+            status: 500, 
+            headers: { 
+              ...corsHeaders,
+              'Content-Type': 'text/html'
+            }
+          }
+        );
       }
 
       // Redirect back to the application
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': '/',
-        },
-      });
+      return new Response(
+        `<html><body><h1>Authentication Successful</h1><p>Your Strava account has been connected!</p><script>window.location.href = "/";</script><p>If you're not redirected automatically, <a href="/">click here</a></p></body></html>`,
+        { 
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/html'
+          },
+        }
+      );
     }
 
     // Handle POST requests (API actions)
@@ -147,7 +187,8 @@ serve(async (req) => {
       console.log(`Processing ${action} for user ${user.id}`);
 
       if (action === "get_auth_url") {
-        const state = crypto.randomUUID(); // Generate a random state
+        // Use user.id as the state parameter
+        const state = user.id;
         const scope = 'read,activity:read';
         const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&approval_prompt=force&scope=${scope}&state=${state}`;
         

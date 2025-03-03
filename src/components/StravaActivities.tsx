@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 interface StravaActivity {
   id: number;
@@ -20,16 +21,22 @@ export function StravaActivities() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const { session } = useAuth();
 
   useEffect(() => {
-    checkConnection();
-  }, []);
+    if (session) {
+      checkConnection();
+    }
+  }, [session]);
 
   const checkConnection = async () => {
+    if (!session) return;
+    
     try {
       const { data: tokens, error } = await supabase
         .from("strava_tokens")
         .select("*")
+        .eq("user_id", session.user.id)
         .single();
 
       if (error) {
@@ -52,18 +59,11 @@ export function StravaActivities() {
   };
 
   const fetchActivities = async () => {
+    if (!session) return;
+    
     try {
       setIsLoading(true);
       
-      // Get the current user's session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No session found');
-      }
-
-      console.log("Calling Strava function with token:", session.access_token);
-
       // Make sure to pass the Authorization header with the JWT token
       const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
         "strava-auth",
@@ -96,18 +96,13 @@ export function StravaActivities() {
   };
 
   const connectStrava = async () => {
+    if (!session) {
+      toast.error("You must be logged in to connect Strava");
+      return;
+    }
+    
     try {
       setIsConnecting(true);
-
-      // Get the current user's session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error("You must be logged in to connect Strava");
-        throw new Error('No session found');
-      }
-
-      console.log("Getting auth URL with token:", session.access_token);
 
       // Make sure to pass the Authorization header with the JWT token
       const response = await supabase.functions.invoke<{ url: string }>(
