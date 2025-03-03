@@ -11,6 +11,8 @@ import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
 import Journal from "./pages/Journal";
 import Strava from "./pages/Strava";
+import Intentions from "./pages/Intentions";
+import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
 
@@ -65,6 +67,30 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Journal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intentions"
+            element={
+              <ProtectedRoute>
+                <Intentions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intentions/edit"
+            element={
+              <ProtectedRoute>
+                <IntentionsEdit />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intentions/edit/:id"
+            element={
+              <ProtectedRoute>
+                <IntentionsEdit />
               </ProtectedRoute>
             }
           />

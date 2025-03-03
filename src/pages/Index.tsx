@@ -14,6 +14,7 @@ import { JournalEntryCard } from "@/components/JournalEntryCard";
 import { StravaActivityList } from "@/components/StravaActivityList";
 import { isConnectedToStrava, getStravaActivities } from "@/services/stravaService";
 import { mapDatabaseEntryToJournalEntry } from "@/types/journal";
+import { WeeklyIntentionsCard } from "@/components/WeeklyIntentionsCard";
 
 const Index = () => {
   const { session } = useAuth();
@@ -150,6 +151,8 @@ const Index = () => {
               )}
             </CardContent>
           </Card>
+          
+          <WeeklyIntentionsCard />
           
           <Card>
             <CardHeader className="space-y-1">

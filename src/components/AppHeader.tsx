@@ -11,7 +11,7 @@ export const AppHeader = () => {
   if (!session) return null;
 
   const isActiveRoute = (route: string) => {
-    return location.pathname === route;
+    return location.pathname === route || location.pathname.startsWith(`${route}/`);
   };
 
   return (
@@ -41,6 +41,13 @@ export const AppHeader = () => {
             size="sm"
           >
             <Link to="/goals">Goals</Link>
+          </Button>
+          <Button 
+            asChild 
+            variant={isActiveRoute("/intentions") ? "default" : "ghost"} 
+            size="sm"
+          >
+            <Link to="/intentions">Intentions</Link>
           </Button>
           <Button 
             asChild 
