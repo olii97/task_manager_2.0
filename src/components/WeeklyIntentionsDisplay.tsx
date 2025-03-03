@@ -12,27 +12,23 @@ import WeeklyIntentionsForm from "./WeeklyIntentionsForm";
 
 export function WeeklyIntentionsDisplay() {
   const { session } = useAuth();
-  const userId = session?.user?.id;
+  const userId = session?.user?.id || null;
   const [isEditing, setIsEditing] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
   const [showReflection, setShowReflection] = useState(true);
 
-  const { data: weeklyIntentions, isLoading, error, refetch } = useQuery({
-    queryKey: ["weekly-intentions"],
+  // Safely fetch intentions with proper error handling
+  const { data: weeklyIntentions, isLoading, refetch } = useQuery({
+    queryKey: ["weekly-intentions", userId],
     queryFn: async () => {
       if (!userId) return null;
-      try {
-        return await getCurrentWeekIntentions(userId);
-      } catch (err) {
-        console.error("Error fetching weekly intentions:", err);
-        return null;
-      }
+      return await getCurrentWeekIntentions(userId);
     },
     enabled: !!userId,
   });
 
   useEffect(() => {
-    const checkEditPermission = async () => {
+    async function loadPermissions() {
       try {
         const editAllowed = await canEditIntentions();
         setCanEdit(editAllowed);
@@ -41,42 +37,22 @@ export function WeeklyIntentionsDisplay() {
         setShowReflection(showReflectionButton);
       } catch (err) {
         console.error("Error checking permissions:", err);
-        // Default to allowing edits if there's an error
         setCanEdit(true);
         setShowReflection(true);
       }
-    };
+    }
     
-    checkEditPermission();
+    loadPermissions();
   }, []);
 
-  const handleStartEditing = () => {
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-  };
-
+  const handleStartEditing = () => setIsEditing(true);
+  const handleCancelEdit = () => setIsEditing(false);
   const handleIntentionsUpdated = () => {
     setIsEditing(false);
     refetch();
   };
 
-  if (error) {
-    console.error("Error in WeeklyIntentionsDisplay:", error);
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Your Intentions for This Week</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-red-500">Error loading weekly intentions. Please try again later.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  // Loading state
   if (isLoading) {
     return (
       <Card className="mb-6">
@@ -88,7 +64,7 @@ export function WeeklyIntentionsDisplay() {
     );
   }
 
-  // If in editing mode, show the form
+  // Editing state
   if (isEditing) {
     return (
       <Card className="mb-6">
@@ -106,7 +82,7 @@ export function WeeklyIntentionsDisplay() {
     );
   }
 
-  // If no intentions exist yet, show the form
+  // No intentions yet state
   if (!weeklyIntentions) {
     return (
       <Card className="mb-6">

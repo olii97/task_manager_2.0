@@ -4,6 +4,8 @@ import { mapDatabaseIntentionToWeeklyIntention, WeeklyIntention, WeeklyIntention
 import { startOfWeek, format } from "date-fns";
 
 export async function getCurrentWeekIntentions(userId: string): Promise<WeeklyIntention | null> {
+  if (!userId) return null;
+  
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday as week start
   const formattedWeekStart = format(weekStart, "yyyy-MM-dd");
@@ -18,13 +20,13 @@ export async function getCurrentWeekIntentions(userId: string): Promise<WeeklyIn
     
     if (error) {
       console.error("Error fetching weekly intentions:", error);
-      throw error;
+      return null;
     }
     
     return data ? mapDatabaseIntentionToWeeklyIntention(data) : null;
   } catch (error) {
     console.error("Error in getCurrentWeekIntentions:", error);
-    return null; // Return null instead of throwing to prevent app crashes
+    return null;
   }
 }
 
@@ -32,6 +34,8 @@ export async function createWeeklyIntentions(
   userId: string,
   formData: WeeklyIntentionFormData
 ): Promise<WeeklyIntention | null> {
+  if (!userId) return null;
+  
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const formattedWeekStart = format(weekStart, "yyyy-MM-dd");
@@ -52,13 +56,13 @@ export async function createWeeklyIntentions(
     
     if (error) {
       console.error("Error creating weekly intentions:", error);
-      throw error;
+      return null;
     }
     
-    return mapDatabaseIntentionToWeeklyIntention(data);
+    return data ? mapDatabaseIntentionToWeeklyIntention(data) : null;
   } catch (error) {
     console.error("Error in createWeeklyIntentions:", error);
-    return null; // Return null instead of throwing to prevent app crashes
+    return null;
   }
 }
 
@@ -66,6 +70,8 @@ export async function updateWeeklyIntentions(
   intentionId: string,
   formData: WeeklyIntentionFormData
 ): Promise<WeeklyIntention | null> {
+  if (!intentionId) return null;
+  
   try {
     const { data, error } = await supabase
       .from("weekly_intentions")
@@ -80,13 +86,13 @@ export async function updateWeeklyIntentions(
     
     if (error) {
       console.error("Error updating weekly intentions:", error);
-      throw error;
+      return null;
     }
     
-    return mapDatabaseIntentionToWeeklyIntention(data);
+    return data ? mapDatabaseIntentionToWeeklyIntention(data) : null;
   } catch (error) {
     console.error("Error in updateWeeklyIntentions:", error);
-    return null; // Return null instead of throwing to prevent app crashes
+    return null;
   }
 }
 
@@ -94,6 +100,8 @@ export async function submitWeeklyReflections(
   intentionId: string,
   reflections: WeeklyReflectionFormData
 ): Promise<WeeklyIntention | null> {
+  if (!intentionId) return null;
+  
   try {
     const { data, error } = await supabase
       .from("weekly_intentions")
@@ -109,13 +117,13 @@ export async function submitWeeklyReflections(
     
     if (error) {
       console.error("Error submitting reflections:", error);
-      throw error;
+      return null;
     }
     
-    return mapDatabaseIntentionToWeeklyIntention(data);
+    return data ? mapDatabaseIntentionToWeeklyIntention(data) : null;
   } catch (error) {
     console.error("Error in submitWeeklyReflections:", error);
-    return null; // Return null instead of throwing to prevent app crashes
+    return null;
   }
 }
 
