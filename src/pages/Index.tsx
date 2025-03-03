@@ -4,7 +4,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import WeeklyIntentionsDisplay from "@/components/WeeklyIntentionsDisplay";
-import FeaturedGoal from "@/components/FeaturedGoal";
+import { FeaturedGoal } from "@/components/FeaturedGoal";
 import { Separator } from "@/components/ui/separator";
 
 const Index = () => {

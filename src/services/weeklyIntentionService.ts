@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { mapDatabaseIntentionToWeeklyIntention, WeeklyIntention, WeeklyIntentionFormData, WeeklyReflectionFormData } from "@/types/weeklyIntentions";
 import { startOfWeek, format } from "date-fns";
@@ -99,7 +98,7 @@ export async function submitWeeklyReflections(
   return mapDatabaseIntentionToWeeklyIntention(data);
 }
 
-export async function canEditIntentions(): boolean {
+export async function canEditIntentions(): Promise<boolean> {
   const today = new Date();
   const dayOfWeek = today.getDay();
   // Return true if it's Monday, Tuesday, or Wednesday (0 = Sunday, 1 = Monday, etc.)
@@ -107,7 +106,7 @@ export async function canEditIntentions(): boolean {
   return true; // Change to: return dayOfWeek >= 1 && dayOfWeek <= 3; for production
 }
 
-export async function shouldShowReflection(): boolean {
+export async function shouldShowReflection(): Promise<boolean> {
   // For testing purposes, we're always showing the reflection button
   return true; // Change to: return new Date().getDay() === 0; for production (Sunday only)
 }
