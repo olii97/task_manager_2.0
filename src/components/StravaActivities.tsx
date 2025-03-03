@@ -33,6 +33,8 @@ export function StravaActivities() {
     if (!session) return;
     
     try {
+      setIsLoading(true);
+      
       const { data: tokens, error } = await supabase
         .from("strava_tokens")
         .select("*")
@@ -55,6 +57,8 @@ export function StravaActivities() {
     } catch (error) {
       console.error("Error checking Strava connection:", error);
       setIsConnected(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -151,6 +155,17 @@ export function StravaActivities() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  if (!session) {
+    return (
+      <Card className="p-4">
+        <h2 className="text-2xl font-semibold mb-4">Strava Activities</h2>
+        <p className="text-center text-muted-foreground py-4">
+          You need to be logged in to connect Strava.
+        </p>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-4">
       <h2 className="text-2xl font-semibold mb-4">Strava Activities</h2>
@@ -203,6 +218,23 @@ export function StravaActivities() {
               ))}
             </div>
           )}
+          <div className="pt-4">
+            <Button 
+              onClick={fetchActivities} 
+              variant="outline" 
+              size="sm"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                "Refresh Activities"
+              )}
+            </Button>
+          </div>
         </div>
       )}
     </Card>

@@ -20,6 +20,7 @@ serve(async (req) => {
     const STRAVA_CLIENT_SECRET = Deno.env.get('STRAVA_CLIENT_SECRET');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/strava-auth`;
 
     console.log("Function triggered, method:", req.method);
@@ -31,7 +32,9 @@ serve(async (req) => {
       throw new Error('Missing Strava configuration');
     }
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role key for the callback flow
+    // This allows us to write to the database without a user JWT
+    const adminSupabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     // Handle GET requests (OAuth callback)
@@ -40,6 +43,8 @@ serve(async (req) => {
       const code = url.searchParams.get('code');
       const error = url.searchParams.get('error');
       const state = url.searchParams.get('state');
+      
+      console.log("Callback received with:", { code: !!code, error, state });
       
       if (error) {
         console.error("Strava auth error:", error);
@@ -84,6 +89,10 @@ serve(async (req) => {
         );
       }
       
+      // Extract the user_id from state
+      const userId = state;
+      console.log('User ID from state:', userId);
+      
       console.log('Exchanging code for tokens...');
       const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
         method: 'POST',
@@ -96,14 +105,11 @@ serve(async (req) => {
         }),
       });
 
-      const responseText = await tokenResponse.text();
-      console.log("Token response status:", tokenResponse.status);
-      console.log("Token response:", responseText);
-
       if (!tokenResponse.ok) {
-        console.error('Strava token exchange failed:', responseText);
+        const errorText = await tokenResponse.text();
+        console.error('Strava token exchange failed:', errorText);
         return new Response(
-          `<html><body><h1>Token Exchange Failed</h1><p>Failed to exchange code for tokens. Please try again.</p><p><a href="/">Return to app</a></p></body></html>`,
+          `<html><body><h1>Token Exchange Failed</h1><p>Failed to exchange code for tokens: ${errorText}</p><p><a href="/">Return to app</a></p></body></html>`,
           { 
             status: 400, 
             headers: { 
@@ -114,14 +120,13 @@ serve(async (req) => {
         );
       }
 
-      const tokenData = JSON.parse(responseText);
-      console.log('Token exchange successful, access token length:', tokenData.access_token?.length);
+      const tokenData = await tokenResponse.json();
+      console.log('Token exchange successful, access token retrieved');
 
-      // Store tokens in Supabase using the user_id from state
-      const userId = state;
+      // Store tokens in Supabase using the service role key and user_id from state
       console.log("Storing tokens for user:", userId);
 
-      const { error: upsertError } = await supabase
+      const { error: upsertError } = await adminSupabase
         .from('strava_tokens')
         .upsert({
           user_id: userId,
@@ -133,7 +138,7 @@ serve(async (req) => {
       if (upsertError) {
         console.error('Token storage error:', upsertError);
         return new Response(
-          `<html><body><h1>Token Storage Failed</h1><p>Failed to store tokens. Please try again.</p><p><a href="/">Return to app</a></p></body></html>`,
+          `<html><body><h1>Token Storage Failed</h1><p>Failed to store tokens: ${upsertError.message}</p><p><a href="/">Return to app</a></p></body></html>`,
           { 
             status: 500, 
             headers: { 
@@ -228,9 +233,9 @@ serve(async (req) => {
           });
 
           if (!refreshResponse.ok) {
-            const errorData = await refreshResponse.text();
-            console.error('Token refresh failed:', errorData);
-            throw new Error('Failed to refresh token');
+            const errorText = await refreshResponse.text();
+            console.error('Token refresh failed:', errorText);
+            throw new Error(`Failed to refresh token: ${errorText}`);
           }
 
           const refreshData = await refreshResponse.json();
@@ -259,9 +264,9 @@ serve(async (req) => {
         );
 
         if (!activitiesResponse.ok) {
-          const errorData = await activitiesResponse.text();
-          console.error('Activities fetch failed:', errorData);
-          throw new Error(`Strava API error: ${activitiesResponse.statusText}`);
+          const errorText = await activitiesResponse.text();
+          console.error('Activities fetch failed:', errorText);
+          throw new Error(`Strava API error: ${activitiesResponse.statusText} - ${errorText}`);
         }
 
         const activities = await activitiesResponse.json();
