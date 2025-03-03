@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +12,16 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { JournalEntry } from "@/types/journal";
 
 const MoodOptions = ["😔", "😐", "🙂", "😊", "😃"] as const;
 
-export const JournalEntryForm = () => {
+interface JournalEntryFormProps {
+  existingEntry?: JournalEntry;
+  onCancel?: () => void;
+}
+
+export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -33,13 +40,38 @@ export const JournalEntryForm = () => {
     },
   });
 
+  // Initialize form with existing entry data if provided
+  useEffect(() => {
+    if (existingEntry) {
+      // Set mood based on existing entry
+      setMood(MoodOptions[existingEntry.mood - 1] || "🙂");
+      
+      // Set energy level based on existing entry (convert from 1-5 scale to 0-100)
+      setEnergyLevel(existingEntry.energy * 20);
+      
+      // Set form values
+      setForm({
+        intentions: existingEntry.intentions || "",
+        gratefulness: existingEntry.gratitude || "",
+        challenges: existingEntry.challenges || "",
+        reflection: existingEntry.reflection || "",
+        nutrition: {
+          meals: existingEntry.nutrition?.meals || "",
+          feelings: existingEntry.nutrition?.feelings || "",
+          calories: existingEntry.nutrition?.calories?.toString() || "",
+          proteinTarget: existingEntry.nutrition?.protein || false,
+        },
+      });
+    }
+  }, [existingEntry]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      const { error } = await supabase.from("journal_entries").insert({
+      const entryData = {
         user_id: session?.user.id,
-        date: new Date().toISOString(),
+        date: existingEntry?.date || new Date().toISOString().split('T')[0],
         mood: MoodOptions.indexOf(mood) + 1,
         energy: Math.round(energyLevel / 20),
         intentions: form.intentions,
@@ -49,10 +81,27 @@ export const JournalEntryForm = () => {
         nutrition: {
           meals: form.nutrition.meals,
           feelings: form.nutrition.feelings,
-          calories: parseInt(form.nutrition.calories as string) || 0,
+          calories: parseInt(form.nutrition.calories) || 0,
           protein: form.nutrition.proteinTarget,
         },
-      });
+      };
+
+      let error;
+
+      if (existingEntry) {
+        // Update existing entry
+        const { error: updateError } = await supabase
+          .from("journal_entries")
+          .update(entryData)
+          .eq("id", existingEntry.id);
+        error = updateError;
+      } else {
+        // Insert new entry
+        const { error: insertError } = await supabase
+          .from("journal_entries")
+          .insert(entryData);
+        error = insertError;
+      }
 
       if (error) throw error;
 
@@ -64,12 +113,19 @@ export const JournalEntryForm = () => {
       });
 
       toast({
-        title: "Journal Entry Saved",
-        description: "Your reflection has been recorded successfully.",
+        title: existingEntry ? "Journal Entry Updated" : "Journal Entry Saved",
+        description: existingEntry 
+          ? "Your journal entry has been updated successfully." 
+          : "Your reflection has been recorded successfully.",
       });
 
-      // Navigate back to home
-      navigate("/");
+      // If editing, call onCancel to go back to view mode
+      if (existingEntry && onCancel) {
+        onCancel();
+      } else {
+        // Navigate back to home if creating a new entry
+        navigate("/");
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -249,9 +305,16 @@ export const JournalEntryForm = () => {
           </div>
         </Card>
 
-        <Button type="submit" className="w-full">
-          Save Journal Entry
-        </Button>
+        <div className="flex justify-between space-x-4">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel} className="w-full">
+              Cancel
+            </Button>
+          )}
+          <Button type="submit" className="w-full">
+            {existingEntry ? "Update Journal Entry" : "Save Journal Entry"}
+          </Button>
+        </div>
       </form>
     </motion.div>
   );

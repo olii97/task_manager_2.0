@@ -2,6 +2,8 @@
 import { formatRelative } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { PencilIcon } from "lucide-react";
 
 const MoodOptions = ["😢", "😕", "😐", "🙂", "😊"];
 const EnergyOptions = ["Very Low", "Low", "Moderate", "High", "Very High"];
@@ -33,9 +35,10 @@ interface JournalEntry {
 
 interface Props {
   entry: JournalEntry;
+  onEdit?: () => void;
 }
 
-export function JournalEntryCard({ entry }: Props) {
+export function JournalEntryCard({ entry, onEdit }: Props) {
   const moodEmoji = MoodOptions[entry.mood - 1];
   const energyLevel = EnergyOptions[entry.energy - 1];
   const formattedDate = formatRelative(new Date(entry.date), new Date());
@@ -46,9 +49,20 @@ export function JournalEntryCard({ entry }: Props) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <time className="text-sm text-muted-foreground">{formattedDate}</time>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <Badge variant="outline">{moodEmoji}</Badge>
               <Badge variant="outline">{energyLevel}</Badge>
+              {onEdit && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onEdit} 
+                  className="ml-2 h-8 w-8 p-0"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                  <span className="sr-only">Edit</span>
+                </Button>
+              )}
             </div>
           </div>
 
