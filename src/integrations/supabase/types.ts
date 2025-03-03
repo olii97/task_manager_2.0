@@ -80,6 +80,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quarterly_goals: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          is_completed: boolean
+          quarter: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          is_completed?: boolean
+          quarter: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_completed?: boolean
+          quarter?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       strava_tokens: {
         Row: {
           access_token: string

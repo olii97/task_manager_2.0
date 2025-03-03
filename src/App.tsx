@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
+import { QuarterEndReminder } from "./components/QuarterEndReminder";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <QuarterEndReminder />
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route

@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCurrentQuarterGoals, createGoal, updateGoal, deleteGoal, getCurrentQuarter, getNextQuarter } from "@/services/goalService";
+import { getCurrentQuarterGoals, createGoal, updateGoal, deleteGoal, getCurrentQuarter, getNextQuarter, getGoalsForQuarter } from "@/services/goalService";
 import { Goal, GoalCategory, goalCategoryLabels } from "@/types/goals";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

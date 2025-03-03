@@ -11,7 +11,12 @@ export const getGoalsForQuarter = async (quarter: number, year: number) => {
     .order("category");
 
   if (error) throw error;
-  return data as Goal[];
+  
+  // Map database fields to our frontend model
+  return (data || []).map(item => ({
+    ...item,
+    isCompleted: item.is_completed // Map is_completed to isCompleted
+  })) as Goal[];
 };
 
 export const getCurrentQuarterGoals = async () => {
@@ -32,26 +37,55 @@ export const getFeaturedGoal = async () => {
 };
 
 export const createGoal = async (goal: Omit<Goal, "id" | "created_at" | "updated_at">) => {
+  // Convert our frontend model to database fields
+  const dbGoal = {
+    user_id: goal.user_id,
+    category: goal.category,
+    description: goal.description,
+    is_completed: goal.isCompleted, // Map isCompleted to is_completed
+    quarter: goal.quarter,
+    year: goal.year
+  };
+
   const { data, error } = await supabase
     .from("quarterly_goals")
-    .insert(goal)
+    .insert(dbGoal)
     .select()
     .single();
 
   if (error) throw error;
-  return data as Goal;
+  
+  // Map database response back to our frontend model
+  return {
+    ...data,
+    isCompleted: data.is_completed // Map is_completed to isCompleted
+  } as Goal;
 };
 
 export const updateGoal = async (goalId: string, updates: Partial<Omit<Goal, "id" | "user_id" | "created_at" | "updated_at">>) => {
+  // Convert our frontend model updates to database fields
+  const dbUpdates: Record<string, any> = {};
+  
+  if (updates.description !== undefined) dbUpdates.description = updates.description;
+  if (updates.category !== undefined) dbUpdates.category = updates.category;
+  if (updates.isCompleted !== undefined) dbUpdates.is_completed = updates.isCompleted;
+  if (updates.quarter !== undefined) dbUpdates.quarter = updates.quarter;
+  if (updates.year !== undefined) dbUpdates.year = updates.year;
+
   const { data, error } = await supabase
     .from("quarterly_goals")
-    .update(updates)
+    .update(dbUpdates)
     .eq("id", goalId)
     .select()
     .single();
 
   if (error) throw error;
-  return data as Goal;
+  
+  // Map database response back to our frontend model
+  return {
+    ...data,
+    isCompleted: data.is_completed // Map is_completed to isCompleted
+  } as Goal;
 };
 
 export const deleteGoal = async (goalId: string) => {

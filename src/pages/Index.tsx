@@ -1,141 +1,117 @@
-
-import { Button } from "@/components/ui/button";
-import { JournalEntryCard } from "@/components/JournalEntryCard";
-import { JournalEntryForm } from "@/components/JournalEntryForm";
-import { StravaActivities } from "@/components/StravaActivities";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Plus, LayoutGrid } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { ChatBot } from "@/components/ChatBot";
-import { FeaturedGoal } from "@/components/FeaturedGoal";
-import { QuarterEndReminder } from "@/components/QuarterEndReminder";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar } from "lucide-react";
+import { format } from "date-fns";
+import { DayPicker } from "react-day-picker";
+import { useAuth } from "@/components/AuthProvider";
+import { FeaturedGoal } from "@/components/FeaturedGoal";
 
 const Index = () => {
-  const [showForm, setShowForm] = useState(false);
-  const navigate = useNavigate();
+  const { session } = useAuth();
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
-  const { data: entries, isLoading } = useQuery({
-    queryKey: ["journal-entries"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("journal_entries")
-        .select("*")
-        .order("date", { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      navigate("/auth");
-      toast.success("Logged out successfully");
-    } catch (error: any) {
-      toast.error("Error logging out: " + error.message);
-    }
-  };
+  useEffect(() => {
+    document.title = "Home | Daily Driver";
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Quarter end reminder doesn't render anything visible but shows notifications when needed */}
-      <QuarterEndReminder />
+    <div className="container py-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-blue-700 mb-2">
+          Welcome, {session?.user.email}!
+        </h1>
+        <p className="text-muted-foreground">
+          Here's a snapshot of your day and goals.
+        </p>
+      </div>
       
-      <main className="container py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div className="text-center flex-1">
-            <h1 className="text-4xl font-bold tracking-tight text-blue-700">Daily Journal</h1>
-            <p className="mt-2 text-muted-foreground">
-              Record your daily reflections and track your wellness journey
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild className="gap-2">
-              <Link to="/goals">
-                <LayoutGrid className="h-4 w-4" />
-                Goals
-              </Link>
-            </Button>
-            <Button variant="outline" onClick={handleLogout} className="gap-2">
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* First column - Featured Goal */}
+        <div className="space-y-6">
+          <FeaturedGoal />
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg">Calendar</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+              <div className="flex items-center justify-between p-2">
+                <h2 className="text-sm font-semibold">
+                  {format(date || new Date(), "MMMM yyyy")}
+                </h2>
+              </div>
+              <DayPicker
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                footer={
+                  date ? (
+                    <p>
+                      You picked{" "}
+                      {format(date, "PP")}
+                      .
+                    </p>
+                  ) : (
+                    <span>Please pick a date.</span>
+                  )
+                }
+              />
+            </CardContent>
+          </Card>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-[2fr,1fr,auto] gap-8">
-          <div className="space-y-8">
-            <div>
-              <Button onClick={() => setShowForm(!showForm)} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4" />
-                {showForm ? "Close Form" : "New Entry"}
+        
+        {/* Second column - Journal */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg">Daily Journal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Reflect on your day, capture your thoughts, and track your
+                progress.
+              </p>
+              <Button asChild>
+                <Link to="/journal">Open Journal</Link>
               </Button>
-            </div>
-
-            <AnimatePresence>
-              {showForm && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden"
-                >
-                  <JournalEntryForm />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-blue-600">Recent Entries</h2>
-              {isLoading ? (
-                <p>Loading entries...</p>
-              ) : (
-                <motion.div
-                  className="grid gap-6"
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    visible: {
-                      transition: {
-                        staggerChildren: 0.1,
-                      },
-                    },
-                  }}
-                >
-                  {entries?.map((entry) => (
-                    <motion.div
-                      key={entry.id}
-                      variants={{
-                        hidden: { opacity: 0, y: 20 },
-                        visible: { opacity: 1, y: 0 },
-                      }}
-                    >
-                      <JournalEntryCard entry={entry as any} />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </div>
-          </div>
-          
-          <div className="space-y-8">
-            <FeaturedGoal />
-            <StravaActivities />
-          </div>
-
-          <div>
-            <ChatBot />
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+        
+        {/* Third column - Strava */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-lg">Strava Integration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Connect your Strava account to track your activities and fitness
+                progress.
+              </p>
+              <Button asChild>
+                <Link to="/strava">Connect Strava</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-lg font-medium">
+            Overview
+          </CardTitle>
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">898</div>
+          <p className="text-sm text-muted-foreground">
+            Insights and summary data will be displayed here.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 };
