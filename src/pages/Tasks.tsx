@@ -8,7 +8,7 @@ import {
   addTask, 
   updateTask, 
   resetDailySchedule 
-} from "@/services/taskService";
+} from "@/services/tasks";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { toast } from "@/hooks/use-toast";
 import { TasksLoadingState } from "@/components/tasks/TasksLoadingState";

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
-import { completeTask, deleteTask } from "@/services/taskService";
+import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
