@@ -6,7 +6,7 @@ import { fetchTasks } from "@/services/tasks";
 import { useAuth } from "@/components/AuthProvider";
 import { TaskItem } from "./TaskItem";
 import { Button } from "@/components/ui/button";
-import { Plus, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList, Timer, Flame, Waves, Moon } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface TodaysTasksProps {
@@ -36,6 +36,10 @@ export function TodaysTasks({ onEditTask, onPlanTasks }: TodaysTasksProps) {
     (task) => task.energy_level === "low"
   );
 
+  const handleStartMeditation = () => {
+    alert("Meditation feature coming soon!");
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -54,20 +58,30 @@ export function TodaysTasks({ onEditTask, onPlanTasks }: TodaysTasksProps) {
   }
 
   return (
-    <Card>
+    <Card className="border-primary/20">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center">
             <ClipboardList className="h-5 w-5 mr-2" />
             Today's Tasks
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onPlanTasks}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Plan Tasks
-          </Button>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleStartMeditation}
+              className="bg-meditation-primary/10 border-meditation-primary/30 text-meditation-primary hover:bg-meditation-primary/20"
+            >
+              <Moon className="h-4 w-4 mr-1" /> Meditate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPlanTasks}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Plan Tasks
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -76,7 +90,7 @@ export function TodaysTasks({ onEditTask, onPlanTasks }: TodaysTasksProps) {
             <p className="mb-4 text-muted-foreground">
               You haven't planned any tasks for today yet.
             </p>
-            <Button onClick={onPlanTasks}>
+            <Button onClick={onPlanTasks} glow>
               <Plus className="h-4 w-4 mr-1" /> Plan Today's Tasks
             </Button>
           </div>
@@ -84,8 +98,8 @@ export function TodaysTasks({ onEditTask, onPlanTasks }: TodaysTasksProps) {
           <div className="space-y-4">
             {highEnergyTasks.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  ⚡ High Energy Tasks
+                <h3 className="text-sm font-medium text-energy-high mb-2 flex items-center">
+                  <Flame className="h-4 w-4 mr-1" /> High Energy Tasks
                 </h3>
                 <div className="space-y-2">
                   {highEnergyTasks.map((task) => (
@@ -101,8 +115,8 @@ export function TodaysTasks({ onEditTask, onPlanTasks }: TodaysTasksProps) {
 
             {lowEnergyTasks.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                  🔋 Low Energy Tasks
+                <h3 className="text-sm font-medium text-energy-low mb-2 flex items-center">
+                  <Waves className="h-4 w-4 mr-1" /> Low Energy Tasks
                 </h3>
                 <div className="space-y-2">
                   {lowEnergyTasks.map((task) => (

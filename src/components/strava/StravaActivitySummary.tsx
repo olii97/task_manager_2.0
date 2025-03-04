@@ -29,11 +29,11 @@ export function StravaActivitySummary({ activity }: StravaActivitySummaryProps) 
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Activity Summary</CardTitle>
+    <Card className="bg-gradient-to-br from-white to-strava-primary/5 dark:from-gray-900 dark:to-strava-primary/10 border-strava-primary/20">
+      <CardHeader className="border-b border-strava-primary/10">
+        <CardTitle className="text-strava-primary">Activity Summary</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -73,7 +73,7 @@ export function StravaActivitySummary({ activity }: StravaActivitySummaryProps) 
             <div>
               <p className="text-sm text-muted-foreground">Location</p>
               <p className="font-medium flex items-center">
-                <MapPin className="h-3 w-3 mr-1 inline" />
+                <MapPin className="h-3 w-3 mr-1 inline text-strava-primary" />
                 {activity.location_city}
                 {activity.location_state && `, ${activity.location_state}`}
               </p>

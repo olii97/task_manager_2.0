@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,7 +11,7 @@
     --card-foreground: 222.2 47.4% 11.2%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 217 91% 60%;
+    --primary: 196 100% 50%; /* Electric Cyan (#00CFFF) */
     --primary-foreground: 210 40% 98%;
     --secondary: 199 89% 48%;
     --secondary-foreground: 210 40% 98%;
@@ -33,7 +34,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
+    --primary: 196 100% 50%; /* Electric Cyan (#00CFFF) */
     --primary-foreground: 222.2 47.4% 11.2%;
     --secondary: 199 89% 48%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -57,12 +58,41 @@
     @apply bg-background text-foreground antialiased;
   }
   
+  /* Dark mode gradient background */
+  .dark body {
+    @apply bg-dark-gradient;
+  }
+  
+  /* Light mode gradient background */
+  body {
+    @apply bg-light-gradient;
+  }
+  
   .motivational-card {
     @apply border-l-4 border-l-orange-500 bg-gradient-to-br from-white to-blue-50;
   }
   
   .progress-indicator {
     @apply bg-gradient-to-r from-blue-500 to-teal-500;
+  }
+  
+  /* Feature-specific styling */
+  .high-energy-task {
+    @apply border-l-4 border-l-energy-high;
+  }
+  
+  .low-energy-task {
+    @apply border-l-4 border-l-energy-low;
+  }
+  
+  /* Button glow effects */
+  .btn-glow:hover {
+    @apply animate-pulse-glow;
+  }
+  
+  /* Task completion animation */
+  .task-complete {
+    @apply animate-checkmark-fade;
   }
 }
 

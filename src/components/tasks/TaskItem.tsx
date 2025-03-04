@@ -4,7 +4,7 @@ import { Task, priorityColors, priorityEmojis } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Timer, Play } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -78,6 +78,10 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
     }
   };
 
+  // Determine energy class based on task energy level
+  const energyClass = task.energy_level === 'high' ? 'high-energy-task' : 
+                      task.energy_level === 'low' ? 'low-energy-task' : '';
+
   return (
     <>
       <ConfettiEffect isActive={showConfetti} />
@@ -98,14 +102,18 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
         }
         exit={{ opacity: 0, x: -10 }}
         layout
+        whileHover={{ scale: 1.01 }}
+        transition={{ duration: 0.2 }}
       >
-        <Card className={`mb-2 ${task.is_completed ? 'bg-gray-50' : ''}`}>
+        <Card className={`mb-2 ${task.is_completed ? 'bg-gray-50' : ''} ${energyClass}`}>
           <CardContent className="p-4 flex items-start">
             <div className="flex-shrink-0 mr-3 mt-1">
               <Checkbox 
+                ref={checkboxRef as any}
                 checked={task.is_completed} 
                 onCheckedChange={handleCheckboxChange}
                 aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
+                className={task.is_completed ? "task-complete" : ""}
               />
             </div>
             <div className="flex-grow">
@@ -117,7 +125,10 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
                   {priorityEmojis[task.priority]}
                 </span>
                 {task.energy_level && (
-                  <span className="ml-2 text-xs px-2 py-1 bg-gray-100 rounded-full">
+                  <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                    task.energy_level === 'high' ? 'bg-energy-high/10 text-energy-high' : 
+                    'bg-energy-low/10 text-energy-low'
+                  }`}>
                     {task.energy_level === 'high' ? '⚡ High energy' : '🔋 Low energy'}
                   </span>
                 )}
@@ -128,7 +139,17 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
                 </p>
               )}
             </div>
-            <div className="flex-shrink-0 ml-2">
+            <div className="flex-shrink-0 ml-2 flex">
+              {!task.is_completed && task.energy_level === 'high' && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-energy-high hover:bg-energy-high/10 hover:text-energy-high btn-glow"
+                  title="Focus Mode (Coming Soon)"
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 size="icon" 

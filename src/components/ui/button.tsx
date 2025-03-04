@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -9,7 +10,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
@@ -18,6 +19,13 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        high: "bg-energy-high text-white hover:bg-energy-high/90 hover:shadow-lg hover:shadow-energy-high/20",
+        low: "bg-energy-low text-white hover:bg-energy-low/90 hover:shadow-lg hover:shadow-energy-low/20",
+        journal: "bg-journal-primary text-white hover:bg-journal-primary/90 hover:shadow-lg hover:shadow-journal-primary/20",
+        strava: "bg-strava-primary text-white hover:bg-strava-primary/90 hover:shadow-lg hover:shadow-strava-primary/20",
+        meditation: "bg-meditation-primary text-white hover:bg-meditation-primary/90 hover:shadow-lg hover:shadow-meditation-primary/20",
+        pomodoro: "bg-pomodoro-primary text-white hover:bg-pomodoro-primary/90 hover:shadow-lg hover:shadow-pomodoro-primary/20",
+        gamification: "bg-gamification-primary text-white hover:bg-gamification-primary/90 hover:shadow-lg hover:shadow-gamification-primary/20",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -25,10 +33,15 @@ const buttonVariants = cva(
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
       },
+      glow: {
+        true: "btn-glow",
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      glow: false,
     },
   }
 )
@@ -37,14 +50,15 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  glow?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, glow, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, glow, className }))}
         ref={ref}
         {...props}
       />

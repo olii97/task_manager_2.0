@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { toast } from "sonner";
@@ -208,68 +207,92 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
   }
 };
 
-export const saveActivityToDatabase = async (userId: string, activity: StravaActivity) => {
+export const saveActivityToDatabase = async (
+  activity: StravaActivity
+): Promise<SavedStravaActivity> => {
   try {
-    console.log(`Saving activity ${activity.id} to database`);
-    
-    // Extract relevant fields from the activity to store in database
-    const { 
-      id, name, type, start_date, distance, moving_time, elapsed_time,
-      total_elevation_gain, average_speed, max_speed, average_heartrate, 
-      max_heartrate, map, start_latlng, end_latlng, device_name, gear_id,
-      calories, average_cadence, average_watts, kilojoules, average_temp,
-      average_watts_weighted, elevation_high, elevation_low, pr_count,
-      laps, splits_metric, splits_standard, segment_efforts,
-      start_date_local  // Include start_date_local to prevent date format errors
+    // Extract the fields we want to save
+    const {
+      id,
+      name,
+      type,
+      distance,
+      moving_time,
+      elapsed_time,
+      total_elevation_gain,
+      start_date,
+      start_date_local,
+      timezone,
+      location_city,
+      location_state,
+      location_country,
+      kudos_count,
+      achievement_count,
+      pr_count,
+      athlete,
+      map,
+      average_speed,
+      max_speed,
+      average_heartrate,
+      max_heartrate,
+      average_cadence,
+      device_name,
+      splits_metric,
+      splits_standard,
     } = activity;
-    
-    // Include all required fields explicitly in the upsert operation
-    const { error } = await supabase
+
+    // Make sure to include start_date_local in your record
+    const { data, error } = await supabase
       .from("strava_activities")
-      .upsert({
-        id,
-        user_id: userId,
-        name,
-        type,
-        start_date,
-        start_date_local: start_date_local || start_date, // Ensure start_date_local is provided
-        distance,
-        moving_time,
-        elapsed_time,
-        total_elevation_gain,
-        average_speed,
-        max_speed,
-        average_heartrate,
-        max_heartrate,
-        start_latlng: start_latlng ? start_latlng : null,
-        end_latlng: end_latlng ? end_latlng : null,
-        summary_polyline: map?.summary_polyline || null,
-        map_data: map ? map : null,
-        device_name: device_name || null,
-        gear_id: gear_id || null,
-        calories: calories || null,
-        average_cadence: average_cadence || null,
-        average_watts: average_watts || null,
-        kilojoules: kilojoules || null,
-        temperature: average_temp || null,
-        elevation_high: elevation_high || null,
-        elevation_low: elevation_low || null,
-        pr_count: pr_count || 0,
-        laps: laps || null,
-        splits_metric: splits_metric || null,
-        splits_standard: splits_standard || null,
-        segment_efforts: segment_efforts || null
-      });
+      .upsert(
+        {
+          id,
+          name,
+          type,
+          distance,
+          moving_time,
+          elapsed_time,
+          total_elevation_gain,
+          start_date,
+          start_date_local,
+          timezone,
+          location_city,
+          location_state,
+          location_country,
+          kudos_count,
+          achievement_count,
+          pr_count,
+          athlete_id: athlete.id,
+          map_id: map?.id,
+          map_polyline: map?.polyline,
+          map_summary_polyline: map?.summary_polyline,
+          average_speed,
+          max_speed,
+          average_heartrate,
+          max_heartrate,
+          average_cadence,
+          device_name,
+          splits_metric: splits_metric || null,
+          splits_standard: splits_standard || null,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+        },
+        { onConflict: "id" }
+      )
+      .select("*")
+      .single();
 
     if (error) {
-      console.error("Error saving activity to database:", error);
+      console.error("Error saving activity:", error);
       throw error;
     }
 
-    return { success: true, error: null };
-  } catch (error: any) {
-    console.error("Error saving activity:", error);
-    return { success: false, error: error.message || "Failed to save activity" };
+    return {
+      ...data,
+      saved: true,
+    } as SavedStravaActivity;
+  } catch (error) {
+    console.error("Error in saveActivityToDatabase:", error);
+    throw error;
   }
 };
 
