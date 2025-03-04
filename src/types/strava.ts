@@ -90,3 +90,11 @@ export interface StravaSegmentEffort {
 export interface SavedStravaActivity extends StravaActivity {
   saved: boolean;
 }
+
+// Add a utility function to convert StravaActivity to SavedStravaActivity
+export function toSavedStravaActivity(activity: StravaActivity, isSaved: boolean = false): SavedStravaActivity {
+  return {
+    ...activity,
+    saved: isSaved
+  };
+}
