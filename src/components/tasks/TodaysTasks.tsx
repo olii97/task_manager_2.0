@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { fetchTasks } from "@/services/taskService";
+import { fetchTasks } from "@/services/tasks";
 import { useAuth } from "@/components/AuthProvider";
 import { TaskItem } from "./TaskItem";
 import { Button } from "@/components/ui/button";

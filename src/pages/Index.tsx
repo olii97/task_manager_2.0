@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
 import { Link } from "react-router-dom";
@@ -16,7 +15,7 @@ import { fetchStravaActivities } from "@/services/stravaService";
 import { TodaysTasks } from "@/components/tasks/TodaysTasks";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
-import { fetchTasks, addTask, updateTask } from "@/services/taskService";
+import { fetchTasks, addTask, updateTask } from "@/services/tasks";
 import { useState } from "react";
 import { Task } from "@/types/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
