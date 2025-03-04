@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
 import Journal from "./pages/Journal";
 import Strava from "./pages/Strava";
+import Tasks from "./pages/Tasks";
 import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
@@ -99,6 +100,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Strava />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <Tasks />
               </ProtectedRoute>
             }
           />

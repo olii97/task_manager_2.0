@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
 import { Link } from "react-router-dom";
@@ -12,11 +13,23 @@ import { PenLine, Plus } from "lucide-react";
 import { WeeklyIntentionsCard } from "@/components/WeeklyIntentionsCard";
 import { StravaActivityList } from "@/components/StravaActivityList";
 import { fetchStravaActivities } from "@/services/stravaService";
+import { TodaysTasks } from "@/components/tasks/TodaysTasks";
+import { TaskForm } from "@/components/tasks/TaskForm";
+import { TaskPlanner } from "@/components/tasks/TaskPlanner";
+import { fetchTasks, addTask, updateTask } from "@/services/taskService";
+import { useState } from "react";
+import { Task } from "@/types/tasks";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const Index = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
   const today = format(new Date(), "yyyy-MM-dd");
+  const queryClient = useQueryClient();
+
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
   // Fetch today's journal entry
   const { data: todayEntry, isLoading: isJournalLoading } = useQuery({
@@ -56,6 +69,61 @@ const Index = () => {
     enabled: !!userId,
   });
 
+  // Fetch tasks
+  const { data: tasks = [], isLoading: isTasksLoading } = useQuery({
+    queryKey: ["tasks", userId],
+    queryFn: () => fetchTasks(userId!),
+    enabled: !!userId,
+  });
+
+  // Add task mutation
+  const { mutate: addTaskMutation } = useMutation({
+    mutationFn: (newTask: Omit<Task, "id" | "created_at" | "updated_at">) => 
+      addTask(userId!, newTask),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setTaskFormOpen(false);
+    },
+  });
+
+  // Update task mutation
+  const { mutate: updateTaskMutation } = useMutation({
+    mutationFn: ({ taskId, updates }: { taskId: string; updates: Partial<Task> }) => 
+      updateTask(taskId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setTaskFormOpen(false);
+      setEditingTask(undefined);
+    },
+  });
+
+  const handleAddTask = (taskData: Partial<Task>) => {
+    addTaskMutation({
+      title: taskData.title!,
+      description: taskData.description,
+      priority: taskData.priority as 1 | 2 | 3 | 4,
+      is_completed: false,
+      is_scheduled_today: false,
+    });
+  };
+
+  const handleUpdateTask = (taskData: Partial<Task>) => {
+    if (!editingTask) return;
+    updateTaskMutation({
+      taskId: editingTask.id,
+      updates: {
+        title: taskData.title,
+        description: taskData.description,
+        priority: taskData.priority,
+      },
+    });
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTaskFormOpen(true);
+  };
+
   return (
     <div className="container py-6">
       {/* Weekly Intentions at the top */}
@@ -64,7 +132,11 @@ const Index = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <JournalStreak />
+        {/* Today's Tasks */}
+        <TodaysTasks 
+          onEditTask={handleEditTask} 
+          onPlanTasks={() => setPlannerOpen(true)} 
+        />
 
         {/* Today's Journal Entry or Add Button */}
         <Card>
@@ -132,6 +204,25 @@ const Index = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Task Form Dialog */}
+      <TaskForm
+        open={taskFormOpen}
+        onClose={() => {
+          setTaskFormOpen(false);
+          setEditingTask(undefined);
+        }}
+        onSave={editingTask ? handleUpdateTask : handleAddTask}
+        task={editingTask}
+        title={editingTask ? "Edit Task" : "Add New Task"}
+      />
+
+      {/* Task Planner Dialog */}
+      <TaskPlanner
+        open={plannerOpen}
+        onClose={() => setPlannerOpen(false)}
+        tasks={tasks}
+      />
     </div>
   );
 };

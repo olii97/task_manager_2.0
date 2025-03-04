@@ -37,6 +37,13 @@ export const AppHeader = () => {
           </Button>
           <Button 
             asChild 
+            variant={isActiveRoute("/tasks") ? "default" : "ghost"} 
+            size="sm"
+          >
+            <Link to="/tasks">Tasks</Link>
+          </Button>
+          <Button 
+            asChild 
             variant={isActiveRoute("/goals") ? "default" : "ghost"} 
             size="sm"
           >

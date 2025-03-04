@@ -146,6 +146,72 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          completion_date: string | null
+          created_at: string
+          description: string | null
+          energy_level: string | null
+          id: string
+          is_completed: boolean
+          is_scheduled_today: boolean
+          priority: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completion_date?: string | null
+          created_at?: string
+          description?: string | null
+          energy_level?: string | null
+          id?: string
+          is_completed?: boolean
+          is_scheduled_today?: boolean
+          priority?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completion_date?: string | null
+          created_at?: string
+          description?: string | null
+          energy_level?: string | null
+          id?: string
+          is_completed?: boolean
+          is_scheduled_today?: boolean
+          priority?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_xp: {
+        Row: {
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+          xp_amount: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+          xp_amount?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+          xp_amount?: number
+        }
+        Relationships: []
+      }
       weekly_intentions: {
         Row: {
           created_at: string

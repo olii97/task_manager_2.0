@@ -1,0 +1,34 @@
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  priority: 1 | 2 | 3 | 4; // P1, P2, P3, P4
+  energy_level?: 'high' | 'low';
+  is_completed: boolean;
+  is_scheduled_today: boolean;
+  completion_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const priorityLabels: Record<number, string> = {
+  1: 'P1 - Must do today',
+  2: 'P2 - Must do this week',
+  3: 'P3 - Can do in upcoming weeks',
+  4: 'P4 - Backlog, no deadline',
+};
+
+export const priorityColors: Record<number, string> = {
+  1: 'text-red-500 border-red-500',
+  2: 'text-orange-500 border-orange-500',
+  3: 'text-yellow-500 border-yellow-500',
+  4: 'text-green-500 border-green-500',
+};
+
+export const priorityEmojis: Record<number, string> = {
+  1: '🔴',
+  2: '🟠',
+  3: '🟡',
+  4: '🟢',
+};

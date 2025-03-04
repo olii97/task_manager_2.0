@@ -1,0 +1,218 @@
+
+import React, { useState } from "react";
+import { Task, priorityEmojis } from "@/types/tasks";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
+import { FlaskConical, Zap, Battery } from "lucide-react";
+import { bulkScheduleTasks } from "@/services/taskService";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
+
+interface TaskPlannerProps {
+  open: boolean;
+  onClose: () => void;
+  tasks: Task[];
+}
+
+export function TaskPlanner({ open, onClose, tasks }: TaskPlannerProps) {
+  const [selectedHighEnergyTasks, setSelectedHighEnergyTasks] = useState<string[]>([]);
+  const [selectedLowEnergyTasks, setSelectedLowEnergyTasks] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("high");
+  
+  const queryClient = useQueryClient();
+
+  const backlogTasks = tasks.filter(task => 
+    !task.is_completed && !task.is_scheduled_today
+  ).sort((a, b) => a.priority - b.priority);
+
+  const { mutate: scheduleHighEnergyTasks, isPending: isSchedulingHigh } = useMutation({
+    mutationFn: (taskIds: string[]) => bulkScheduleTasks(taskIds, 'high'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setSelectedHighEnergyTasks([]);
+      setActiveTab("low");
+    }
+  });
+
+  const { mutate: scheduleLowEnergyTasks, isPending: isSchedulingLow } = useMutation({
+    mutationFn: (taskIds: string[]) => bulkScheduleTasks(taskIds, 'low'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setSelectedLowEnergyTasks([]);
+      onClose();
+      toast({
+        title: "Daily tasks planned!",
+        description: "Your tasks have been scheduled for today.",
+      });
+    }
+  });
+
+  const toggleHighEnergyTask = (taskId: string) => {
+    setSelectedHighEnergyTasks(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const toggleLowEnergyTask = (taskId: string) => {
+    setSelectedLowEnergyTasks(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const handleHighEnergySubmit = () => {
+    if (selectedHighEnergyTasks.length === 0) {
+      setActiveTab("low");
+      return;
+    }
+    scheduleHighEnergyTasks(selectedHighEnergyTasks);
+  };
+
+  const handleLowEnergySubmit = () => {
+    if (selectedLowEnergyTasks.length === 0) {
+      onClose();
+      return;
+    }
+    scheduleLowEnergyTasks(selectedLowEnergyTasks);
+  };
+
+  const handleNext = () => {
+    if (activeTab === "high") {
+      handleHighEnergySubmit();
+    } else {
+      handleLowEnergySubmit();
+    }
+  };
+
+  const getButtonText = () => {
+    if (activeTab === "high") {
+      return selectedHighEnergyTasks.length > 0 
+        ? `Schedule ${selectedHighEnergyTasks.length} High Energy Task${selectedHighEnergyTasks.length > 1 ? 's' : ''}` 
+        : "Skip to Low Energy Tasks";
+    } else {
+      return selectedLowEnergyTasks.length > 0 
+        ? `Schedule ${selectedLowEnergyTasks.length} Low Energy Task${selectedLowEnergyTasks.length > 1 ? 's' : ''}` 
+        : "Skip Planning";
+    }
+  };
+
+  const remainingTasks = backlogTasks.filter(
+    task => !selectedHighEnergyTasks.includes(task.id)
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[550px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center text-xl">
+            <FlaskConical className="h-5 w-5 mr-2" />
+            Plan Your Day
+          </DialogTitle>
+          <DialogDescription>
+            Select tasks from your backlog to focus on today
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs defaultValue="high" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="high" className="flex items-center">
+              <Zap className="h-4 w-4 mr-2" />
+              High Energy Tasks (2-3)
+            </TabsTrigger>
+            <TabsTrigger value="low" className="flex items-center">
+              <Battery className="h-4 w-4 mr-2" />
+              Low Energy Tasks (2-3)
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="high" className="max-h-[400px] overflow-y-auto">
+            {backlogTasks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No tasks in your backlog. Create some tasks first!
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {backlogTasks.map((task) => (
+                  <Card key={task.id} className="cursor-pointer hover:bg-gray-50">
+                    <CardContent className="p-3 flex items-center">
+                      <Checkbox 
+                        checked={selectedHighEnergyTasks.includes(task.id)}
+                        onCheckedChange={() => toggleHighEnergyTask(task.id)}
+                        className="mr-3"
+                      />
+                      <div className="flex-grow">
+                        <div className="flex items-center">
+                          <span className="mr-2">{priorityEmojis[task.priority]}</span>
+                          <span>{task.title}</span>
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground">{task.description}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="low" className="max-h-[400px] overflow-y-auto">
+            {remainingTasks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No tasks available. Add more tasks to your backlog!
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {remainingTasks.map((task) => (
+                  <Card key={task.id} className="cursor-pointer hover:bg-gray-50">
+                    <CardContent className="p-3 flex items-center">
+                      <Checkbox 
+                        checked={selectedLowEnergyTasks.includes(task.id)}
+                        onCheckedChange={() => toggleLowEnergyTask(task.id)}
+                        className="mr-3"
+                      />
+                      <div className="flex-grow">
+                        <div className="flex items-center">
+                          <span className="mr-2">{priorityEmojis[task.priority]}</span>
+                          <span>{task.title}</span>
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground">{task.description}</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleNext}
+            disabled={isSchedulingHigh || isSchedulingLow}
+          >
+            {isSchedulingHigh || isSchedulingLow ? "Scheduling..." : getButtonText()}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
