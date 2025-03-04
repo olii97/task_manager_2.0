@@ -20,10 +20,7 @@ export const getGoalsForQuarter = async (quarter: number, year: number) => {
 };
 
 export const getCurrentQuarterGoals = async () => {
-  const now = new Date();
-  const quarter = Math.ceil((now.getMonth() + 1) / 3);
-  const year = now.getFullYear();
-  
+  const { quarter, year } = getCurrentQuarter();
   return getGoalsForQuarter(quarter, year);
 };
 
@@ -103,11 +100,12 @@ export const isQuarterEnd = () => {
   const day = today.getDate();
   const month = today.getMonth() + 1;
   
+  // Fix the quarter end detection logic
   return (
-    (day >= 25 && day <= 31 && month === 3) || // End of Q1
-    (day >= 25 && day <= 30 && month === 6) || // End of Q2
-    (day >= 25 && day <= 30 && month === 9) || // End of Q3
-    (day >= 25 && day <= 31 && month === 12)   // End of Q4
+    (day >= 25 && month === 3) || // End of Q1
+    (day >= 25 && month === 6) || // End of Q2
+    (day >= 25 && month === 9) || // End of Q3
+    (day >= 25 && month === 12)   // End of Q4
   );
 };
 
