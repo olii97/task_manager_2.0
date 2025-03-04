@@ -103,7 +103,6 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
           <CardContent className="p-4 flex items-start">
             <div className="flex-shrink-0 mr-3 mt-1">
               <Checkbox 
-                ref={checkboxRef}
                 checked={task.is_completed} 
                 onCheckedChange={handleCheckboxChange}
                 aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
