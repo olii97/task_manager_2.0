@@ -32,3 +32,14 @@ export const priorityEmojis: Record<number, string> = {
   3: '🟡',
   4: '🟢',
 };
+
+export const energyLevelIcons: Record<string, string> = {
+  high: '⚡',
+  low: '🔋'
+};
+
+export interface XPEvent {
+  amount: number;
+  reason: string;
+  timestamp: Date;
+}

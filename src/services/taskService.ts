@@ -227,6 +227,7 @@ export const addTaskCompletionXP = async (
     toast({
       title: "+20 XP!",
       description: "You earned XP for completing a high-priority task!",
+      className: "bg-yellow-100 border-yellow-400",
     });
   } catch (error) {
     console.error("Error adding XP:", error);

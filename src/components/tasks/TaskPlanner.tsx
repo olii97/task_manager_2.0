@@ -17,6 +17,7 @@ import { FlaskConical, Zap, Battery } from "lucide-react";
 import { bulkScheduleTasks } from "@/services/taskService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TaskPlannerProps {
   open: boolean;
@@ -113,6 +114,22 @@ export function TaskPlanner({ open, onClose, tasks }: TaskPlannerProps) {
     task => !selectedHighEnergyTasks.includes(task.id)
   );
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { x: -20, opacity: 0 },
+    show: { x: 0, opacity: 1 }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[550px]">
@@ -138,79 +155,148 @@ export function TaskPlanner({ open, onClose, tasks }: TaskPlannerProps) {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="high" className="max-h-[400px] overflow-y-auto">
-            {backlogTasks.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No tasks in your backlog. Create some tasks first!
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {backlogTasks.map((task) => (
-                  <Card key={task.id} className="cursor-pointer hover:bg-gray-50">
-                    <CardContent className="p-3 flex items-center">
-                      <Checkbox 
-                        checked={selectedHighEnergyTasks.includes(task.id)}
-                        onCheckedChange={() => toggleHighEnergyTask(task.id)}
-                        className="mr-3"
-                      />
-                      <div className="flex-grow">
-                        <div className="flex items-center">
-                          <span className="mr-2">{priorityEmojis[task.priority]}</span>
-                          <span>{task.title}</span>
-                        </div>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground">{task.description}</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="low" className="max-h-[400px] overflow-y-auto">
-            {remainingTasks.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No tasks available. Add more tasks to your backlog!
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {remainingTasks.map((task) => (
-                  <Card key={task.id} className="cursor-pointer hover:bg-gray-50">
-                    <CardContent className="p-3 flex items-center">
-                      <Checkbox 
-                        checked={selectedLowEnergyTasks.includes(task.id)}
-                        onCheckedChange={() => toggleLowEnergyTask(task.id)}
-                        className="mr-3"
-                      />
-                      <div className="flex-grow">
-                        <div className="flex items-center">
-                          <span className="mr-2">{priorityEmojis[task.priority]}</span>
-                          <span>{task.title}</span>
-                        </div>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground">{task.description}</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === "high" && (
+                <TabsContent value="high" className="max-h-[400px] overflow-y-auto">
+                  {backlogTasks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No tasks in your backlog. Create some tasks first!
+                    </div>
+                  ) : (
+                    <motion.div 
+                      className="space-y-2"
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="show"
+                    >
+                      {backlogTasks.map((task, index) => (
+                        <motion.div 
+                          key={task.id}
+                          variants={itemVariants}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <Card 
+                            className={`cursor-pointer hover:bg-gray-50 ${
+                              selectedHighEnergyTasks.includes(task.id) ? 'border-blue-300 bg-blue-50' : ''
+                            }`}
+                            onClick={() => toggleHighEnergyTask(task.id)}
+                          >
+                            <CardContent className="p-3 flex items-center">
+                              <Checkbox 
+                                checked={selectedHighEnergyTasks.includes(task.id)}
+                                onCheckedChange={() => toggleHighEnergyTask(task.id)}
+                                className="mr-3"
+                              />
+                              <div className="flex-grow">
+                                <div className="flex items-center">
+                                  <span className="mr-2">{priorityEmojis[task.priority]}</span>
+                                  <span>{task.title}</span>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-muted-foreground">{task.description}</p>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </TabsContent>
+              )}
+              
+              {activeTab === "low" && (
+                <TabsContent value="low" className="max-h-[400px] overflow-y-auto">
+                  {remainingTasks.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No tasks available. Add more tasks to your backlog!
+                    </div>
+                  ) : (
+                    <motion.div 
+                      className="space-y-2"
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="show"
+                    >
+                      {remainingTasks.map((task, index) => (
+                        <motion.div 
+                          key={task.id}
+                          variants={itemVariants}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <Card 
+                            className={`cursor-pointer hover:bg-gray-50 ${
+                              selectedLowEnergyTasks.includes(task.id) ? 'border-blue-300 bg-blue-50' : ''
+                            }`}
+                            onClick={() => toggleLowEnergyTask(task.id)}
+                          >
+                            <CardContent className="p-3 flex items-center">
+                              <Checkbox 
+                                checked={selectedLowEnergyTasks.includes(task.id)}
+                                onCheckedChange={() => toggleLowEnergyTask(task.id)}
+                                className="mr-3"
+                              />
+                              <div className="flex-grow">
+                                <div className="flex items-center">
+                                  <span className="mr-2">{priorityEmojis[task.priority]}</span>
+                                  <span>{task.title}</span>
+                                </div>
+                                {task.description && (
+                                  <p className="text-sm text-muted-foreground">{task.description}</p>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
+                </TabsContent>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleNext}
-            disabled={isSchedulingHigh || isSchedulingLow}
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {isSchedulingHigh || isSchedulingLow ? "Scheduling..." : getButtonText()}
-          </Button>
+            <Button 
+              onClick={handleNext}
+              disabled={isSchedulingHigh || isSchedulingLow}
+              className="relative overflow-hidden"
+            >
+              <span className="relative z-10">
+                {isSchedulingHigh || isSchedulingLow ? "Scheduling..." : getButtonText()}
+              </span>
+              <motion.div
+                className="absolute inset-0 bg-blue-200 opacity-30"
+                animate={{
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatType: "loop"
+                }}
+              />
+            </Button>
+          </motion.div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
