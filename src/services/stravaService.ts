@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { StravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity } from "@/types/strava";
 import { toast } from "sonner";
 
 export const isConnectedToStrava = async (userId: string) => {
@@ -46,7 +47,14 @@ export const getStravaActivities = async (userId: string) => {
       throw new Error(error);
     }
 
-    return activities;
+    // Check which activities are already saved in the database
+    const savedActivities = await getStoredActivityIds(userId);
+    const activitiesWithSavedStatus = activities.map(activity => ({
+      ...activity,
+      saved: savedActivities.includes(activity.id)
+    }));
+
+    return activitiesWithSavedStatus;
   } catch (error: any) {
     console.error("Error fetching activities:", error);
     throw error;
@@ -142,6 +150,26 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
   try {
     console.log(`Fetching details for activity ${activityId}`);
     
+    // First check if the activity is already stored in our database
+    const { data: storedActivity } = await supabase
+      .from("strava_activities")
+      .select("*")
+      .eq("id", activityId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    
+    if (storedActivity) {
+      console.log("Retrieved activity from database");
+      return { 
+        activity: {
+          ...storedActivity,
+          saved: true
+        }, 
+        error: null 
+      };
+    }
+    
+    // If not in database, fetch from Strava API
     const { data, error } = await supabase.functions.invoke(
       "strava-auth",
       {
@@ -158,7 +186,17 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       throw error;
     }
 
-    return { activity: data, error: null };
+    // Check if this activity is saved
+    const savedActivities = await getStoredActivityIds(userId);
+    const isSaved = savedActivities.includes(activityId);
+
+    return { 
+      activity: {
+        ...data,
+        saved: isSaved
+      }, 
+      error: null 
+    };
   } catch (error: any) {
     console.error("Error fetching activity details:", error);
     return { 
@@ -166,4 +204,113 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       error: error.message || "Failed to fetch activity details"
     };
   }
+};
+
+export const saveActivityToDatabase = async (userId: string, activity: StravaActivity) => {
+  try {
+    console.log(`Saving activity ${activity.id} to database`);
+    
+    // Extract relevant fields from the activity to store in database
+    const { 
+      id, name, type, start_date, distance, moving_time, elapsed_time,
+      total_elevation_gain, average_speed, max_speed, average_heartrate, 
+      max_heartrate, map, start_latlng, end_latlng, device_name, gear_id,
+      calories, average_cadence, average_watts, kilojoules, average_temp,
+      average_watts_weighted, elevation_high, elevation_low, pr_count,
+      laps, splits_metric, splits_standard
+    } = activity;
+    
+    const { error } = await supabase
+      .from("strava_activities")
+      .upsert({
+        id,
+        user_id: userId,
+        name,
+        type,
+        start_date,
+        distance,
+        moving_time,
+        elapsed_time,
+        total_elevation_gain,
+        average_speed,
+        max_speed,
+        average_heartrate,
+        max_heartrate,
+        start_latlng: start_latlng ? start_latlng : null,
+        end_latlng: end_latlng ? end_latlng : null,
+        summary_polyline: map?.summary_polyline || null,
+        map_data: map ? map : null,
+        device_name: device_name || null,
+        gear_id: gear_id || null,
+        calories: calories || null,
+        average_cadence: average_cadence || null,
+        average_watts: average_watts || null,
+        kilojoules: kilojoules || null,
+        temperature: average_temp || null,
+        elevation_high: elevation_high || null,
+        elevation_low: elevation_low || null,
+        pr_count: pr_count || 0,
+        laps: laps || null,
+        splits_metric: splits_metric || null,
+        splits_standard: splits_standard || null,
+      });
+
+    if (error) {
+      console.error("Error saving activity to database:", error);
+      throw error;
+    }
+
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error("Error saving activity:", error);
+    return { success: false, error: error.message || "Failed to save activity" };
+  }
+};
+
+export const deleteActivityFromDatabase = async (userId: string, activityId: number) => {
+  try {
+    console.log(`Deleting activity ${activityId} from database`);
+    
+    const { error } = await supabase
+      .from("strava_activities")
+      .delete()
+      .eq("id", activityId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error deleting activity from database:", error);
+      throw error;
+    }
+
+    return { success: true, error: null };
+  } catch (error: any) {
+    console.error("Error deleting activity:", error);
+    return { success: false, error: error.message || "Failed to delete activity" };
+  }
+};
+
+export const getStoredActivityIds = async (userId: string): Promise<number[]> => {
+  try {
+    const { data, error } = await supabase
+      .from("strava_activities")
+      .select("id")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Error fetching stored activity IDs:", error);
+      return [];
+    }
+
+    return data.map(item => item.id);
+  } catch (error) {
+    console.error("Error fetching stored activity IDs:", error);
+    return [];
+  }
+};
+
+// Update the Strava edge function to also fetch detailed activity data
+export const updateStravaEdgeFunction = async () => {
+  // This would typically update the Strava edge function code,
+  // but we'll handle this in a separate step by updating the function directly
+  return { success: true, error: null };
 };

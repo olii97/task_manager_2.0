@@ -1,11 +1,12 @@
 
 import { formatDistance, formatPace, formatTime } from "@/utils/formatters";
-import { StravaActivity } from "@/types/strava";
+import { SavedStravaActivity } from "@/types/strava";
 import { format } from "date-fns";
-import { MapPin, Calendar, Clock, Zap } from "lucide-react";
+import { MapPin, Calendar, Clock, Zap, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface StravaActivityItemProps {
-  activity: StravaActivity;
+  activity: SavedStravaActivity;
   compact?: boolean;
 }
 
@@ -31,8 +32,16 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
               </span>
             </div>
           </div>
-          <div className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-            {activity.type}
+          <div className="flex items-center gap-2">
+            {activity.saved && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <Save className="h-3 w-3 mr-1" />
+                Saved
+              </Badge>
+            )}
+            <Badge className="bg-blue-100 text-blue-800 border-0">
+              {activity.type}
+            </Badge>
           </div>
         </div>
       </div>
@@ -43,7 +52,15 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
     <div className="py-4">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-medium">{activity.name}</h3>
+          <div className="flex items-center">
+            <h3 className="font-medium">{activity.name}</h3>
+            {activity.saved && (
+              <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
+                <Save className="h-3 w-3 mr-1" />
+                Saved
+              </Badge>
+            )}
+          </div>
           {activity.location_city && (
             <p className="text-sm text-muted-foreground flex items-center mt-1">
               <MapPin className="h-3 w-3 mr-1 inline" />

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
@@ -10,21 +11,27 @@ import {
   getStravaActivities, 
   disconnectFromStrava, 
   connectToStrava,
-  getStravaActivityDetails
+  getStravaActivityDetails,
+  saveActivityToDatabase,
+  deleteActivityFromDatabase
 } from "@/services/stravaService";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
-import { StravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity } from "@/types/strava";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const Strava = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const activityId = searchParams.get('activityId');
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<SavedStravaActivity | null>(null);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 
   useEffect(() => {
     document.title = "Strava | Daily Driver";
@@ -68,6 +75,42 @@ const Strava = () => {
       return activity;
     },
     enabled: !!userId && !!activityId && !!isConnected,
+  });
+
+  const saveActivityMutation = useMutation({
+    mutationFn: async (activity: StravaActivity) => {
+      if (!userId) throw new Error("User not authenticated");
+      return await saveActivityToDatabase(userId, activity);
+    },
+    onSuccess: () => {
+      toast.success("Activity saved to your account");
+      // Refetch the activity to update the saved status
+      queryClient.invalidateQueries({ queryKey: ["strava-activity-details", userId, activityId] });
+      queryClient.invalidateQueries({ queryKey: ["strava-activities", userId] });
+      setShowSaveDialog(false);
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to save activity: ${error.message}`);
+      setShowSaveDialog(false);
+    }
+  });
+
+  const removeActivityMutation = useMutation({
+    mutationFn: async (activityId: number) => {
+      if (!userId) throw new Error("User not authenticated");
+      return await deleteActivityFromDatabase(userId, activityId);
+    },
+    onSuccess: () => {
+      toast.success("Activity removed from your account");
+      // Refetch the activity to update the saved status
+      queryClient.invalidateQueries({ queryKey: ["strava-activity-details", userId, activityId] });
+      queryClient.invalidateQueries({ queryKey: ["strava-activities", userId] });
+      setShowRemoveDialog(false);
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to remove activity: ${error.message}`);
+      setShowRemoveDialog(false);
+    }
   });
 
   useEffect(() => {
@@ -139,6 +182,30 @@ const Strava = () => {
     setSearchParams({});
   };
 
+  const handleSaveActivity = () => {
+    if (selectedActivity) {
+      setShowSaveDialog(true);
+    }
+  };
+
+  const handleRemoveActivity = () => {
+    if (selectedActivity) {
+      setShowRemoveDialog(true);
+    }
+  };
+
+  const confirmSaveActivity = () => {
+    if (selectedActivity) {
+      saveActivityMutation.mutate(selectedActivity);
+    }
+  };
+
+  const confirmRemoveActivity = () => {
+    if (selectedActivity) {
+      removeActivityMutation.mutate(selectedActivity.id);
+    }
+  };
+
   // If we have a selected activity, show its details
   if (selectedActivity) {
     return (
@@ -156,7 +223,44 @@ const Strava = () => {
             ))}
           </div>
         ) : (
-          <StravaActivityDetails activity={selectedActivity} />
+          <>
+            <StravaActivityDetails 
+              activity={selectedActivity} 
+              onBack={handleBackToList}
+              onSave={selectedActivity.saved ? handleRemoveActivity : handleSaveActivity}
+              isSaved={selectedActivity.saved}
+            />
+
+            <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Save Activity</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Do you want to save this activity to your account? This will store a copy of this activity in your database.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmSaveActivity}>Save</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove Saved Activity</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Do you want to remove this activity from your saved activities? This will not delete the activity from Strava.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmRemoveActivity}>Remove</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         )}
       </div>
     );

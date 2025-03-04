@@ -116,6 +116,123 @@ export type Database = {
         }
         Relationships: []
       }
+      strava_activities: {
+        Row: {
+          average_cadence: number | null
+          average_heartrate: number | null
+          average_speed: number | null
+          average_watts: number | null
+          calories: number | null
+          created_at: string
+          device_name: string | null
+          distance: number
+          elapsed_time: number
+          elevation_high: number | null
+          elevation_low: number | null
+          end_latlng: Json | null
+          gear_id: string | null
+          id: number
+          kilojoules: number | null
+          laps: Json | null
+          map_data: Json | null
+          max_cadence: number | null
+          max_heartrate: number | null
+          max_speed: number | null
+          max_watts: number | null
+          moving_time: number
+          name: string
+          pr_count: number | null
+          segment_efforts: Json | null
+          splits_metric: Json | null
+          splits_standard: Json | null
+          start_date: string
+          start_latlng: Json | null
+          summary_polyline: string | null
+          temperature: number | null
+          total_elevation_gain: number | null
+          type: string
+          updated_at: string
+          user_id: string
+          weighted_average_watts: number | null
+        }
+        Insert: {
+          average_cadence?: number | null
+          average_heartrate?: number | null
+          average_speed?: number | null
+          average_watts?: number | null
+          calories?: number | null
+          created_at?: string
+          device_name?: string | null
+          distance: number
+          elapsed_time: number
+          elevation_high?: number | null
+          elevation_low?: number | null
+          end_latlng?: Json | null
+          gear_id?: string | null
+          id: number
+          kilojoules?: number | null
+          laps?: Json | null
+          map_data?: Json | null
+          max_cadence?: number | null
+          max_heartrate?: number | null
+          max_speed?: number | null
+          max_watts?: number | null
+          moving_time: number
+          name: string
+          pr_count?: number | null
+          segment_efforts?: Json | null
+          splits_metric?: Json | null
+          splits_standard?: Json | null
+          start_date: string
+          start_latlng?: Json | null
+          summary_polyline?: string | null
+          temperature?: number | null
+          total_elevation_gain?: number | null
+          type: string
+          updated_at?: string
+          user_id: string
+          weighted_average_watts?: number | null
+        }
+        Update: {
+          average_cadence?: number | null
+          average_heartrate?: number | null
+          average_speed?: number | null
+          average_watts?: number | null
+          calories?: number | null
+          created_at?: string
+          device_name?: string | null
+          distance?: number
+          elapsed_time?: number
+          elevation_high?: number | null
+          elevation_low?: number | null
+          end_latlng?: Json | null
+          gear_id?: string | null
+          id?: number
+          kilojoules?: number | null
+          laps?: Json | null
+          map_data?: Json | null
+          max_cadence?: number | null
+          max_heartrate?: number | null
+          max_speed?: number | null
+          max_watts?: number | null
+          moving_time?: number
+          name?: string
+          pr_count?: number | null
+          segment_efforts?: Json | null
+          splits_metric?: Json | null
+          splits_standard?: Json | null
+          start_date?: string
+          start_latlng?: Json | null
+          summary_polyline?: string | null
+          temperature?: number | null
+          total_elevation_gain?: number | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+          weighted_average_watts?: number | null
+        }
+        Relationships: []
+      }
       strava_tokens: {
         Row: {
           access_token: string

@@ -1,15 +1,15 @@
 
 import { Button } from "@/components/ui/button";
-import { StravaActivity } from "@/types/strava";
+import { SavedStravaActivity } from "@/types/strava";
 import { StravaActivityItem } from "./StravaActivityItem";
 import { Loader2, RefreshCw } from "lucide-react";
 
 interface StravaActivityListProps {
-  activities: StravaActivity[];
+  activities: SavedStravaActivity[];
   isLoading: boolean;
   onRefresh?: () => void;
   onDisconnect?: () => void;
-  onSelectActivity?: (activity: StravaActivity) => void;
+  onSelectActivity?: (activity: SavedStravaActivity) => void;
   compact?: boolean;
 }
 

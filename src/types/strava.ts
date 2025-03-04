@@ -1,3 +1,4 @@
+
 export interface StravaActivity {
   id: number;
   name: string;
@@ -36,24 +37,18 @@ export interface StravaActivity {
   average_watts_weighted: number;
   display_hide_heartrate_zone: boolean;
   laps?: StravaLap[];
-  splits_metric?: {
-    distance: number,
-    elapsed_time: number,
-    elevation_difference: number,
-    moving_time: number,
-    split: number,
-    average_speed: number,
-    pace_zone?: number
-  }[];
-  splits_standard?: {
-    distance: number,
-    elapsed_time: number,
-    elevation_difference: number,
-    moving_time: number,
-    split: number,
-    average_speed: number,
-    pace_zone?: number
-  }[];
+  splits_metric?: StravaSplit[];
+  splits_standard?: StravaSplit[];
+  segment_efforts?: StravaSegmentEffort[];
+  start_latlng?: [number, number];
+  end_latlng?: [number, number];
+  calories?: number;
+  device_name?: string;
+  pr_count?: number;
+  max_watts?: number;
+  max_cadence?: number;
+  elevation_high?: number;
+  elevation_low?: number;
 }
 
 export interface StravaLap {
@@ -69,4 +64,29 @@ export interface StravaLap {
   average_heartrate?: number;
   max_heartrate?: number;
   pace_zone?: number;
+}
+
+export interface StravaSplit {
+  distance: number;
+  elapsed_time: number;
+  elevation_difference: number;
+  moving_time: number;
+  split: number;
+  average_speed: number;
+  pace_zone?: number;
+}
+
+export interface StravaSegmentEffort {
+  id: number;
+  name: string;
+  elapsed_time: number;
+  moving_time: number;
+  distance: number;
+  start_date: string;
+  start_date_local: string;
+  is_kom?: boolean;
+}
+
+export interface SavedStravaActivity extends StravaActivity {
+  saved: boolean;
 }

@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -170,7 +171,7 @@ serve(async (req) => {
         });
       }
       
-      const { action, userId } = requestBody;
+      const { action, userId, activityId } = requestBody;
       console.log("Action requested:", action);
       console.log("User ID received:", userId);
       
@@ -290,7 +291,7 @@ serve(async (req) => {
         console.log('Fetching activities with token...');
         try {
           const activitiesResponse = await fetch(
-            'https://www.strava.com/api/v3/athlete/activities?per_page=5',
+            'https://www.strava.com/api/v3/athlete/activities?per_page=10',
             {
               headers: { 'Authorization': `Bearer ${tokens.access_token}` },
             }
@@ -316,6 +317,128 @@ serve(async (req) => {
         } catch (fetchError) {
           console.error('Activities fetch error:', fetchError);
           return new Response(JSON.stringify({ error: `Error fetching activities: ${fetchError.message}` }), { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      if (action === "get_activity_details") {
+        if (!userId || !activityId) {
+          console.error("get_activity_details: Missing user ID or activity ID");
+          return new Response(JSON.stringify({ error: 'User ID and activity ID are required' }), { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log(`Processing get_activity_details for user ${userId}, activity ${activityId}`);
+        
+        const { data: tokens, error: tokenError } = await adminSupabase
+          .from('strava_tokens')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+
+        if (tokenError) {
+          console.error('No Strava tokens found:', tokenError);
+          return new Response(JSON.stringify({ error: 'No Strava tokens found for this user' }), { 
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Check if token needs refresh
+        const now = Math.floor(Date.now() / 1000);
+        if (tokens.expires_at <= now) {
+          console.log('Refreshing token...');
+          try {
+            const refreshResponse = await fetch('https://www.strava.com/oauth/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                client_id: STRAVA_CLIENT_ID,
+                client_secret: STRAVA_CLIENT_SECRET,
+                refresh_token: tokens.refresh_token,
+                grant_type: 'refresh_token',
+              }),
+            });
+
+            if (!refreshResponse.ok) {
+              const errorText = await refreshResponse.text();
+              console.error('Token refresh failed:', errorText);
+              return new Response(JSON.stringify({ error: `Failed to refresh token: ${errorText}` }), { 
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              });
+            }
+
+            const refreshData = await refreshResponse.json();
+            console.log('Token refreshed successfully');
+            
+            await adminSupabase
+              .from('strava_tokens')
+              .update({
+                access_token: refreshData.access_token,
+                refresh_token: refreshData.refresh_token,
+                expires_at: refreshData.expires_at,
+              })
+              .eq('user_id', userId);
+            
+            tokens.access_token = refreshData.access_token;
+          } catch (refreshError) {
+            console.error('Token refresh error:', refreshError);
+            return new Response(JSON.stringify({ error: `Error refreshing token: ${refreshError.message}` }), { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+
+        console.log('Fetching activity details...');
+        try {
+          // Fetch detailed activity data
+          const activityResponse = await fetch(
+            `https://www.strava.com/api/v3/activities/${activityId}?include_all_efforts=true`,
+            {
+              headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            }
+          );
+
+          if (!activityResponse.ok) {
+            const errorText = await activityResponse.text();
+            console.error('Activity fetch failed:', errorText);
+            return new Response(JSON.stringify({ error: `Strava API error: ${activityResponse.statusText} - ${errorText}` }), { 
+              status: activityResponse.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          const activity = await activityResponse.json();
+          
+          // Fetch lap data
+          const lapsResponse = await fetch(
+            `https://www.strava.com/api/v3/activities/${activityId}/laps`,
+            {
+              headers: { 'Authorization': `Bearer ${tokens.access_token}` },
+            }
+          );
+
+          if (lapsResponse.ok) {
+            const laps = await lapsResponse.json();
+            activity.laps = laps;
+          } else {
+            console.log('No laps data available');
+          }
+          
+          console.log(`Fetched details for activity ${activityId}`);
+          
+          return new Response(JSON.stringify(activity), { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } catch (fetchError) {
+          console.error('Activity details fetch error:', fetchError);
+          return new Response(JSON.stringify({ error: `Error fetching activity details: ${fetchError.message}` }), { 
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
