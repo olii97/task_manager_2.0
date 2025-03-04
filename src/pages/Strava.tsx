@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
@@ -84,7 +83,6 @@ const Strava = () => {
     },
     onSuccess: () => {
       toast.success("Activity saved to your account");
-      // Refetch the activity to update the saved status
       queryClient.invalidateQueries({ queryKey: ["strava-activity-details", userId, activityId] });
       queryClient.invalidateQueries({ queryKey: ["strava-activities", userId] });
       setShowSaveDialog(false);
@@ -102,7 +100,6 @@ const Strava = () => {
     },
     onSuccess: () => {
       toast.success("Activity removed from your account");
-      // Refetch the activity to update the saved status
       queryClient.invalidateQueries({ queryKey: ["strava-activity-details", userId, activityId] });
       queryClient.invalidateQueries({ queryKey: ["strava-activities", userId] });
       setShowRemoveDialog(false);
@@ -117,7 +114,6 @@ const Strava = () => {
     if (activityDetails) {
       setSelectedActivity(activityDetails);
     } else if (activityId && activities) {
-      // If we have an activityId but no details yet, try to find it in the activities list
       const found = activities.find(a => a.id === Number(activityId));
       if (found) {
         setSelectedActivity(found);
@@ -173,7 +169,7 @@ const Strava = () => {
   };
 
   const handleSelectActivity = (activity: StravaActivity) => {
-    setSelectedActivity(activity);
+    setSelectedActivity(toSavedStravaActivity(activity, activity['saved'] as boolean));
     setSearchParams({ activityId: activity.id.toString() });
   };
 
@@ -206,7 +202,6 @@ const Strava = () => {
     }
   };
 
-  // If we have a selected activity, show its details
   if (selectedActivity) {
     return (
       <div className="container py-6">
@@ -266,7 +261,6 @@ const Strava = () => {
     );
   }
 
-  // Otherwise show the activities list
   return (
     <div className="container py-6">
       <div className="mb-6">

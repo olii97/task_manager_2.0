@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { SavedStravaActivity } from "@/types/strava";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,19 +42,7 @@ export function StravaRouteMap({ activity }: StravaRouteMapProps) {
       const scriptEl = document.createElement('script');
       scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       scriptEl.onload = () => {
-        // Load Leaflet Encoded Polyline
-        const polylineScript = document.createElement('script');
-        polylineScript.src = 'https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js';
-        polylineScript.onload = () => {
-          // Load polyline decoder
-          const polylineUtilScript = document.createElement('script');
-          polylineUtilScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.6.0/leaflet.polylineDecorator.js';
-          polylineUtilScript.onload = () => {
-            initializeMap();
-          };
-          document.head.appendChild(polylineUtilScript);
-        };
-        document.head.appendChild(polylineScript);
+        initializeMap();
       };
       document.head.appendChild(scriptEl);
     };
@@ -84,75 +73,50 @@ export function StravaRouteMap({ activity }: StravaRouteMapProps) {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
-      // Use Leaflet.js' polyline utilities directly
-      const polylineUtil = window.L.Util.extend({}, window.L);
-      if (!polylineUtil.PolylineUtil) {
-        // Manually create a decode function if the PolylineUtil is not available
-        polylineUtil.PolylineUtil = {
-          decode: function(str, precision) {
-            precision = precision || 5;
-            var index = 0,
-                lat = 0,
-                lng = 0,
-                coordinates = [],
-                shift = 0,
-                result = 0,
-                byte = null,
-                latitude_change,
-                longitude_change,
-                factor = Math.pow(10, precision);
-            
-            // Coordinates have variable length when encoded, so just keep
-            // track of whether we've hit the end of the string. In each
-            // loop iteration, a single coordinate is decoded.
-            while (index < str.length) {
-              // Reset shift, result, and byte
-              byte = null;
-              shift = 0;
-              result = 0;
-              
-              do {
-                byte = str.charCodeAt(index++) - 63;
-                result |= (byte & 0x1f) << shift;
-                shift += 5;
-              } while (byte >= 0x20);
-              
-              latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-              
-              shift = result = 0;
-              
-              do {
-                byte = str.charCodeAt(index++) - 63;
-                result |= (byte & 0x1f) << shift;
-                shift += 5;
-              } while (byte >= 0x20);
-              
-              longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
-              
-              lat += latitude_change;
-              lng += longitude_change;
-              
-              coordinates.push([lat / factor, lng / factor]);
-            }
-            
-            return coordinates;
-          }
-        };
-      }
-
       // Decode the polyline
-      let decodedCoords;
-      try {
-        if (polylineUtil.PolylineUtil && polylineUtil.PolylineUtil.decode) {
-          decodedCoords = polylineUtil.PolylineUtil.decode(activity.map.summary_polyline);
-        } else {
-          console.error("PolylineUtil.decode is not available");
-          return;
+      // Implementation of Google's polyline algorithm
+      const decodePolyline = (encoded) => {
+        // Initialize the decoder
+        let points = [];
+        let index = 0;
+        let lat = 0;
+        let lng = 0;
+        
+        // Process each byte
+        while (index < encoded.length) {
+          // Latitude
+          let b;
+          let shift = 0;
+          let result = 0;
+          
+          do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+          } while (b >= 0x20);
+          
+          lat += ((result & 1) ? ~(result >> 1) : (result >> 1));
+          
+          // Longitude
+          shift = 0;
+          result = 0;
+          
+          do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+          } while (b >= 0x20);
+          
+          lng += ((result & 1) ? ~(result >> 1) : (result >> 1));
+          
+          // Create LatLng point
+          points.push([lat / 1e5, lng / 1e5]);
         }
-      } catch (err) {
-        console.error("Error decoding polyline:", err);
-        return;
-      }
+        
+        return points;
+      };
+
+      const decodedCoords = decodePolyline(activity.map.summary_polyline);
 
       if (!decodedCoords || decodedCoords.length === 0) {
         console.error("No coordinates in polyline");
@@ -184,7 +148,7 @@ export function StravaRouteMap({ activity }: StravaRouteMapProps) {
 
         // Add an end marker if different from start
         const lastCoord = decodedCoords[decodedCoords.length - 1];
-        if (lastCoord.lat !== decodedCoords[0].lat || lastCoord.lng !== decodedCoords[0].lng) {
+        if (lastCoord[0] !== decodedCoords[0][0] || lastCoord[1] !== decodedCoords[0][1]) {
           window.L.marker(lastCoord, { icon: startIcon })
             .addTo(map)
             .bindPopup('Finish');

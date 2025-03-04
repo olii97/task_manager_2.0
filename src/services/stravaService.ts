@@ -217,7 +217,7 @@ export const saveActivityToDatabase = async (userId: string, activity: StravaAct
       max_heartrate, map, start_latlng, end_latlng, device_name, gear_id,
       calories, average_cadence, average_watts, kilojoules, average_temp,
       average_watts_weighted, elevation_high, elevation_low, pr_count,
-      laps, splits_metric, splits_standard
+      laps, splits_metric, splits_standard, segment_efforts
     } = activity;
     
     const { error } = await supabase
@@ -253,6 +253,7 @@ export const saveActivityToDatabase = async (userId: string, activity: StravaAct
         laps: laps || null,
         splits_metric: splits_metric || null,
         splits_standard: splits_standard || null,
+        segment_efforts: segment_efforts || null
       });
 
     if (error) {
