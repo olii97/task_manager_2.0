@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Task, priorityColors, priorityEmojis } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +21,7 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showXP, setShowXP] = useState(false);
   const [xpPosition, setXpPosition] = useState({ x: 0, y: 0 });
+  const checkboxRef = useRef<HTMLButtonElement>(null);
 
   const { mutate: onToggleComplete } = useMutation({
     mutationFn: ({ taskId, isCompleted }: { taskId: string; isCompleted: boolean }) => 
@@ -53,10 +54,9 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
   });
 
   const handleCheckboxChange = (checked: boolean | string) => {
-    // Get the DOM element to position the XP animation correctly
-    const checkboxElement = document.getElementById(`task-checkbox-${task.id}`);
-    if (checkboxElement) {
-      const rect = checkboxElement.getBoundingClientRect();
+    // Get the position for XP animation from the checkbox ref
+    if (checkboxRef.current) {
+      const rect = checkboxRef.current.getBoundingClientRect();
       setXpPosition({ 
         x: rect.left + window.scrollX, 
         y: rect.top + window.scrollY 
@@ -103,7 +103,7 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
           <CardContent className="p-4 flex items-start">
             <div className="flex-shrink-0 mr-3 mt-1">
               <Checkbox 
-                id={`task-checkbox-${task.id}`}
+                ref={checkboxRef}
                 checked={task.is_completed} 
                 onCheckedChange={handleCheckboxChange}
                 aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
