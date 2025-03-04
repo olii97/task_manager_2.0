@@ -52,17 +52,23 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
     }
   });
 
-  const handleToggleComplete = (event: React.MouseEvent) => {
-    // Get position for XP animation
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    setXpPosition({ 
-      x: rect.left + window.scrollX, 
-      y: rect.top + window.scrollY 
-    });
+  const handleCheckboxChange = (checked: boolean | string) => {
+    // Get the DOM element to position the XP animation correctly
+    const checkboxElement = document.getElementById(`task-checkbox-${task.id}`);
+    if (checkboxElement) {
+      const rect = checkboxElement.getBoundingClientRect();
+      setXpPosition({ 
+        x: rect.left + window.scrollX, 
+        y: rect.top + window.scrollY 
+      });
+    }
+    
+    // Convert checked to boolean if it's a string
+    const isCompleted = checked === "indeterminate" ? false : !!checked;
     
     onToggleComplete({
       taskId: task.id,
-      isCompleted: !task.is_completed
+      isCompleted: isCompleted
     });
   };
 
@@ -97,8 +103,9 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
           <CardContent className="p-4 flex items-start">
             <div className="flex-shrink-0 mr-3 mt-1">
               <Checkbox 
+                id={`task-checkbox-${task.id}`}
                 checked={task.is_completed} 
-                onCheckedChange={handleToggleComplete}
+                onCheckedChange={handleCheckboxChange}
                 aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
               />
             </div>
