@@ -220,6 +220,7 @@ export const saveActivityToDatabase = async (userId: string, activity: StravaAct
       laps, splits_metric, splits_standard, segment_efforts
     } = activity;
     
+    // Fixed: Using .upsert() with a single object rather than an array
     const { error } = await supabase
       .from("strava_activities")
       .upsert({

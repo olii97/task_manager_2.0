@@ -1,9 +1,8 @@
-
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useAuth } from "@/components/AuthProvider";
-import { StravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { StravaConnectForm } from "./StravaConnectForm";
 import { StravaActivityList } from "./StravaActivityList";
 import { StravaErrorDisplay } from "./StravaErrorDisplay";
@@ -15,7 +14,7 @@ import {
 } from "@/services/stravaService";
 
 export function StravaActivities() {
-  const [activities, setActivities] = useState<StravaActivity[]>([]);
+  const [activities, setActivities] = useState<SavedStravaActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -67,7 +66,11 @@ export function StravaActivities() {
         return;
       }
       
-      setActivities(result.activities);
+      // Convert StravaActivity[] to SavedStravaActivity[]
+      const savedActivities = result.activities.map(activity => 
+        toSavedStravaActivity(activity, false)
+      );
+      setActivities(savedActivities);
     } finally {
       setIsLoading(false);
     }
