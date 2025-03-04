@@ -3,7 +3,7 @@ import { SavedStravaActivity } from "@/types/strava";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistance, formatPace, formatTime } from "@/utils/formatters";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { MapPin } from "lucide-react";
 
 interface StravaActivitySummaryProps {
@@ -12,6 +12,21 @@ interface StravaActivitySummaryProps {
 
 export function StravaActivitySummary({ activity }: StravaActivitySummaryProps) {
   const hasPRs = activity.pr_count && activity.pr_count > 0;
+  
+  // Format date safely to prevent "Invalid time value" errors
+  const formatDateSafely = (dateString: string | undefined) => {
+    if (!dateString) return "Unknown date";
+    
+    const date = new Date(dateString);
+    if (!isValid(date)) return "Unknown date";
+    
+    try {
+      return format(date, "MMM d, yyyy");
+    } catch (error) {
+      console.error("Error formatting date:", error, dateString);
+      return "Unknown date";
+    }
+  };
   
   return (
     <Card>
@@ -37,7 +52,7 @@ export function StravaActivitySummary({ activity }: StravaActivitySummaryProps) 
             <div>
               <p className="text-sm text-muted-foreground">Date</p>
               <p className="font-medium">
-                {format(new Date(activity.start_date_local), "MMM d, yyyy")}
+                {formatDateSafely(activity.start_date_local || activity.start_date)}
               </p>
             </div>
             <div>

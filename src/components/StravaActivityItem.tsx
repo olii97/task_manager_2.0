@@ -1,7 +1,7 @@
 
 import { formatDistance, formatPace, formatTime } from "@/utils/formatters";
 import { SavedStravaActivity } from "@/types/strava";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { MapPin, Calendar, Clock, Zap, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -11,6 +11,21 @@ interface StravaActivityItemProps {
 }
 
 export function StravaActivityItem({ activity, compact = false }: StravaActivityItemProps) {
+  // Format date safely to prevent "Invalid time value" errors
+  const formatDateSafely = (dateString: string | undefined, formatStr: string) => {
+    if (!dateString) return "Unknown";
+    
+    const date = new Date(dateString);
+    if (!isValid(date)) return "Unknown";
+    
+    try {
+      return format(date, formatStr);
+    } catch (error) {
+      console.error("Error formatting date:", error, dateString);
+      return "Unknown";
+    }
+  };
+
   if (compact) {
     return (
       <div className="py-2">
@@ -20,7 +35,7 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
             <div className="text-xs text-muted-foreground flex gap-2 mt-1">
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {format(new Date(activity.start_date_local), "MMM d")}
+                {formatDateSafely(activity.start_date_local || activity.start_date, "MMM d")}
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -78,7 +93,7 @@ export function StravaActivityItem({ activity, compact = false }: StravaActivity
         <div>
           <p className="text-xs text-muted-foreground">Date</p>
           <p className="text-sm font-medium">
-            {format(new Date(activity.start_date || activity.start_date_local), "MMM d, yyyy")}
+            {formatDateSafely(activity.start_date_local || activity.start_date, "MMM d, yyyy")}
           </p>
         </div>
         <div>

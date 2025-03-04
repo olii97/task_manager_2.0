@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { StravaActivity, SavedStravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { toast } from "sonner";
 
 export const isConnectedToStrava = async (userId: string) => {
@@ -163,7 +163,9 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       return { 
         activity: {
           ...storedActivity,
-          saved: true
+          saved: true,
+          // Ensure start_date_local exists for database-stored activities
+          start_date_local: storedActivity.start_date_local || storedActivity.start_date
         }, 
         error: null 
       };
@@ -217,10 +219,11 @@ export const saveActivityToDatabase = async (userId: string, activity: StravaAct
       max_heartrate, map, start_latlng, end_latlng, device_name, gear_id,
       calories, average_cadence, average_watts, kilojoules, average_temp,
       average_watts_weighted, elevation_high, elevation_low, pr_count,
-      laps, splits_metric, splits_standard, segment_efforts
+      laps, splits_metric, splits_standard, segment_efforts,
+      start_date_local  // Include start_date_local to prevent date format errors
     } = activity;
     
-    // Fixed: Using .upsert() with a single object rather than an array
+    // Include all required fields explicitly in the upsert operation
     const { error } = await supabase
       .from("strava_activities")
       .upsert({
@@ -229,6 +232,7 @@ export const saveActivityToDatabase = async (userId: string, activity: StravaAct
         name,
         type,
         start_date,
+        start_date_local: start_date_local || start_date, // Ensure start_date_local is provided
         distance,
         moving_time,
         elapsed_time,
