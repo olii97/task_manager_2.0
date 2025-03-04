@@ -9,6 +9,7 @@ interface StravaActivityListProps {
   isLoading: boolean;
   onRefresh?: () => void;
   onDisconnect?: () => void;
+  onSelectActivity?: (activity: StravaActivity) => void;
   compact?: boolean;
 }
 
@@ -17,6 +18,7 @@ export function StravaActivityList({
   isLoading, 
   onRefresh,
   onDisconnect,
+  onSelectActivity,
   compact = false
 }: StravaActivityListProps) {
   if (isLoading) {
@@ -60,11 +62,16 @@ export function StravaActivityList({
     <>
       <div className={`divide-y ${compact ? 'space-y-2' : ''}`}>
         {activities.map((activity) => (
-          <StravaActivityItem 
+          <div 
             key={activity.id} 
-            activity={activity} 
-            compact={compact}
-          />
+            onClick={() => onSelectActivity && onSelectActivity(activity)}
+            className={onSelectActivity ? "cursor-pointer hover:bg-gray-50 rounded-md transition-colors" : ""}
+          >
+            <StravaActivityItem 
+              activity={activity} 
+              compact={compact}
+            />
+          </div>
         ))}
       </div>
       {(onRefresh || onDisconnect) && (

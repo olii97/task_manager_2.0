@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { StravaActivity } from "@/types/strava";
 import { toast } from "sonner";
@@ -136,5 +135,35 @@ export const disconnectFromStrava = async (userId: string) => {
   } catch (error: any) {
     console.error("Error disconnecting from Strava:", error);
     return { success: false, error: error.message || "Failed to disconnect from Strava" };
+  }
+};
+
+export const getStravaActivityDetails = async (userId: string, activityId: number) => {
+  try {
+    console.log(`Fetching details for activity ${activityId}`);
+    
+    const { data, error } = await supabase.functions.invoke(
+      "strava-auth",
+      {
+        body: { 
+          action: "get_activity_details",
+          userId: userId,
+          activityId: activityId
+        }
+      }
+    );
+
+    if (error) {
+      console.error("Strava function error:", error);
+      throw error;
+    }
+
+    return { activity: data, error: null };
+  } catch (error: any) {
+    console.error("Error fetching activity details:", error);
+    return { 
+      activity: null, 
+      error: error.message || "Failed to fetch activity details"
+    };
   }
 };

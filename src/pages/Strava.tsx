@@ -1,19 +1,30 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
 import { StravaActivityList } from "@/components/StravaActivityList";
+import { StravaActivityDetails } from "@/components/StravaActivityDetails";
 import { StravaErrorDisplay } from "@/components/StravaErrorDisplay";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isConnectedToStrava, getStravaActivities, disconnectFromStrava, connectToStrava } from "@/services/stravaService";
+import { 
+  isConnectedToStrava, 
+  getStravaActivities, 
+  disconnectFromStrava, 
+  connectToStrava,
+  getStravaActivityDetails
+} from "@/services/stravaService";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
+import { StravaActivity } from "@/types/strava";
 
 const Strava = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activityId = searchParams.get('activityId');
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
 
   useEffect(() => {
     document.title = "Strava | Daily Driver";
@@ -41,6 +52,35 @@ const Strava = () => {
     },
     enabled: !!userId && !!isConnected,
   });
+
+  const { 
+    data: activityDetails,
+    isLoading: isLoadingDetails
+  } = useQuery({
+    queryKey: ["strava-activity-details", userId, activityId],
+    queryFn: async () => {
+      if (!userId || !activityId) return null;
+      const { activity, error } = await getStravaActivityDetails(userId, Number(activityId));
+      if (error) {
+        toast.error(`Failed to load activity details: ${error}`);
+        return null;
+      }
+      return activity;
+    },
+    enabled: !!userId && !!activityId && !!isConnected,
+  });
+
+  useEffect(() => {
+    if (activityDetails) {
+      setSelectedActivity(activityDetails);
+    } else if (activityId && activities) {
+      // If we have an activityId but no details yet, try to find it in the activities list
+      const found = activities.find(a => a.id === Number(activityId));
+      if (found) {
+        setSelectedActivity(found);
+      }
+    }
+  }, [activityId, activityDetails, activities]);
 
   const handleConnectStrava = async () => {
     if (!session) return;
@@ -89,6 +129,40 @@ const Strava = () => {
     setError(null);
   };
 
+  const handleSelectActivity = (activity: StravaActivity) => {
+    setSelectedActivity(activity);
+    setSearchParams({ activityId: activity.id.toString() });
+  };
+
+  const handleBackToList = () => {
+    setSelectedActivity(null);
+    setSearchParams({});
+  };
+
+  // If we have a selected activity, show its details
+  if (selectedActivity) {
+    return (
+      <div className="container py-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-blue-700 mb-2">Activity Details</h1>
+        </div>
+        
+        {isLoadingDetails ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="h-24 mt-6 animate-pulse bg-gray-200 rounded-md"></CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <StravaActivityDetails activity={selectedActivity} />
+        )}
+      </div>
+    );
+  }
+
+  // Otherwise show the activities list
   return (
     <div className="container py-6">
       <div className="mb-6">
@@ -143,6 +217,7 @@ const Strava = () => {
                   isLoading={isLoadingActivities}
                   onRefresh={handleRefresh}
                   onDisconnect={handleDisconnect}
+                  onSelectActivity={handleSelectActivity}
                 />
               )}
             </CardContent>
