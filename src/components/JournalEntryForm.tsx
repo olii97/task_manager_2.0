@@ -12,9 +12,8 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { JournalEntry } from "@/types/journal";
-
-const MoodOptions = ["😔", "😐", "🙂", "😊", "😃"] as const;
+import { JournalEntry, MoodOptions, sliderToScale, scaleToSlider } from "@/types/journal";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface JournalEntryFormProps {
   existingEntry?: JournalEntry;
@@ -25,7 +24,8 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
   const { toast } = useToast();
   const navigate = useNavigate();
   const { session } = useAuth();
-  const [mood, setMood] = useState<(typeof MoodOptions)[number]>("🙂");
+  const queryClient = useQueryClient();
+  const [moodValue, setMoodValue] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
   const [form, setForm] = useState({
     intentions: "",
@@ -43,11 +43,9 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
   // Initialize form with existing entry data if provided
   useEffect(() => {
     if (existingEntry) {
-      // Set mood based on existing entry
-      setMood(MoodOptions[existingEntry.mood - 1] || "🙂");
-      
-      // Set energy level based on existing entry (convert from 1-5 scale to 0-100)
-      setEnergyLevel(existingEntry.energy * 20);
+      // Convert mood and energy from 1-5 scale to 0-100 for slider
+      setMoodValue(scaleToSlider(existingEntry.mood));
+      setEnergyLevel(scaleToSlider(existingEntry.energy));
       
       // Set form values
       setForm({
@@ -72,8 +70,8 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       const entryData = {
         user_id: session?.user.id,
         date: existingEntry?.date || new Date().toISOString().split('T')[0],
-        mood: MoodOptions.indexOf(mood) + 1,
-        energy: Math.round(energyLevel / 20),
+        mood: sliderToScale(moodValue),
+        energy: sliderToScale(energyLevel),
         intentions: form.intentions,
         gratitude: form.gratefulness,
         challenges: form.challenges,
@@ -112,6 +110,12 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
         origin: { y: 0.6 },
       });
 
+      // Invalidate streak cache to recalculate
+      queryClient.invalidateQueries({ queryKey: ["journal-streaks"] });
+      
+      // Invalidate journal entries to refetch the list
+      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
+
       toast({
         title: existingEntry ? "Journal Entry Updated" : "Journal Entry Saved",
         description: existingEntry 
@@ -123,8 +127,8 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       if (existingEntry && onCancel) {
         onCancel();
       } else {
-        // Navigate back to home if creating a new entry
-        navigate("/");
+        // Navigate back to journal page if creating a new entry
+        navigate("/journal");
       }
     } catch (error: any) {
       toast({
@@ -135,33 +139,34 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
     }
   };
 
+  // Get the mood emoji for the current slider value
+  const currentMoodEmoji = MoodOptions[sliderToScale(moodValue) - 1];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="w-full max-w-4xl mx-auto p-6"
+      className="w-full max-w-4xl mx-auto"
     >
       <form onSubmit={handleSubmit} className="space-y-8">
         <Card className="p-6">
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label>How are you feeling today?</Label>
-              <div className="flex justify-between gap-2">
-                {MoodOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setMood(option)}
-                    className={`text-2xl p-2 rounded-full transition-all ${
-                      mood === option
-                        ? "bg-primary/10 scale-110"
-                        : "hover:bg-primary/5"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
+              <Label>How are you feeling today? {currentMoodEmoji}</Label>
+              <Slider
+                value={[moodValue]}
+                onValueChange={([value]) => setMoodValue(value)}
+                max={100}
+                step={1}
+                className="py-4"
+              />
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>😔</span>
+                <span>😐</span>
+                <span>🙂</span>
+                <span>😊</span>
+                <span>😃</span>
               </div>
             </div>
 
@@ -175,8 +180,11 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
                 className="py-4"
               />
               <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Very Low</span>
                 <span>Low</span>
+                <span>Moderate</span>
                 <span>High</span>
+                <span>Very High</span>
               </div>
             </div>
 

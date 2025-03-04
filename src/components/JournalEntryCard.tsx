@@ -4,34 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PencilIcon } from "lucide-react";
-
-const MoodOptions = ["😢", "😕", "😐", "🙂", "😊"];
-const EnergyOptions = ["Very Low", "Low", "Moderate", "High", "Very High"];
-
-interface JournalEntry {
-  id: string;
-  date: string;
-  mood: number;
-  energy: number;
-  intentions: string;
-  gratitude: string;
-  challenges: string;
-  reflection: string;
-  nutrition: {
-    breakfast?: string;
-    lunch?: string;
-    dinner?: string;
-    snacks?: string;
-    water?: number;
-    meals?: string;
-    protein?: boolean;
-    calories?: number;
-    feelings?: string;
-  } | null;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-}
+import { JournalEntry, getMoodEmoji, getEnergyLabel } from "@/types/journal";
 
 interface Props {
   entry: JournalEntry;
@@ -39,8 +12,8 @@ interface Props {
 }
 
 export function JournalEntryCard({ entry, onEdit }: Props) {
-  const moodEmoji = MoodOptions[entry.mood - 1];
-  const energyLevel = EnergyOptions[entry.energy - 1];
+  const moodEmoji = getMoodEmoji(entry.mood);
+  const energyLevel = getEnergyLabel(entry.energy);
   const formattedDate = formatRelative(new Date(entry.date), new Date());
 
   return (
