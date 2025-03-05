@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
-import { PomodoroState, PomodoroStatus, DistractionInput } from "@/types/pomodoro";
+import { PomodoroState, PomodoroStatus, DistractionInput, PomodoroDistraction } from "@/types/pomodoro";
 import { useAuth } from "@/components/AuthProvider";
 import { startPomodoroSession, completePomodoroSession, addPomodoroDistraction, getPomodoroSessionsCompletedToday } from "@/services/pomodoroService";
 import { Task } from "@/types/tasks";
