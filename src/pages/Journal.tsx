@@ -10,7 +10,7 @@ import { JournalHeader } from "@/components/journal/JournalHeader";
 import { JournalSearchBar } from "@/components/journal/JournalSearchBar";
 import { useJournalOperations } from "@/hooks/useJournalOperations";
 import { format } from "date-fns";
-import { PenLine, Trash, Plus } from "lucide-react";
+import { PenLine, Trash, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   AlertDialog,
@@ -36,6 +36,7 @@ const Journal = () => {
     setShowDeleteAlert,
     isEditing,
     isCreatingNew,
+    isDeleting,
     isEntriesLoading,
     allEntries,
     streakData,
@@ -110,6 +111,7 @@ const Journal = () => {
                         size="sm"
                         onClick={confirmDeleteEntry} 
                         className="flex items-center gap-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        disabled={isDeleting}
                       >
                         <Trash className="h-4 w-4" />
                         Delete
@@ -158,9 +160,20 @@ const Journal = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteEntry} className="bg-red-500 hover:bg-red-600">
-              Delete
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteEntry} 
+              className="bg-red-500 hover:bg-red-600"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

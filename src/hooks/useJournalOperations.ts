@@ -18,6 +18,7 @@ export const useJournalOperations = (userId: string | undefined) => {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Query for today's entry
   const { isLoading: isTodayLoading, refetch: refetchToday } = useQuery({
@@ -147,6 +148,8 @@ export const useJournalOperations = (userId: string | undefined) => {
   const handleDeleteEntry = async () => {
     if (!selectedEntry || !userId) return;
     
+    setIsDeleting(true);
+    
     try {
       const { error } = await supabase
         .from("journal_entries")
@@ -155,14 +158,15 @@ export const useJournalOperations = (userId: string | undefined) => {
         
       if (error) throw error;
       
+      // Invalidate both queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
+      queryClient.invalidateQueries({ queryKey: ["journal-streaks", userId] });
+      
       toast({
         title: "Journal Entry Deleted",
         description: "Your journal entry has been deleted successfully",
       });
-      
-      // Invalidate both queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
       
       // Refetch data and reset selection
       await Promise.all([refetchAll(), refetchToday()]);
@@ -177,6 +181,8 @@ export const useJournalOperations = (userId: string | undefined) => {
         description: error.message || "Failed to delete journal entry",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -190,6 +196,7 @@ export const useJournalOperations = (userId: string | undefined) => {
     setShowDeleteAlert,
     isEditing,
     isCreatingNew,
+    isDeleting,
     isTodayLoading,
     isEntriesLoading,
     allEntries,
