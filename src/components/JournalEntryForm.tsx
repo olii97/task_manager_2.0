@@ -81,7 +81,6 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
   });
 
   useEffect(() => {
-    // Update form values when entry changes
     if (entry) {
       form.reset({
         date: entry.date,
@@ -109,8 +108,7 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
     try {
       const timestamp = new Date().toISOString();
       
-      // Format nutrition data
-      const nutrition: JournalNutrition = {
+      const nutritionData: JournalNutrition = {
         breakfast: data.nutrition_breakfast || undefined,
         lunch: data.nutrition_lunch || undefined,
         dinner: data.nutrition_dinner || undefined,
@@ -119,15 +117,12 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
         feelings: data.nutrition_feelings || undefined,
       };
 
-      // Prepare reflection data
       const newReflectionContent = data.reflection?.trim();
       let reflections: ReflectionEntry[] | null = null;
       
-      // If we have existing reflections, use those
       if (entry?.reflections && entry.reflections.length > 0) {
         reflections = [...entry.reflections];
         
-        // Only add a new reflection if content is provided and it's different from the last one
         if (newReflectionContent && 
             (reflections.length === 0 || 
              reflections[reflections.length - 1].content !== newReflectionContent)) {
@@ -137,7 +132,6 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
           });
         }
       } 
-      // Otherwise, create a new reflections array if we have content
       else if (newReflectionContent) {
         reflections = [{
           timestamp,
@@ -146,7 +140,6 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
       }
 
       if (entry) {
-        // Update existing entry
         const { error } = await supabase
           .from("journal_entries")
           .update({
@@ -158,7 +151,7 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
             gratitude: data.gratitude || null,
             challenges: data.challenges || null,
             intentions: data.intentions || null,
-            nutrition: Object.keys(nutrition).length > 0 ? nutrition : null,
+            nutrition: Object.keys(nutritionData).length > 0 ? nutritionData : null,
             updated_at: timestamp,
           })
           .eq("id", entry.id)
@@ -171,7 +164,6 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
           description: "Your journal entry has been updated successfully",
         });
       } else {
-        // Create new entry
         const { error } = await supabase.from("journal_entries").insert({
           user_id: userId,
           date: data.date,
@@ -182,7 +174,7 @@ export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEnt
           gratitude: data.gratitude || null,
           challenges: data.challenges || null,
           intentions: data.intentions || null,
-          nutrition: Object.keys(nutrition).length > 0 ? nutrition : null,
+          nutrition: Object.keys(nutritionData).length > 0 ? nutritionData : null,
         });
 
         if (error) throw error;
