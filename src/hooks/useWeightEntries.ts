@@ -1,65 +1,66 @@
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  fetchWeightEntries, 
-  fetchLatestWeightEntry, 
-  addWeightEntry, 
-  updateBodyFeeling,
-  deleteWeightEntry
-} from "@/services/weightService";
-import { WeightEntry, BodyFeeling } from "@/types/weight";
-import { useToast } from "@/components/ui/use-toast";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { WeightEntry, BodyFeeling } from '@/types/weight';
+import { toast } from 'sonner';
+
+export type TimeRange = '7days' | '14days' | '30days' | 'all';
 
 export const useWeightEntries = (userId: string | undefined) => {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [feelingModalOpen, setFeelingModalOpen] = useState(false);
-  const [currentEntry, setCurrentEntry] = useState<WeightEntry | null>(null);
-  const [timeRange, setTimeRange] = useState<"7days" | "14days" | "30days">("7days");
+  const [pendingEntryId, setPendingEntryId] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>('7days');
+  
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
-  // Fetch all weight entries
+  // Fetch weight entries
   const { data: entries = [], isLoading: isEntriesLoading } = useQuery({
-    queryKey: ["weight-entries", userId],
-    queryFn: () => fetchWeightEntries(userId!),
+    queryKey: ['weightEntries', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      
+      const { data, error } = await supabase
+        .from('weight_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching weight entries:', error);
+        return [];
+      }
+      
+      return data as WeightEntry[];
+    },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Fetch latest weight entry
-  const { data: latestEntry, isLoading: isLatestLoading } = useQuery({
-    queryKey: ["latest-weight-entry", userId],
-    queryFn: () => fetchLatestWeightEntry(userId!),
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  // Format the latest entry for display
-  const formattedLatestEntry = latestEntry ? {
-    weight: latestEntry.weight,
-    timeAgo: formatDistanceToNow(parseISO(latestEntry.created_at), { addSuffix: true }),
-    feeling: latestEntry.body_feeling as BodyFeeling | null
-  } : null;
-
-  // Calculate weight changes
+  // Calculate changes
   const calculateChanges = () => {
     if (entries.length < 2) return null;
     
-    const sortedEntries = [...entries].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
+    const sortedEntries = [...entries].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     
-    const lastMonth = sortedEntries.slice(-30);
-    const lastWeek = sortedEntries.slice(-7);
+    const lastEntry = sortedEntries[sortedEntries.length - 1];
     
-    const monthlyChange = lastMonth.length >= 2 
-      ? lastMonth[lastMonth.length - 1].weight - lastMonth[0].weight 
+    // Weekly change
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const weekEntryIndex = sortedEntries.findIndex(entry => new Date(entry.created_at) >= weekAgo);
+    const weeklyChange = weekEntryIndex !== -1 
+      ? lastEntry.weight - sortedEntries[weekEntryIndex].weight
       : null;
     
-    const weeklyChange = lastWeek.length >= 2 
-      ? lastWeek[lastWeek.length - 1].weight - lastWeek[0].weight 
+    // Monthly change
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    
+    const monthEntryIndex = sortedEntries.findIndex(entry => new Date(entry.created_at) >= monthAgo);
+    const monthlyChange = monthEntryIndex !== -1 
+      ? lastEntry.weight - sortedEntries[monthEntryIndex].weight
       : null;
     
     return {
@@ -68,93 +69,100 @@ export const useWeightEntries = (userId: string | undefined) => {
     };
   };
 
-  // Add new weight entry
-  const addEntryMutation = useMutation({
-    mutationFn: (weight: number) => addWeightEntry(userId!, weight),
-    onSuccess: (newEntry) => {
-      queryClient.invalidateQueries({ queryKey: ["weight-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["latest-weight-entry"] });
-      setCurrentEntry(newEntry);
+  // Log weight mutation
+  const logWeightMutation = useMutation({
+    mutationFn: async (weightValue: number) => {
+      if (!userId) throw new Error('User not authenticated');
+      
+      const { data, error } = await supabase
+        .from('weight_entries')
+        .insert({
+          user_id: userId,
+          weight: weightValue
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['weightEntries', userId] });
+      setPendingEntryId(data.id);
       setLogModalOpen(false);
       setFeelingModalOpen(true);
-      toast({
-        title: "Weight logged successfully",
-        description: `${weight} kg has been recorded.`,
-      });
+      toast.success('Weight logged successfully');
     },
     onError: (error) => {
-      toast({
-        title: "Failed to log weight",
-        description: "There was an error recording your weight.",
-        variant: "destructive",
-      });
-      console.error("Error adding weight entry:", error);
-    },
+      console.error('Error logging weight:', error);
+      toast.error('Failed to log weight');
+    }
   });
 
-  // Update body feeling
-  const updateFeelingMutation = useMutation({
-    mutationFn: ({ 
-      entryId, 
+  // Record body feeling mutation
+  const recordBodyFeelingMutation = useMutation({
+    mutationFn: async ({ 
       feeling, 
       note 
     }: { 
-      entryId: string; 
-      feeling: string; 
+      feeling: BodyFeeling; 
       note?: string 
-    }) => updateBodyFeeling(entryId, feeling, note),
+    }) => {
+      if (!pendingEntryId) throw new Error('No pending entry');
+      
+      const { data, error } = await supabase
+        .from('weight_entries')
+        .update({
+          body_feeling: feeling,
+          feeling_note: note || null
+        })
+        .eq('id', pendingEntryId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["weight-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["latest-weight-entry"] });
+      queryClient.invalidateQueries({ queryKey: ['weightEntries', userId] });
+      setPendingEntryId(null);
       setFeelingModalOpen(false);
-      toast({
-        title: "Body check-in recorded",
-        description: "Your body feeling has been saved.",
-      });
+      toast.success('Body feeling recorded');
     },
     onError: (error) => {
-      toast({
-        title: "Failed to record body check-in",
-        description: "There was an error saving your body feeling.",
-        variant: "destructive",
-      });
-      console.error("Error updating body feeling:", error);
-    },
+      console.error('Error recording body feeling:', error);
+      toast.error('Failed to record body feeling');
+    }
   });
 
-  // Delete weight entry
+  // Delete entry mutation
   const deleteEntryMutation = useMutation({
-    mutationFn: (entryId: string) => deleteWeightEntry(entryId),
+    mutationFn: async (entryId: string) => {
+      const { error } = await supabase
+        .from('weight_entries')
+        .delete()
+        .eq('id', entryId);
+      
+      if (error) throw error;
+      return entryId;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["weight-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["latest-weight-entry"] });
-      toast({
-        title: "Weight entry deleted",
-        description: "The weight entry has been removed.",
-      });
+      queryClient.invalidateQueries({ queryKey: ['weightEntries', userId] });
+      toast.success('Entry deleted');
     },
     onError: (error) => {
-      toast({
-        title: "Failed to delete entry",
-        description: "There was an error deleting the weight entry.",
-        variant: "destructive",
-      });
-      console.error("Error deleting weight entry:", error);
-    },
+      console.error('Error deleting entry:', error);
+      toast.error('Failed to delete entry');
+    }
   });
 
-  const logWeight = (weight: number) => {
-    addEntryMutation.mutate(weight);
+  // Exported functions
+  const logWeight = (weightValue: number) => {
+    logWeightMutation.mutate(weightValue);
   };
 
   const recordBodyFeeling = (feeling: BodyFeeling, note?: string) => {
-    if (currentEntry) {
-      updateFeelingMutation.mutate({
-        entryId: currentEntry.id,
-        feeling,
-        note
-      });
-    }
+    recordBodyFeelingMutation.mutate({ feeling, note });
   };
 
   const deleteEntry = (entryId: string) => {
@@ -163,14 +171,11 @@ export const useWeightEntries = (userId: string | undefined) => {
 
   return {
     entries,
-    latestEntry: formattedLatestEntry,
     isEntriesLoading,
-    isLatestLoading,
     logModalOpen,
     setLogModalOpen,
     feelingModalOpen,
     setFeelingModalOpen,
-    currentEntry,
     timeRange,
     setTimeRange,
     changes: calculateChanges(),
