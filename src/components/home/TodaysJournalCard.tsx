@@ -28,9 +28,19 @@ export const TodaysJournalCard = ({ entry, isLoading }: TodaysJournalCardProps) 
                 Mood: {entry.mood}/5 • Energy: {entry.energy}/5
               </p>
             </div>
+            
+            {/* Show more text by increasing the line-clamp size */}
             {entry.reflection && (
-              <p className="text-sm line-clamp-3 mt-2">{entry.reflection}</p>
+              <p className="text-sm line-clamp-5 mt-2 mb-3">{entry.reflection}</p>
             )}
+            
+            {/* Show gratitude if available */}
+            {entry.gratitude && (
+              <p className="text-sm line-clamp-2 mt-2 mb-3">
+                <span className="font-medium">Grateful for:</span> {entry.gratitude}
+              </p>
+            )}
+            
             <div className="mt-4">
               <Button asChild variant="outline" size="sm">
                 <Link to="/journal">

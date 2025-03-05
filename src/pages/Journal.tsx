@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { JournalEntryForm } from "@/components/JournalEntryForm";
 import { JournalEntryCard } from "@/components/JournalEntryCard";
@@ -31,7 +30,6 @@ const Journal = () => {
     document.title = "Journal | Daily Driver";
   }, []);
 
-  // Fetch today's entry for the form
   const { data: todayEntry, isLoading: isTodayLoading, refetch: refetchToday } = useQuery({
     queryKey: ["journal-entry", today],
     queryFn: async () => {
@@ -54,7 +52,6 @@ const Journal = () => {
     enabled: !!userId,
   });
 
-  // Fetch all journal entries
   const { data: allEntries, isLoading: isEntriesLoading, refetch: refetchAll } = useQuery({
     queryKey: ["journal-entries", userId, searchTerm, dateRange, page],
     queryFn: async () => {
@@ -66,20 +63,21 @@ const Journal = () => {
         .eq("user_id", userId)
         .order("date", { ascending: false });
       
-      // Apply search term filter
+      if (!searchTerm && !dateRange) {
+        query = query.neq("date", today);
+      }
+      
       if (searchTerm) {
         query = query.or(
           `intentions.ilike.%${searchTerm}%,reflection.ilike.%${searchTerm}%,challenges.ilike.%${searchTerm}%,gratitude.ilike.%${searchTerm}%`
         );
       }
       
-      // Apply date filter
       if (dateRange) {
         const formattedDate = format(dateRange, "yyyy-MM-dd");
         query = query.eq("date", formattedDate);
       }
       
-      // Apply pagination
       query = query.range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
       
       const { data, error, count } = await query;
@@ -97,7 +95,6 @@ const Journal = () => {
     enabled: !!userId,
   });
 
-  // Fetch user streak data
   const { data: streakData } = useQuery({
     queryKey: ["journal-streaks", userId],
     queryFn: async () => {
@@ -129,18 +126,17 @@ const Journal = () => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    // Refresh the data to ensure we have the latest version
     queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setPage(1); // Reset pagination when search changes
+    setPage(1);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     setDateRange(date);
-    setPage(1); // Reset pagination when date filter changes
+    setPage(1);
   };
 
   const handleLoadMore = () => {
@@ -148,7 +144,6 @@ const Journal = () => {
   };
 
   useEffect(() => {
-    // Check if we have more pages to load
     if (allEntries) {
       setHasMore(allEntries.count > page * ITEMS_PER_PAGE);
     }
