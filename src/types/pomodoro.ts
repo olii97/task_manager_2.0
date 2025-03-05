@@ -40,6 +40,8 @@ export interface PomodoroState {
   distractions: PomodoroDistraction[];
   isBreak: boolean;
   breakDuration: number;
+  startTimestamp?: number; // Timestamp when the timer started
+  pausedTimestamp?: number; // Timestamp when the timer was paused
 }
 
 export interface DistractionInput {

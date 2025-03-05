@@ -101,16 +101,16 @@ export const PomodoroTimer: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-8 right-8 z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
         >
-          <Card className="w-72 bg-pomodoro-primary/5 border-pomodoro-primary/20 shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-pomodoro-primary flex items-center">
+          <Card className="w-80 md:w-96 bg-black/80 border-pomodoro-primary/20 shadow-xl backdrop-blur-lg pointer-events-auto">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-semibold text-pomodoro-primary flex items-center">
                   <Timer className="mr-1 h-4 w-4" />
                   {state.isBreak ? "Break Time" : "Focus Mode"}
                 </h3>
-                <div className="text-xs bg-pomodoro-primary/10 text-pomodoro-primary px-2 py-1 rounded-full">
+                <div className="text-xs bg-pomodoro-primary/20 text-pomodoro-primary px-2 py-1 rounded-full">
                   🔥 {state.sessionsCompleted} Today
                 </div>
               </div>
@@ -121,7 +121,7 @@ export const PomodoroTimer: React.FC = () => {
                 </div>
               )}
               
-              <div className="w-40 h-40 mx-auto mb-4">
+              <div className="w-48 h-48 mx-auto mb-4">
                 <CircularProgressbar
                   value={calculateProgress()}
                   text={formatTime(state.timeRemaining)}
@@ -129,18 +129,19 @@ export const PomodoroTimer: React.FC = () => {
                     textSize: '16px',
                     pathColor: state.isBreak ? '#B5A7F2' : '#E63946',
                     textColor: state.isBreak ? '#B5A7F2' : '#E63946',
-                    trailColor: '#f5f5f5',
+                    trailColor: 'rgba(255, 255, 255, 0.2)',
+                    pathTransition: 'stroke-dashoffset 0.5s ease 0s',
                   })}
                 />
               </div>
               
-              <div className="flex justify-center space-x-2 mb-3">
+              <div className="flex justify-center space-x-3 mb-4">
                 {state.status === 'running' ? (
                   <Button 
                     onClick={pausePomodoro} 
                     variant="outline" 
                     size="sm"
-                    className="w-24"
+                    className="w-28"
                   >
                     <Pause className="mr-1 h-4 w-4" /> Pause
                   </Button>
@@ -149,7 +150,7 @@ export const PomodoroTimer: React.FC = () => {
                     onClick={resumePomodoro} 
                     variant="pomodoro" 
                     size="sm"
-                    className="w-24"
+                    className="w-28"
                   >
                     <Play className="mr-1 h-4 w-4" /> Resume
                   </Button>
@@ -159,7 +160,7 @@ export const PomodoroTimer: React.FC = () => {
                   onClick={stopPomodoro} 
                   variant="ghost" 
                   size="sm"
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50/20"
                 >
                   <StopCircle className="mr-1 h-4 w-4" /> Stop
                 </Button>
@@ -199,6 +200,11 @@ export const PomodoroTimer: React.FC = () => {
               placeholder="What was the distraction?"
               className="mb-2"
               autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddDistraction();
+                }
+              }}
             />
           </div>
           <DialogFooter>
