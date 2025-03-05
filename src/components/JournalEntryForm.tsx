@@ -7,7 +7,6 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus } from "lucide-react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
@@ -29,10 +28,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
   const queryClient = useQueryClient();
   const [moodValue, setMoodValue] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
-  const [reflections, setReflections] = useState<ReflectionEntry[]>([{ 
-    timestamp: new Date().toISOString(),
-    content: "" 
-  }]);
+  const [reflection, setReflection] = useState("");
   const [form, setForm] = useState({
     intentions: "",
     gratefulness: "",
@@ -52,14 +48,12 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       setMoodValue(scaleToSlider(existingEntry.mood));
       setEnergyLevel(scaleToSlider(existingEntry.energy));
       
-      // Set reflections - use the new format if available, otherwise convert from string
+      // Set reflection from existing entry
       if (existingEntry.reflections && existingEntry.reflections.length > 0) {
-        setReflections(existingEntry.reflections);
+        // Get the most recent reflection
+        setReflection(existingEntry.reflections[existingEntry.reflections.length - 1].content);
       } else if (existingEntry.reflection) {
-        setReflections([{
-          timestamp: existingEntry.created_at,
-          content: existingEntry.reflection
-        }]);
+        setReflection(existingEntry.reflection);
       }
       
       // Set form values
@@ -77,34 +71,31 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
     }
   }, [existingEntry]);
 
-  const handleAddReflection = () => {
-    setReflections([
-      ...reflections,
-      { 
-        timestamp: new Date().toISOString(), 
-        content: "" 
-      }
-    ]);
-  };
-
-  const handleReflectionChange = (index: number, content: string) => {
-    const updatedReflections = [...reflections];
-    updatedReflections[index] = {
-      ...updatedReflections[index],
-      content
-    };
-    setReflections(updatedReflections);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      // Filter out empty reflections
-      const filteredReflections = reflections.filter(r => r.content.trim() !== "");
+      // Create a new reflection entry with the current timestamp
+      const newReflection: ReflectionEntry = {
+        timestamp: new Date().toISOString(),
+        content: reflection.trim()
+      };
+      
+      // Get existing reflections or create a new array
+      let reflectionsArray: ReflectionEntry[] = [];
+      
+      if (existingEntry?.reflections && existingEntry.reflections.length > 0) {
+        // Filter out empty reflections from existing entries
+        reflectionsArray = existingEntry.reflections.filter(r => r.content.trim() !== "");
+      }
+      
+      // Add the new reflection if it's not empty
+      if (newReflection.content !== "") {
+        reflectionsArray.push(newReflection);
+      }
       
       // Create a legacy reflection string for backward compatibility
-      const legacyReflection = filteredReflections.map(r => r.content).join("\n\n");
+      const legacyReflection = reflection.trim();
       
       const entryData = {
         user_id: session?.user.id,
@@ -115,7 +106,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
         gratitude: form.gratefulness,
         challenges: form.challenges,
         reflection: legacyReflection, // For backward compatibility
-        reflections: filteredReflections.length > 0 ? filteredReflections : null,
+        reflections: reflectionsArray.length > 0 ? reflectionsArray : null,
         nutrition: {
           meals: form.nutrition.meals,
           feelings: form.nutrition.feelings,
@@ -195,35 +186,20 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
           <div className="space-y-6">
             {/* Reflections Section - Moved to top for emphasis */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Daily Reflections</h3>
+              <h3 className="font-semibold text-lg">Daily Reflection</h3>
               
-              {reflections.map((reflection, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor={`reflection-${index}`} className="text-sm text-muted-foreground">
-                      {format(new Date(reflection.timestamp), "h:mm a")}
-                    </Label>
-                  </div>
-                  <Textarea
-                    id={`reflection-${index}`}
-                    value={reflection.content}
-                    onChange={(e) => handleReflectionChange(index, e.target.value)}
-                    placeholder={index === 0 ? "What's on your mind today?" : "What's changed since your last reflection?"}
-                    className="min-h-[150px] text-base resize-vertical"
-                  />
-                </div>
-              ))}
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={handleAddReflection}
-                className="flex items-center gap-1 mt-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Another Reflection
-              </Button>
+              <div className="space-y-2">
+                <Label htmlFor="reflection" className="text-sm text-muted-foreground">
+                  {existingEntry ? "Update your reflection" : "What's on your mind today?"}
+                </Label>
+                <Textarea
+                  id="reflection"
+                  value={reflection}
+                  onChange={(e) => setReflection(e.target.value)}
+                  placeholder="Share your thoughts and reflections for today..."
+                  className="min-h-[150px] text-base resize-vertical"
+                />
+              </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">

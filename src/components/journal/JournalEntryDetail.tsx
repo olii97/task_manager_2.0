@@ -15,9 +15,25 @@ export function JournalEntryDetail({ entry }: JournalEntryDetailProps) {
   const energyLevel = getEnergyLabel(entry.energy);
   const formattedDate = format(new Date(entry.date), "MMMM d, yyyy");
   
-  // Process reflections
-  const reflections: ReflectionEntry[] = entry.reflections || 
-    (entry.reflection ? [{ timestamp: entry.created_at, content: entry.reflection }] : []);
+  // Get the content and timestamp of the last reflection
+  let latestReflection: ReflectionEntry | null = null;
+  
+  if (entry.reflections && entry.reflections.length > 0) {
+    // Sort reflections by timestamp to get the most recent one
+    const sortedReflections = [...entry.reflections].sort((a, b) => 
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    latestReflection = sortedReflections[0];
+  } else if (entry.reflection) {
+    latestReflection = { 
+      timestamp: entry.created_at, 
+      content: entry.reflection 
+    };
+  }
+
+  // Format the updated timestamp
+  const updatedTimeDisplay = entry.updated_at ? 
+    `Last updated: ${format(parseISO(entry.updated_at), "MMM d, yyyy 'at' h:mm a")}` : null;
 
   return (
     <motion.div
@@ -34,21 +50,16 @@ export function JournalEntryDetail({ entry }: JournalEntryDetailProps) {
               <Badge variant="outline">{energyLevel}</Badge>
             </div>
           </div>
+          {updatedTimeDisplay && (
+            <p className="text-xs text-muted-foreground mt-1">{updatedTimeDisplay}</p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          {reflections && reflections.length > 0 && (
+          {latestReflection && (
             <section>
-              <h3 className="font-medium mb-3">Reflections</h3>
-              <div className="space-y-4">
-                {reflections.map((reflection, index) => (
-                  <div key={index} className="space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {format(parseISO(reflection.timestamp), "h:mm a")}
-                    </p>
-                    <p className="whitespace-pre-wrap">{reflection.content}</p>
-                    {index < reflections.length - 1 && <Separator className="my-2" />}
-                  </div>
-                ))}
+              <h3 className="font-medium mb-3">Reflection</h3>
+              <div className="space-y-1">
+                <p className="whitespace-pre-wrap">{latestReflection.content}</p>
               </div>
             </section>
           )}
