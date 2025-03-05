@@ -1,3 +1,4 @@
+
 export interface StravaActivity {
   id: number;
   name: string;
@@ -89,19 +90,66 @@ export interface StravaSegmentEffort {
   is_kom?: boolean;
 }
 
-export interface SavedStravaActivity extends Partial<StravaActivity> {
+// Instead of extending with Partial<StravaActivity>, we'll define SavedStravaActivity 
+// with the exact required fields and make optional fields properly marked
+export interface SavedStravaActivity {
   id: number;
   name: string;
   distance: number;
   moving_time: number;
+  elapsed_time: number; // Now required to match StravaActivity
   type: string;
   start_date: string;
+  start_date_local: string; // Required
+  timezone?: string; // Optional but included
+  average_speed: number;
+  max_speed: number;
+  total_elevation_gain?: number;
+  average_heartrate?: number;
+  max_heartrate?: number;
+  average_cadence?: number;
+  device_name?: string;
+  map?: {
+    id: string;
+    summary_polyline: string;
+    resource_state: number;
+  };
   saved: boolean;
+  // Adding missing fields that are used in the app
+  utc_offset?: number;
+  location_city?: string | null;
+  location_state?: string | null;
+  location_country?: string | null;
+  kudos_count?: number;
+  achievement_count?: number;
 }
 
+// Updated conversion function that ensures all required fields are included
 export function toSavedStravaActivity(activity: StravaActivity, isSaved: boolean = false): SavedStravaActivity {
   return {
-    ...activity,
+    id: activity.id,
+    name: activity.name,
+    distance: activity.distance,
+    moving_time: activity.moving_time,
+    elapsed_time: activity.elapsed_time,
+    type: activity.type,
+    start_date: activity.start_date,
+    start_date_local: activity.start_date_local,
+    timezone: activity.timezone,
+    average_speed: activity.average_speed,
+    max_speed: activity.max_speed,
+    total_elevation_gain: activity.total_elevation_gain,
+    average_heartrate: activity.average_heartrate,
+    max_heartrate: activity.max_heartrate,
+    average_cadence: activity.average_cadence,
+    device_name: activity.device_name,
+    map: activity.map,
+    utc_offset: activity.utc_offset,
+    location_city: activity.location_city,
+    location_state: activity.location_state,
+    location_country: activity.location_country,
+    kudos_count: activity.kudos_count,
+    achievement_count: activity.achievement_count,
     saved: isSaved
-  } as SavedStravaActivity;
+  };
 }

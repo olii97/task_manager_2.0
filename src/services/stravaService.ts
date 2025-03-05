@@ -153,12 +153,13 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
     
     if (storedActivity) {
       console.log("Retrieved activity from database");
+      // Make sure start_date_local exists
       return { 
         activity: {
           ...storedActivity,
           saved: true,
           start_date_local: storedActivity.start_date_local || storedActivity.start_date
-        }, 
+        } as SavedStravaActivity, 
         error: null 
       };
     }
@@ -211,6 +212,7 @@ export const saveActivityToDatabase = async (
       elapsed_time,
       total_elevation_gain,
       start_date,
+      start_date_local,
       average_speed,
       max_speed,
       average_heartrate,
@@ -233,6 +235,7 @@ export const saveActivityToDatabase = async (
           elapsed_time,
           total_elevation_gain,
           start_date,
+          start_date_local,
           average_speed,
           max_speed,
           average_heartrate,

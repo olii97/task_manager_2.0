@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { WeightEntry, BodyFeeling } from '@/types/weight';
 import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
 
 export type TimeRange = '7days' | '14days' | '30days' | 'all';
 
@@ -37,8 +38,14 @@ export const useWeightEntries = (userId: string | undefined) => {
     enabled: !!userId,
   });
 
-  // Get latest entry 
-  const latestEntry = entries.length > 0 ? entries[0] : null;
+  // Get latest entry and format it for the UI
+  const latestEntry = entries.length > 0 
+    ? {
+        weight: entries[0].weight,
+        timeAgo: formatDistanceToNow(new Date(entries[0].created_at), { addSuffix: true }),
+        feeling: entries[0].body_feeling as BodyFeeling | null
+      }
+    : null;
   const isLatestLoading = isEntriesLoading;
 
   // Calculate changes
@@ -186,7 +193,6 @@ export const useWeightEntries = (userId: string | undefined) => {
     logWeight,
     recordBodyFeeling,
     deleteEntry,
-    // Add these missing properties
     latestEntry,
     isLatestLoading
   };

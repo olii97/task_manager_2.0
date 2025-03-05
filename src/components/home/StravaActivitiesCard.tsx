@@ -3,8 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { StravaActivityList } from "@/components/StravaActivityList";
-import { StravaActivity } from "@/types/strava";
-import { toSavedStravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 
 interface StravaActivitiesCardProps {
   activities: StravaActivity[];
@@ -13,7 +12,9 @@ interface StravaActivitiesCardProps {
 
 export const StravaActivitiesCard = ({ activities, isLoading }: StravaActivitiesCardProps) => {
   // Convert StravaActivity[] to SavedStravaActivity[] using the utility function
-  const savedActivities = activities.map(activity => toSavedStravaActivity(activity));
+  const savedActivities: SavedStravaActivity[] = activities.map(activity => 
+    toSavedStravaActivity(activity)
+  );
   
   return (
     <Card>
