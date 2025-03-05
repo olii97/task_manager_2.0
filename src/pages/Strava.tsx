@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
@@ -80,7 +79,7 @@ const Strava = () => {
   const saveActivityMutation = useMutation({
     mutationFn: async (activity: StravaActivity) => {
       if (!userId) throw new Error("User not authenticated");
-      return await saveActivityToDatabase(userId, activity);
+      return await saveActivityToDatabase(activity);
     },
     onSuccess: () => {
       toast.success("Activity saved to your account");

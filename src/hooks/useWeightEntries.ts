@@ -37,6 +37,10 @@ export const useWeightEntries = (userId: string | undefined) => {
     enabled: !!userId,
   });
 
+  // Get latest entry 
+  const latestEntry = entries.length > 0 ? entries[0] : null;
+  const isLatestLoading = isEntriesLoading;
+
   // Calculate changes
   const calculateChanges = () => {
     if (entries.length < 2) return null;
@@ -182,5 +186,8 @@ export const useWeightEntries = (userId: string | undefined) => {
     logWeight,
     recordBodyFeeling,
     deleteEntry,
+    // Add these missing properties
+    latestEntry,
+    isLatestLoading
   };
 };

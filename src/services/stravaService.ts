@@ -25,7 +25,6 @@ export const isConnectedToStrava = async (userId: string) => {
   }
 };
 
-// Add checkStravaConnection function for the StravaActivities component
 export const checkStravaConnection = async (userId: string) => {
   try {
     const isConnected = await isConnectedToStrava(userId);
@@ -46,7 +45,6 @@ export const getStravaActivities = async (userId: string) => {
       throw new Error(error);
     }
 
-    // Check which activities are already saved in the database
     const savedActivities = await getStoredActivityIds(userId);
     const activitiesWithSavedStatus = activities.map(activity => ({
       ...activity,
@@ -64,13 +62,12 @@ export const fetchStravaActivities = async (userId: string) => {
   try {
     console.log("Fetching activities for user:", userId);
     
-    // Make sure we're explicitly sending the userId in the request body
     const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
       "strava-auth",
       {
         body: { 
           action: "get_activities",
-          userId: userId  // Explicitly use the userId variable
+          userId: userId
         }
       }
     );
@@ -98,7 +95,6 @@ export const fetchStravaActivities = async (userId: string) => {
 
 export const connectToStrava = async (sessionToken: string) => {
   try {
-    // Make sure to pass the Authorization header with the JWT token
     const response = await supabase.functions.invoke<{ url: string }>(
       "strava-auth",
       {
@@ -118,7 +114,6 @@ export const connectToStrava = async (sessionToken: string) => {
       throw new Error("No authorization URL received");
     }
 
-    // Return the URL to be opened
     return { url: response.data.url, error: null };
   } catch (error: any) {
     console.error("Error connecting to Strava:", error);
@@ -149,7 +144,6 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
   try {
     console.log(`Fetching details for activity ${activityId}`);
     
-    // First check if the activity is already stored in our database
     const { data: storedActivity } = await supabase
       .from("strava_activities")
       .select("*")
@@ -163,14 +157,12 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
         activity: {
           ...storedActivity,
           saved: true,
-          // Ensure start_date_local exists for database-stored activities
           start_date_local: storedActivity.start_date_local || storedActivity.start_date
         }, 
         error: null 
       };
     }
     
-    // If not in database, fetch from Strava API
     const { data, error } = await supabase.functions.invoke(
       "strava-auth",
       {
@@ -187,7 +179,6 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       throw error;
     }
 
-    // Check if this activity is saved
     const savedActivities = await getStoredActivityIds(userId);
     const isSaved = savedActivities.includes(activityId);
 
@@ -211,7 +202,6 @@ export const saveActivityToDatabase = async (
   activity: StravaActivity
 ): Promise<SavedStravaActivity> => {
   try {
-    // Extract the fields we want to save
     const {
       id,
       name,
@@ -221,27 +211,16 @@ export const saveActivityToDatabase = async (
       elapsed_time,
       total_elevation_gain,
       start_date,
-      start_date_local,
-      timezone,
-      location_city,
-      location_state,
-      location_country,
-      kudos_count,
-      achievement_count,
-      pr_count,
-      athlete,
-      map,
       average_speed,
       max_speed,
       average_heartrate,
       max_heartrate,
       average_cadence,
       device_name,
-      splits_metric,
-      splits_standard,
     } = activity;
 
-    // Make sure to include start_date_local in your record
+    const summary_polyline = activity.map?.summary_polyline || null;
+
     const { data, error } = await supabase
       .from("strava_activities")
       .upsert(
@@ -254,26 +233,13 @@ export const saveActivityToDatabase = async (
           elapsed_time,
           total_elevation_gain,
           start_date,
-          start_date_local,
-          timezone,
-          location_city,
-          location_state,
-          location_country,
-          kudos_count,
-          achievement_count,
-          pr_count,
-          athlete_id: athlete.id,
-          map_id: map?.id,
-          map_polyline: map?.polyline,
-          map_summary_polyline: map?.summary_polyline,
           average_speed,
           max_speed,
           average_heartrate,
           max_heartrate,
           average_cadence,
           device_name,
-          splits_metric: splits_metric || null,
-          splits_standard: splits_standard || null,
+          summary_polyline,
           user_id: (await supabase.auth.getUser()).data.user?.id,
         },
         { onConflict: "id" }
@@ -286,10 +252,7 @@ export const saveActivityToDatabase = async (
       throw error;
     }
 
-    return {
-      ...data,
-      saved: true,
-    } as SavedStravaActivity;
+    return toSavedStravaActivity(activity, true);
   } catch (error) {
     console.error("Error in saveActivityToDatabase:", error);
     throw error;
@@ -337,9 +300,6 @@ export const getStoredActivityIds = async (userId: string): Promise<number[]> =>
   }
 };
 
-// Update the Strava edge function to also fetch detailed activity data
 export const updateStravaEdgeFunction = async () => {
-  // This would typically update the Strava edge function code,
-  // but we'll handle this in a separate step by updating the function directly
   return { success: true, error: null };
 };
