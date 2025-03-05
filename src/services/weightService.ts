@@ -26,7 +26,7 @@ export async function logWeight(
       return null;
     }
 
-    return data;
+    return data as WeightEntry;
   } catch (error) {
     console.error('Exception logging weight:', error);
     return null;
@@ -54,7 +54,7 @@ export async function getWeightEntries(userId: string, timeRange?: TimeRange): P
       return [];
     }
 
-    return data || [];
+    return data as WeightEntry[];
   } catch (error) {
     console.error('Exception fetching weight entries:', error);
     return [];
@@ -76,7 +76,7 @@ export async function getLatestWeightEntry(userId: string): Promise<WeightEntry 
       return null;
     }
 
-    return data;
+    return data as WeightEntry;
   } catch (error) {
     console.error('Exception fetching latest weight entry:', error);
     return null;

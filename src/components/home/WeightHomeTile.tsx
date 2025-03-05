@@ -1,89 +1,54 @@
 
-import { Card, CardContent } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { WeightEntry } from "@/types/weight";
-import { TrendingDown, TrendingUp, Weight } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface WeightHomeTileProps {
-  entry: WeightEntry | null;
+  latestEntry: WeightEntry | null;
   isLoading: boolean;
   onLogWeight: () => void;
-  onViewProgress: () => void;
 }
 
-export function WeightHomeTile({ entry, isLoading, onLogWeight, onViewProgress }: WeightHomeTileProps) {
-  if (isLoading) {
-    return (
-      <Card className="h-full">
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-2">
-            <div className="h-6 w-3/4 bg-muted rounded"></div>
-            <div className="h-4 w-1/2 bg-muted rounded"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
+export function WeightHomeTile({ latestEntry, isLoading, onLogWeight }: WeightHomeTileProps) {
+  const navigate = useNavigate();
+  
   return (
-    <Card className="h-full">
-      <CardContent className="p-6">
-        {entry ? (
+    <Card className="col-span-1 h-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl flex justify-between items-center">
+          <span>Weight Tracker</span>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/weight")}>
+            View Progress →
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : latestEntry ? (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Weight className="h-5 w-5 mr-2 text-blue-500" />
-                <h3 className="text-lg font-medium">Weight Tracker</h3>
-              </div>
-              <Button variant="outline" size="sm" onClick={onLogWeight}>Log Weight</Button>
+            <div className="text-3xl font-bold">
+              {latestEntry.weight} kg
             </div>
-            
-            <div className="mt-2">
-              <div className="flex items-baseline">
-                <span className="text-2xl font-bold">{entry.weight} kg</span>
-                <span className="ml-2 text-sm text-muted-foreground">
-                  {formatDistanceToNow(parseISO(entry.created_at), { addSuffix: true })}
-                </span>
-              </div>
-              
-              {entry.body_feeling && (
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Feeling: {entry.body_feeling} 
-                  {entry.body_feeling === 'Sore' && ' 😣'}
-                  {entry.body_feeling === 'Relaxed' && ' 😌'}
-                  {entry.body_feeling === 'Energized' && ' ⚡'}
-                  {entry.body_feeling === 'Stressed' && ' 😰'}
-                  {entry.body_feeling === 'Tired' && ' 😴'}
-                  {entry.body_feeling === 'Other' && ' 🤔'}
-                </div>
-              )}
+            <div className="text-sm text-muted-foreground">
+              Last entry: {formatDistanceToNow(new Date(latestEntry.created_at), { addSuffix: true })}
             </div>
-            
-            <Button 
-              variant="link" 
-              size="sm" 
-              className="p-0 h-auto mt-2" 
-              onClick={onViewProgress}
-            >
-              View Progress →
-            </Button>
+            {latestEntry.body_feeling && (
+              <div className="text-sm">
+                Feeling: {latestEntry.body_feeling}
+              </div>
+            )}
+            <Button onClick={onLogWeight} className="w-full mt-4">Log Weight</Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium flex items-center">
-                <Weight className="h-5 w-5 mr-2 text-blue-500" />
-                Weight Tracker
-              </h3>
-            </div>
-            <p className="text-sm text-muted-foreground">No weight logged yet. Tap to add.</p>
-            <div className="flex flex-col space-y-2">
-              <Button onClick={onLogWeight}>Log Weight</Button>
-              <Button variant="link" size="sm" className="p-0 h-auto" onClick={onViewProgress}>
-                View Progress →
-              </Button>
-            </div>
+          <div className="space-y-4 py-6">
+            <p className="text-center text-muted-foreground">No weight entries yet</p>
+            <Button onClick={onLogWeight} className="w-full">Log Weight</Button>
           </div>
         )}
       </CardContent>

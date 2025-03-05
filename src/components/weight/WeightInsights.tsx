@@ -1,39 +1,42 @@
 
-import { WeightEntry, WeightStats } from "@/types/weight";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WeightEntry, WeightStats } from "@/types/weight";
 import { calculateWeightStats } from "@/services/weightService";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { subDays } from "date-fns";
+import { ArrowUpIcon, ArrowDownIcon, Minus } from "lucide-react";
 
 interface WeightInsightsProps {
   entries: WeightEntry[];
 }
 
 export function WeightInsights({ entries }: WeightInsightsProps) {
-  // Calculate insights for different time periods
-  const weeklyStats = calculateWeightStats(
-    entries.filter(entry => 
-      new Date(entry.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    ),
-    'week'
-  );
+  const weeklyStats = React.useMemo(() => {
+    const weeklyEntries = entries.filter(entry => 
+      new Date(entry.created_at) >= subDays(new Date(), 7)
+    );
+    return calculateWeightStats(weeklyEntries, '7 days');
+  }, [entries]);
 
-  const monthlyStats = calculateWeightStats(
-    entries.filter(entry => 
-      new Date(entry.created_at) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    ),
-    'month'
-  );
+  const monthlyStats = React.useMemo(() => {
+    const monthlyEntries = entries.filter(entry => 
+      new Date(entry.created_at) >= subDays(new Date(), 30)
+    );
+    return calculateWeightStats(monthlyEntries, '30 days');
+  }, [entries]);
 
-  if (entries.length < 2) {
+  const hasInsights = weeklyStats.change !== null || monthlyStats.change !== null;
+
+  if (!hasInsights) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Trend Insights</CardTitle>
+          <CardTitle>Weight Insights</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-6 text-muted-foreground">
-            Add more weight entries to see trends and insights.
-          </div>
+          <p className="text-center py-3 text-muted-foreground">
+            Need more entries to show insights
+          </p>
         </CardContent>
       </Card>
     );
@@ -42,68 +45,50 @@ export function WeightInsights({ entries }: WeightInsightsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Trend Insights</CardTitle>
+        <CardTitle>Weight Insights</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InsightCard stats={weeklyStats} title="Last 7 Days" />
-          <InsightCard stats={monthlyStats} title="Last 30 Days" />
+          <StatCard stats={weeklyStats} />
+          <StatCard stats={monthlyStats} />
         </div>
       </CardContent>
     </Card>
   );
 }
 
-interface InsightCardProps {
-  stats: WeightStats;
-  title: string;
-}
+function StatCard({ stats }: { stats: WeightStats }) {
+  if (stats.change === null) return null;
 
-function InsightCard({ stats, title }: InsightCardProps) {
-  if (!stats.change) {
-    return (
-      <div className="border rounded-lg p-4">
-        <h3 className="font-medium text-sm mb-2">{title}</h3>
-        <p className="text-sm text-muted-foreground">
-          Not enough data for this period.
-        </p>
-      </div>
-    );
-  }
+  const isGain = stats.change > 0;
+  const isLoss = stats.change < 0;
+  const isNeutral = stats.change === 0;
 
   return (
-    <div className="border rounded-lg p-4">
-      <h3 className="font-medium text-sm mb-2">{title}</h3>
-      
-      <div className="flex items-center">
-        {stats.change > 0 ? (
-          <>
-            <TrendingUp className="h-5 w-5 text-red-500 mr-2" />
-            <div>
-              <p className="font-semibold text-red-500">
-                Gained {stats.change.toFixed(1)} kg
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {Math.abs(stats.changePercentage!).toFixed(1)}% increase
-              </p>
-            </div>
-          </>
-        ) : stats.change < 0 ? (
-          <>
-            <TrendingDown className="h-5 w-5 text-green-500 mr-2" />
-            <div>
-              <p className="font-semibold text-green-500">
-                Lost {Math.abs(stats.change).toFixed(1)} kg
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {Math.abs(stats.changePercentage!).toFixed(1)}% decrease
-              </p>
-            </div>
-          </>
-        ) : (
-          <p className="font-medium">No change in weight</p>
-        )}
+    <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+      <h3 className="text-sm text-muted-foreground mb-2">
+        Past {stats.period}:
+      </h3>
+      <div className="flex items-center space-x-2">
+        {isGain && <ArrowUpIcon className="text-red-500" />}
+        {isLoss && <ArrowDownIcon className="text-green-500" />}
+        {isNeutral && <Minus className="text-slate-500" />}
+        
+        <span className={`text-xl font-semibold ${
+          isGain ? 'text-red-500' : 
+          isLoss ? 'text-green-500' : 
+          'text-slate-500'
+        }`}>
+          {isGain ? '+' : ''}
+          {Math.abs(stats.change).toFixed(1)} kg
+        </span>
       </div>
+      {stats.changePercentage !== null && (
+        <p className="text-sm text-muted-foreground mt-1">
+          {isGain ? 'Gained' : isLoss ? 'Lost' : 'Maintained'} {Math.abs(stats.changePercentage).toFixed(1)}% 
+          {stats.current && ` (Now: ${stats.current.toFixed(1)} kg)`}
+        </p>
+      )}
     </div>
   );
 }

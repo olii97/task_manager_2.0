@@ -2,9 +2,10 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { BodyFeeling } from "@/types/weight";
+import { CheckCircle } from "lucide-react";
 
 interface BodyFeelingModalProps {
   open: boolean;
@@ -15,9 +16,10 @@ interface BodyFeelingModalProps {
 export function BodyFeelingModal({ open, onClose, onSave }: BodyFeelingModalProps) {
   const [selectedFeeling, setSelectedFeeling] = useState<BodyFeeling | null>(null);
   const [note, setNote] = useState<string>("");
+  const [otherSelected, setOtherSelected] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const feelings: BodyFeeling[] = ['Sore', 'Relaxed', 'Energized', 'Stressed', 'Tired', 'Other'];
+  const bodyFeelings: BodyFeeling[] = ["Sore", "Relaxed", "Energized", "Stressed", "Tired", "Other"];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,60 +28,67 @@ export function BodyFeelingModal({ open, onClose, onSave }: BodyFeelingModalProp
       setError("Please select how your body feels");
       return;
     }
+
+    if (selectedFeeling === "Other" && !note.trim()) {
+      setError("Please provide details for 'Other'");
+      return;
+    }
     
     onSave(selectedFeeling, note.trim() || undefined);
-    reset();
+    resetForm();
   };
 
-  const reset = () => {
+  const resetForm = () => {
     setSelectedFeeling(null);
     setNote("");
+    setOtherSelected(false);
     setError(null);
   };
 
   const handleClose = () => {
-    reset();
+    resetForm();
     onClose();
+  };
+
+  const handleFeelingSelect = (feeling: BodyFeeling) => {
+    setSelectedFeeling(feeling);
+    setOtherSelected(feeling === "Other");
+    setError(null);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>How does your body feel today?</DialogTitle>
+          <DialogTitle>Body Check-in</DialogTitle>
           <DialogDescription>
-            Select an option that best describes how you feel.
+            How does your body feel today?
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="grid grid-cols-2 gap-2">
-            {feelings.map((feeling) => (
+            {bodyFeelings.map((feeling) => (
               <Button
                 key={feeling}
                 type="button"
                 variant={selectedFeeling === feeling ? "default" : "outline"}
-                className="h-12"
-                onClick={() => setSelectedFeeling(feeling)}
+                className="flex justify-between items-center"
+                onClick={() => handleFeelingSelect(feeling)}
               >
-                {feeling === 'Sore' && '😣 '}
-                {feeling === 'Relaxed' && '😌 '}
-                {feeling === 'Energized' && '⚡ '}
-                {feeling === 'Stressed' && '😰 '}
-                {feeling === 'Tired' && '😴 '}
-                {feeling === 'Other' && '🤔 '}
-                {feeling}
+                <span>{feeling}</span>
+                {selectedFeeling === feeling && <CheckCircle className="h-4 w-4 ml-1" />}
               </Button>
             ))}
           </div>
           
-          {selectedFeeling === 'Other' && (
+          {otherSelected && (
             <div className="space-y-2">
-              <Label htmlFor="note">Please specify:</Label>
-              <Input
+              <Label htmlFor="note">Additional Details</Label>
+              <Textarea
                 id="note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="How do you feel?"
+                placeholder="Describe how you feel..."
                 className="w-full"
               />
             </div>
@@ -89,7 +98,7 @@ export function BodyFeelingModal({ open, onClose, onSave }: BodyFeelingModalProp
           
           <div className="flex justify-end space-x-2 pt-2">
             <Button type="button" variant="outline" onClick={handleClose}>
-              Skip
+              Cancel
             </Button>
             <Button type="submit">Save</Button>
           </div>

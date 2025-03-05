@@ -1,146 +1,116 @@
 
-import { WeightEntry, TimeRange } from "@/types/weight";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from "recharts";
 import { format, parseISO } from "date-fns";
-import { Button } from "@/components/ui/button";
+import { WeightEntry, TimeRange } from "@/types/weight";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Loader2 } from "lucide-react";
 
 interface WeightChartProps {
   entries: WeightEntry[];
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
+  isLoading?: boolean;
 }
 
-export function WeightChart({ entries, timeRange, onTimeRangeChange }: WeightChartProps) {
-  // Sort entries by date
-  const sortedEntries = [...entries].sort((a, b) => 
-    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
-
-  // Prepare data for the chart
-  const chartData = sortedEntries.map(entry => ({
-    date: entry.created_at,
-    weight: entry.weight,
-    formattedDate: format(parseISO(entry.created_at), 'MMM d')
-  }));
-
-  // Calculate min and max for Y axis
-  const weights = sortedEntries.map(entry => entry.weight);
-  const minWeight = Math.min(...weights) * 0.99; // Add a little padding
-  const maxWeight = Math.max(...weights) * 1.01;
-  
-  // Handle empty state
-  if (entries.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Weight History</CardTitle>
-          <div className="flex space-x-2">
-            <Button 
-              size="sm" 
-              variant={timeRange === '7days' ? 'default' : 'outline'} 
-              onClick={() => onTimeRangeChange('7days')}
-            >
-              7 Days
-            </Button>
-            <Button 
-              size="sm" 
-              variant={timeRange === '14days' ? 'default' : 'outline'} 
-              onClick={() => onTimeRangeChange('14days')}
-            >
-              14 Days
-            </Button>
-            <Button 
-              size="sm" 
-              variant={timeRange === '30days' ? 'default' : 'outline'} 
-              onClick={() => onTimeRangeChange('30days')}
-            >
-              30 Days
-            </Button>
-            <Button 
-              size="sm" 
-              variant={timeRange === 'all' ? 'default' : 'outline'} 
-              onClick={() => onTimeRangeChange('all')}
-            >
-              All Time
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-64 bg-muted/20 rounded-md">
-            <p className="text-muted-foreground">No weight entries available for this time period.</p>
-          </div>
-        </CardContent>
-      </Card>
+export function WeightChart({ entries, timeRange, onTimeRangeChange, isLoading = false }: WeightChartProps) {
+  const processedData = React.useMemo(() => {
+    // Sort by date (oldest first for the chart)
+    const sortedEntries = [...entries].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
-  }
+
+    return sortedEntries.map(entry => ({
+      date: format(parseISO(entry.created_at), 'MMM dd'),
+      weight: entry.weight,
+      timestamp: entry.created_at, // Keep the raw timestamp for tooltip
+    }));
+  }, [entries]);
+
+  const weightStats = React.useMemo(() => {
+    if (processedData.length === 0) return { min: 0, max: 100, avg: 0 };
+    
+    const weights = processedData.map(d => d.weight);
+    const min = Math.floor(Math.min(...weights) * 0.99);
+    const max = Math.ceil(Math.max(...weights) * 1.01);
+    const avg = weights.reduce((sum, w) => sum + w, 0) / weights.length;
+    
+    return { min, max, avg };
+  }, [processedData]);
+
+  const isEmptyState = !isLoading && processedData.length < 2;
+
+  const handleTimeRangeChange = (value: string) => {
+    if (value) {
+      onTimeRangeChange(value as TimeRange);
+    }
+  };
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Weight History</CardTitle>
-        <div className="flex space-x-2 mt-2 overflow-x-auto pb-2">
-          <Button 
-            size="sm" 
-            variant={timeRange === '7days' ? 'default' : 'outline'} 
-            onClick={() => onTimeRangeChange('7days')}
-          >
-            7 Days
-          </Button>
-          <Button 
-            size="sm" 
-            variant={timeRange === '14days' ? 'default' : 'outline'} 
-            onClick={() => onTimeRangeChange('14days')}
-          >
-            14 Days
-          </Button>
-          <Button 
-            size="sm" 
-            variant={timeRange === '30days' ? 'default' : 'outline'} 
-            onClick={() => onTimeRangeChange('30days')}
-          >
-            30 Days
-          </Button>
-          <Button 
-            size="sm" 
-            variant={timeRange === 'all' ? 'default' : 'outline'} 
-            onClick={() => onTimeRangeChange('all')}
-          >
-            All Time
-          </Button>
-        </div>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex justify-between items-center">
+          <span>Weight History</span>
+          <ToggleGroup type="single" value={timeRange} onValueChange={handleTimeRangeChange}>
+            <ToggleGroupItem value="7days">7 Days</ToggleGroupItem>
+            <ToggleGroupItem value="14days">14 Days</ToggleGroupItem>
+            <ToggleGroupItem value="30days">30 Days</ToggleGroupItem>
+            <ToggleGroupItem value="all">All</ToggleGroupItem>
+          </ToggleGroup>
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-64 w-full">
+      <CardContent className="h-[300px]">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : isEmptyState ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-center text-muted-foreground">
+              {processedData.length === 0 
+                ? "No weight entries yet" 
+                : "Need at least two entries to show a chart"}
+            </p>
+          </div>
+        ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <LineChart
+              data={processedData}
+              margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
               <XAxis 
-                dataKey="formattedDate" 
-                tick={{ fontSize: 12 }} 
-                tickMargin={10} 
+                dataKey="date" 
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
               />
-              <YAxis 
-                domain={[minWeight, maxWeight]} 
-                tick={{ fontSize: 12 }} 
-                tickMargin={10} 
-                width={40} 
+              <YAxis
+                domain={[weightStats.min, weightStats.max]}
+                stroke="#888888"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value} kg`}
               />
               <Tooltip 
                 formatter={(value) => [`${value} kg`, 'Weight']}
-                labelFormatter={(label) => format(parseISO(chartData[label].date), 'MMM d, yyyy')}
+                labelFormatter={(label) => `Date: ${label}`}
               />
-              <Line 
-                type="monotone" 
-                dataKey="weight" 
-                stroke="#3b82f6" 
-                strokeWidth={2} 
-                dot={{ r: 4, fill: "#3b82f6" }} 
-                activeDot={{ r: 6 }} 
+              <ReferenceLine y={weightStats.avg} stroke="#888" strokeDasharray="3 3" />
+              <Line
+                type="monotone"
+                dataKey="weight"
+                stroke="#2563eb"
+                strokeWidth={2}
+                dot={{ r: 4, strokeWidth: 2 }}
+                activeDot={{ r: 6, strokeWidth: 3 }}
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

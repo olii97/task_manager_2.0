@@ -43,6 +43,7 @@ export default function Weight() {
           entries={entries} 
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
+          isLoading={isEntriesLoading}
         />
 
         {/* Insights Section */}
