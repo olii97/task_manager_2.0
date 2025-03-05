@@ -1,17 +1,17 @@
+
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import StravaConnectForm from "@/components/StravaConnectForm";
-import StravaErrorDisplay from "@/components/StravaErrorDisplay";
-import StravaActivityList from "@/components/StravaActivityList";
+import { StravaConnectForm } from "@/components/StravaConnectForm";
+import { StravaErrorDisplay } from "@/components/StravaErrorDisplay";
+import { StravaActivityList } from "@/components/StravaActivityList";
 import { StravaActivity, SavedStravaActivity } from "@/types/strava";
 import { useToast } from "@/components/ui/use-toast";
-import { SaveIcon, RefreshCw } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 // Update the import path to use the new structure
-import { getStravaActivities, saveActivityToDatabase } from "@/services/strava";
+import { saveActivityToDatabase } from "@/services/strava";
 import useStravaActivities from "@/hooks/useStravaActivities";
 
 interface StravaActivitiesProps {
@@ -30,39 +30,38 @@ const StravaActivities: React.FC<StravaActivitiesProps> = ({ activities: propAct
   const { 
     activities, 
     isLoading, 
-    error, 
-    refreshActivities,
-    isStravaConnected: hookIsStravaConnected,
-    stravaError: hookStravaError
+    isConnected: hookIsConnected,
+    isConnectionLoading
   } = useStravaActivities();
 
   useEffect(() => {
-    setIsStravaConnected(hookIsStravaConnected);
-    setStravaError(hookStravaError);
-  }, [hookIsStravaConnected, hookStravaError]);
+    setIsStravaConnected(hookIsConnected);
+  }, [hookIsConnected]);
 
-  const { mutate: saveActivity, isLoading: isSaveLoading } = useMutation(
-    (activity: StravaActivity) => saveActivityToDatabase(activity),
-    {
-      onSuccess: () => {
-        toast({
-          title: "Activity Saved",
-          description: "This activity has been saved to your profile.",
-        });
-        queryClient.invalidateQueries(['stravaActivities', userId]);
-      },
-      onError: (error: any) => {
-        toast({
-          variant: "destructive",
-          title: "Save Failed",
-          description: error.message || "Failed to save activity. Please try again.",
-        });
-      },
-    }
-  );
+  const { mutate: saveActivity } = useMutation({
+    mutationFn: (activity: StravaActivity) => saveActivityToDatabase(activity),
+    onSuccess: () => {
+      toast({
+        title: "Activity Saved",
+        description: "This activity has been saved to your profile.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['stravaActivities', userId] });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: error.message || "Failed to save activity. Please try again.",
+      });
+    },
+  });
 
   const handleSaveActivity = (activity: StravaActivity) => {
     saveActivity(activity);
+  };
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['stravaActivities', userId] });
   };
 
   if (!userId) {
@@ -75,7 +74,7 @@ const StravaActivities: React.FC<StravaActivitiesProps> = ({ activities: propAct
         <CardTitle>Strava Activities</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultvalue="activities" className="w-full">
+        <Tabs defaultValue="activities" className="w-full">
           <TabsList>
             <TabsTrigger value="activities">Activities</TabsTrigger>
             <TabsTrigger value="connect">Connect</TabsTrigger>
@@ -86,10 +85,10 @@ const StravaActivities: React.FC<StravaActivitiesProps> = ({ activities: propAct
               <p>Loading activities...</p>
             ) : (
               <StravaActivityList
-                activities={activities}
+                activities={activities || []}
                 onSave={handleSaveActivity}
-                isLoading={isSaveLoading}
-                refreshActivities={refreshActivities}
+                isLoading={false}
+                onRefresh={handleRefresh}
               />
             )}
           </TabsContent>

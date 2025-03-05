@@ -155,7 +155,7 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       activity: {
         ...data,
         saved: isSaved
-      } as StravaActivity, 
+      } as SavedStravaActivity, 
       error: null 
     };
   } catch (error: any) {

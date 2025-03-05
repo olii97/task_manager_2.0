@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { SavedStravaActivity } from '@/types/strava';
