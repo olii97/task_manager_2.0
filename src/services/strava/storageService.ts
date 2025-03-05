@@ -37,7 +37,7 @@ export const saveActivityToDatabase = async (
       throw new Error("User not authenticated");
     }
 
-    // Extract fields that exist in the database table
+    // Extract fields that exist in the database table based on the Supabase schema
     const activityData = {
       id: activity.id,
       name: activity.name,
@@ -47,8 +47,6 @@ export const saveActivityToDatabase = async (
       elapsed_time: activity.elapsed_time,
       total_elevation_gain: activity.total_elevation_gain || null,
       start_date: activity.start_date,
-      map_id: activity.map?.id || null,
-      summary_polyline: activity.map?.summary_polyline || null,
       average_speed: activity.average_speed || null,
       max_speed: activity.max_speed || null,
       average_heartrate: activity.average_heartrate || null,
@@ -65,9 +63,16 @@ export const saveActivityToDatabase = async (
       max_watts: activity.max_watts || null,
       weighted_average_watts: activity.average_watts_weighted || null,
       user_id: currentUser.data.user.id,
+      // Store the map data correctly
+      summary_polyline: activity.map?.summary_polyline || null,
       // Convert complex objects to JSON
       start_latlng: activity.start_latlng ? JSON.stringify(activity.start_latlng) : null,
       end_latlng: activity.end_latlng ? JSON.stringify(activity.end_latlng) : null,
+      map_data: activity.map ? JSON.stringify(activity.map) : null,
+      segment_efforts: activity.segment_efforts ? JSON.stringify(activity.segment_efforts) : null,
+      laps: activity.laps ? JSON.stringify(activity.laps) : null,
+      splits_metric: activity.splits_metric ? JSON.stringify(activity.splits_metric) : null,
+      splits_standard: activity.splits_standard ? JSON.stringify(activity.splits_standard) : null,
     };
 
     const { data, error } = await supabase

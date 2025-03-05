@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { DailyWrapup, StravaActivitySummary } from "@/types/wrapup";
@@ -83,12 +84,15 @@ const fetchTodaysStravaActivities = async (userId: string, today: string): Promi
       start_date_local: activity.start_date, // Use start_date as start_date_local
       timezone: "", // Default empty timezone
       utc_offset: 0, // Default value
+      location_city: null,
+      location_state: null,
+      location_country: null,
       average_speed: activity.average_speed || 0,
       max_speed: activity.max_speed || 0,
       average_heartrate: activity.average_heartrate || 0,
       max_heartrate: activity.max_heartrate || 0,
       map: {
-        id: activity.map_id || '',
+        id: activity.map_data ? JSON.parse(activity.map_data).id : '',
         summary_polyline: activity.summary_polyline || '',
         resource_state: 2,
       },
@@ -102,7 +106,7 @@ const fetchTodaysStravaActivities = async (userId: string, today: string): Promi
       kilojoules: activity.kilojoules || 0,
       description: null,
       gear_id: activity.gear_id,
-      average_temp: activity.temperature || 0,
+      average_temp: 0,
       average_watts_weighted: activity.weighted_average_watts || 0,
       display_hide_heartrate_zone: false,
     } as StravaActivity;
