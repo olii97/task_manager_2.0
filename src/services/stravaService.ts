@@ -207,6 +207,11 @@ export const saveActivityToDatabase = async (
       throw new Error("Missing athlete information");
     }
 
+    const currentUser = await supabase.auth.getUser();
+    if (!currentUser.data.user) {
+      throw new Error("User not authenticated");
+    }
+
     const {
       id,
       name,
@@ -216,15 +221,6 @@ export const saveActivityToDatabase = async (
       elapsed_time,
       total_elevation_gain,
       start_date,
-      start_date_local,
-      timezone,
-      location_city,
-      location_state,
-      location_country,
-      kudos_count,
-      achievement_count,
-      pr_count,
-      athlete,
       map,
       average_speed,
       max_speed,
@@ -234,50 +230,67 @@ export const saveActivityToDatabase = async (
       device_name,
       splits_metric,
       splits_standard,
+      location_city,
+      location_state,
+      location_country,
+      average_watts,
+      kilojoules,
+      gear_id,
+      start_latlng,
+      end_latlng,
+      calories,
+      temperature,
+      elevation_high,
+      elevation_low,
+      pr_count,
+      max_watts,
+      weighted_average_watts,
+      segments_efforts,
+      laps
     } = activity;
 
-    const currentUser = await supabase.auth.getUser();
-    if (!currentUser.data.user) {
-      throw new Error("User not authenticated");
-    }
+    const activityData = {
+      id,
+      name,
+      type,
+      distance,
+      moving_time,
+      elapsed_time,
+      total_elevation_gain: total_elevation_gain || null,
+      start_date,
+      map_id: map?.id || null,
+      summary_polyline: map?.summary_polyline || null,
+      average_speed: average_speed || null,
+      max_speed: max_speed || null,
+      average_heartrate: average_heartrate || null,
+      max_heartrate: max_heartrate || null,
+      average_cadence: average_cadence || null,
+      device_name: device_name || null,
+      location_city: location_city || null,
+      location_state: location_state || null,
+      location_country: location_country || null,
+      average_watts: average_watts || null,
+      kilojoules: kilojoules || null,
+      gear_id: gear_id || null,
+      start_latlng: start_latlng || null,
+      end_latlng: end_latlng || null,
+      calories: calories || null,
+      temperature: temperature || null,
+      elevation_high: elevation_high || null,
+      elevation_low: elevation_low || null,
+      pr_count: pr_count || null,
+      max_watts: max_watts || null,
+      weighted_average_watts: weighted_average_watts || null,
+      athlete_id: activity.athlete?.id || null,
+      splits_metric: splits_metric || null,
+      splits_standard: splits_standard || null,
+      user_id: currentUser.data.user.id,
+    };
 
     const { data, error } = await supabase
       .from("strava_activities")
-      .upsert(
-        {
-          id,
-          name,
-          type,
-          distance,
-          moving_time,
-          elapsed_time,
-          total_elevation_gain,
-          start_date,
-          start_date_local,
-          timezone,
-          location_city,
-          location_state,
-          location_country,
-          kudos_count: kudos_count || null,
-          achievement_count: achievement_count || null,
-          pr_count: pr_count || null,
-          athlete_id: athlete?.id,
-          map_id: map?.id,
-          map_polyline: map?.polyline,
-          map_summary_polyline: map?.summary_polyline,
-          average_speed,
-          max_speed,
-          average_heartrate,
-          max_heartrate,
-          average_cadence,
-          device_name,
-          splits_metric: splits_metric || null,
-          splits_standard: splits_standard || null,
-          user_id: currentUser.data.user.id,
-        },
-        { onConflict: "id" }
-      )
-      .select("*")
+      .upsert(activityData, { onConflict: "id" })
+      .select()
       .single();
 
     if (error) {

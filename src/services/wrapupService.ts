@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { DailyWrapup, StravaActivitySummary } from "@/types/wrapup";
@@ -70,44 +71,46 @@ const fetchTodaysStravaActivities = async (userId: string, today: string): Promi
   }
   
   // Convert database records to StravaActivity type
-  return data.map(activity => ({
-    id: activity.id,
-    name: activity.name,
-    type: activity.type,
-    distance: activity.distance,
-    moving_time: activity.moving_time,
-    elapsed_time: activity.elapsed_time,
-    total_elevation_gain: activity.total_elevation_gain || 0,
-    start_date: activity.start_date,
-    start_date_local: activity.start_date_local,
-    timezone: activity.timezone,
-    utc_offset: 0, // Default value
-    location_city: activity.location_city,
-    location_state: activity.location_state,
-    location_country: activity.location_country,
-    average_speed: activity.average_speed || 0,
-    max_speed: activity.max_speed || 0,
-    average_heartrate: activity.average_heartrate || 0,
-    max_heartrate: activity.max_heartrate || 0,
-    map: {
-      id: activity.map_id || '',
-      summary_polyline: activity.map_summary_polyline || '',
-      resource_state: 2,
-    },
-    trainer: false,
-    commute: false,
-    manual: false,
-    private: false,
-    visibility: '',
-    average_cadence: activity.average_cadence || 0,
-    average_watts: activity.average_watts || 0,
-    kilojoules: activity.kilojoules || 0,
-    description: null,
-    gear_id: activity.gear_id,
-    average_temp: activity.temperature || 0,
-    average_watts_weighted: activity.weighted_average_watts || 0,
-    display_hide_heartrate_zone: false,
-  } as StravaActivity));
+  return data.map(activity => {
+    return {
+      id: activity.id,
+      name: activity.name,
+      type: activity.type,
+      distance: activity.distance,
+      moving_time: activity.moving_time,
+      elapsed_time: activity.elapsed_time,
+      total_elevation_gain: activity.total_elevation_gain || 0,
+      start_date: activity.start_date,
+      start_date_local: activity.start_date, // Use start_date as start_date_local
+      timezone: "", // Default empty timezone
+      utc_offset: 0, // Default value
+      location_city: activity.location_city || null,
+      location_state: activity.location_state || null,
+      location_country: activity.location_country || null,
+      average_speed: activity.average_speed || 0,
+      max_speed: activity.max_speed || 0,
+      average_heartrate: activity.average_heartrate || 0,
+      max_heartrate: activity.max_heartrate || 0,
+      map: {
+        id: activity.map_id || '',
+        summary_polyline: activity.summary_polyline || '',
+        resource_state: 2,
+      },
+      trainer: false,
+      commute: false,
+      manual: false,
+      private: false,
+      visibility: '',
+      average_cadence: activity.average_cadence || 0,
+      average_watts: activity.average_watts || 0,
+      kilojoules: activity.kilojoules || 0,
+      description: null,
+      gear_id: activity.gear_id,
+      average_temp: activity.temperature || 0,
+      average_watts_weighted: activity.weighted_average_watts || 0,
+      display_hide_heartrate_zone: false,
+    } as StravaActivity;
+  });
 };
 
 // Helper function to fetch today's tasks
