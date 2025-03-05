@@ -175,12 +175,21 @@ export const useJournalOperations = (userId: string | undefined) => {
     setIsDeleting(true);
     
     try {
-      const { error } = await supabase
+      console.log("Deleting journal entry with ID:", selectedEntry.id);
+      
+      const { error, count } = await supabase
         .from("journal_entries")
         .delete()
-        .eq("id", selectedEntry.id);
+        .eq("id", selectedEntry.id)
+        .eq("user_id", userId) // Add user_id check for additional security
+        .select("count");
         
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase delete error:", error);
+        throw error;
+      }
+      
+      console.log("Delete response count:", count);
       
       // Invalidate both queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
@@ -192,11 +201,12 @@ export const useJournalOperations = (userId: string | undefined) => {
         description: "Your journal entry has been deleted successfully",
       });
       
-      // Refetch data and reset selection
-      await Promise.all([refetchAll(), refetchToday()]);
-      
+      // Reset selection and close delete confirmation
       setSelectedEntry(null);
       setShowDeleteAlert(false);
+      
+      // Refetch data after deletion
+      await Promise.all([refetchAll(), refetchToday()]);
       
     } catch (error: any) {
       console.error("Error deleting journal entry:", error);

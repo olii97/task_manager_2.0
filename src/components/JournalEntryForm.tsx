@@ -7,12 +7,14 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { Plus } from "lucide-react";
 import confetti from "canvas-confetti";
 import { motion } from "framer-motion";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { JournalEntry, MoodOptions, sliderToScale, scaleToSlider } from "@/types/journal";
+import { JournalEntry, ReflectionEntry, MoodOptions, sliderToScale, scaleToSlider } from "@/types/journal";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface JournalEntryFormProps {
@@ -27,11 +29,14 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
   const queryClient = useQueryClient();
   const [moodValue, setMoodValue] = useState(50);
   const [energyLevel, setEnergyLevel] = useState(50);
+  const [reflections, setReflections] = useState<ReflectionEntry[]>([{ 
+    timestamp: new Date().toISOString(),
+    content: "" 
+  }]);
   const [form, setForm] = useState({
     intentions: "",
     gratefulness: "",
     challenges: "",
-    reflection: "",
     nutrition: {
       meals: "",
       feelings: "",
@@ -47,12 +52,21 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       setMoodValue(scaleToSlider(existingEntry.mood));
       setEnergyLevel(scaleToSlider(existingEntry.energy));
       
+      // Set reflections - use the new format if available, otherwise convert from string
+      if (existingEntry.reflections && existingEntry.reflections.length > 0) {
+        setReflections(existingEntry.reflections);
+      } else if (existingEntry.reflection) {
+        setReflections([{
+          timestamp: existingEntry.created_at,
+          content: existingEntry.reflection
+        }]);
+      }
+      
       // Set form values
       setForm({
         intentions: existingEntry.intentions || "",
         gratefulness: existingEntry.gratitude || "",
         challenges: existingEntry.challenges || "",
-        reflection: existingEntry.reflection || "",
         nutrition: {
           meals: existingEntry.nutrition?.meals || "",
           feelings: existingEntry.nutrition?.feelings || "",
@@ -63,10 +77,35 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
     }
   }, [existingEntry]);
 
+  const handleAddReflection = () => {
+    setReflections([
+      ...reflections,
+      { 
+        timestamp: new Date().toISOString(), 
+        content: "" 
+      }
+    ]);
+  };
+
+  const handleReflectionChange = (index: number, content: string) => {
+    const updatedReflections = [...reflections];
+    updatedReflections[index] = {
+      ...updatedReflections[index],
+      content
+    };
+    setReflections(updatedReflections);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
+      // Filter out empty reflections
+      const filteredReflections = reflections.filter(r => r.content.trim() !== "");
+      
+      // Create a legacy reflection string for backward compatibility
+      const legacyReflection = filteredReflections.map(r => r.content).join("\n\n");
+      
       const entryData = {
         user_id: session?.user.id,
         date: existingEntry?.date || new Date().toISOString().split('T')[0],
@@ -75,7 +114,8 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
         intentions: form.intentions,
         gratitude: form.gratefulness,
         challenges: form.challenges,
-        reflection: form.reflection,
+        reflection: legacyReflection, // For backward compatibility
+        reflections: filteredReflections.length > 0 ? filteredReflections : null,
         nutrition: {
           meals: form.nutrition.meals,
           feelings: form.nutrition.feelings,
@@ -115,6 +155,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       
       // Invalidate journal entries to refetch the list
       queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["journal-entry", entryData.date] });
 
       toast({
         title: existingEntry ? "Journal Entry Updated" : "Journal Entry Saved",
@@ -152,66 +193,109 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       <form onSubmit={handleSubmit} className="space-y-8">
         <Card className="p-6">
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>How are you feeling today? {currentMoodEmoji}</Label>
-              <Slider
-                value={[moodValue]}
-                onValueChange={([value]) => setMoodValue(value)}
-                max={100}
-                step={1}
-                className="py-4"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>😔</span>
-                <span>😐</span>
-                <span>🙂</span>
-                <span>😊</span>
-                <span>😃</span>
+            {/* Reflections Section - Moved to top for emphasis */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Daily Reflections</h3>
+              
+              {reflections.map((reflection, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor={`reflection-${index}`} className="text-sm text-muted-foreground">
+                      {format(new Date(reflection.timestamp), "h:mm a")}
+                    </Label>
+                  </div>
+                  <Textarea
+                    id={`reflection-${index}`}
+                    value={reflection.content}
+                    onChange={(e) => handleReflectionChange(index, e.target.value)}
+                    placeholder={index === 0 ? "What's on your mind today?" : "What's changed since your last reflection?"}
+                    className="min-h-[150px] text-base resize-vertical"
+                  />
+                </div>
+              ))}
+              
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={handleAddReflection}
+                className="flex items-center gap-1 mt-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Another Reflection
+              </Button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold">How are you feeling?</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label>Mood {currentMoodEmoji}</Label>
+                    <span className="text-lg">{currentMoodEmoji}</span>
+                  </div>
+                  <Slider
+                    value={[moodValue]}
+                    onValueChange={([value]) => setMoodValue(value)}
+                    max={100}
+                    step={1}
+                    className="py-4"
+                  />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>😔</span>
+                    <span>😐</span>
+                    <span>🙂</span>
+                    <span>😊</span>
+                    <span>😃</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Energy Level</Label>
+                  <Slider
+                    value={[energyLevel]}
+                    onValueChange={([value]) => setEnergyLevel(value)}
+                    max={100}
+                    step={1}
+                    className="py-4"
+                  />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Very Low</span>
+                    <span>Low</span>
+                    <span>Moderate</span>
+                    <span>High</span>
+                    <span>Very High</span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>Energy Level</Label>
-              <Slider
-                value={[energyLevel]}
-                onValueChange={([value]) => setEnergyLevel(value)}
-                max={100}
-                step={1}
-                className="py-4"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Very Low</span>
-                <span>Low</span>
-                <span>Moderate</span>
-                <span>High</span>
-                <span>Very High</span>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="intentions">Today's Intentions</Label>
+                  <Textarea
+                    id="intentions"
+                    value={form.intentions}
+                    onChange={(e) =>
+                      setForm({ ...form, intentions: e.target.value })
+                    }
+                    placeholder="What do you want to accomplish today?"
+                    className="min-h-[80px] resize-vertical"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gratefulness">Gratitude</Label>
+                  <Textarea
+                    id="gratefulness"
+                    value={form.gratefulness}
+                    onChange={(e) =>
+                      setForm({ ...form, gratefulness: e.target.value })
+                    }
+                    placeholder="What are you grateful for today?"
+                    className="min-h-[80px] resize-vertical"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="intentions">Today's Intentions</Label>
-              <Textarea
-                id="intentions"
-                value={form.intentions}
-                onChange={(e) =>
-                  setForm({ ...form, intentions: e.target.value })
-                }
-                placeholder="What do you want to accomplish today?"
-                className="resize-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="gratefulness">Gratitude</Label>
-              <Textarea
-                id="gratefulness"
-                value={form.gratefulness}
-                onChange={(e) =>
-                  setForm({ ...form, gratefulness: e.target.value })
-                }
-                placeholder="What are you grateful for today?"
-                className="resize-none"
-              />
             </div>
 
             <div className="space-y-2">
@@ -223,20 +307,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
                   setForm({ ...form, challenges: e.target.value })
                 }
                 placeholder="What challenges did you face?"
-                className="resize-none"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="reflection">Daily Reflection</Label>
-              <Textarea
-                id="reflection"
-                value={form.reflection}
-                onChange={(e) =>
-                  setForm({ ...form, reflection: e.target.value })
-                }
-                placeholder="Reflect on your day..."
-                className="resize-none"
+                className="min-h-[100px] resize-vertical"
               />
             </div>
 
@@ -255,7 +326,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
                     })
                   }
                   placeholder="What did you eat today?"
-                  className="resize-none"
+                  className="resize-vertical"
                 />
               </div>
 
@@ -271,7 +342,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
                     })
                   }
                   placeholder="Describe how you felt after your meals..."
-                  className="resize-none"
+                  className="resize-vertical"
                 />
               </div>
 

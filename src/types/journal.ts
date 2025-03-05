@@ -1,6 +1,11 @@
 
 import { Json } from "@/integrations/supabase/types";
 
+export interface ReflectionEntry {
+  timestamp: string;
+  content: string;
+}
+
 export interface JournalNutrition {
   breakfast?: string;
   lunch?: string;
@@ -20,6 +25,7 @@ export interface JournalEntry {
   mood: number;
   energy: number;
   reflection: string | null;
+  reflections?: ReflectionEntry[] | null;
   challenges: string | null;
   intentions: string | null;
   gratitude: string | null;
@@ -29,9 +35,24 @@ export interface JournalEntry {
 }
 
 export const mapDatabaseEntryToJournalEntry = (dbEntry: any): JournalEntry => {
+  // Parse reflections from JSON if available, otherwise create from reflection string
+  let reflections: ReflectionEntry[] | null = null;
+  
+  if (dbEntry.reflections) {
+    // If reflections are already stored as JSON, use them
+    reflections = dbEntry.reflections as ReflectionEntry[] | null;
+  } else if (dbEntry.reflection) {
+    // If only a string reflection exists, convert it to our new format
+    reflections = [{
+      timestamp: dbEntry.created_at,
+      content: dbEntry.reflection
+    }];
+  }
+  
   return {
     ...dbEntry,
     nutrition: dbEntry.nutrition as JournalNutrition | null,
+    reflections: reflections,
   };
 };
 
