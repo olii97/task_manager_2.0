@@ -2,9 +2,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { PenLine, Plus } from "lucide-react";
+import { PenLine, Plus, RefreshCw } from "lucide-react";
 import { JournalEntry } from "@/types/journal";
 import { getMoodEmoji } from "@/types/journal";
+import { formatDistanceToNow } from "date-fns";
 
 interface TodaysJournalCardProps {
   entry: JournalEntry | null;
@@ -14,8 +15,13 @@ interface TodaysJournalCardProps {
 export const TodaysJournalCard = ({ entry, isLoading }: TodaysJournalCardProps) => {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Today's Journal</CardTitle>
+        {entry && (
+          <span className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true })}
+          </span>
+        )}
       </CardHeader>
       <CardContent>
         {isLoading ? (

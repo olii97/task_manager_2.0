@@ -13,6 +13,8 @@ export const useJournalEntry = (userId: string | undefined) => {
     queryFn: async () => {
       if (!userId) return null;
       
+      console.log("Fetching today's entry in useJournalEntry for date:", today);
+      
       const { data, error } = await supabase
         .from("journal_entries")
         .select("*")
@@ -28,6 +30,7 @@ export const useJournalEntry = (userId: string | undefined) => {
       return data ? mapDatabaseEntryToJournalEntry(data) : null;
     },
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   return { todayEntry, isLoading };

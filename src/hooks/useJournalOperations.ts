@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { JournalEntry, mapDatabaseEntryToJournalEntry } from "@/types/journal";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -26,11 +26,14 @@ export const useJournalOperations = (userId: string | undefined) => {
     queryFn: async () => {
       if (!userId) return null;
       
+      const todayDate = format(new Date(), "yyyy-MM-dd");
+      console.log("Fetching today's entry for date:", todayDate);
+      
       const { data, error } = await supabase
         .from("journal_entries")
         .select("*")
         .eq("user_id", userId)
-        .eq("date", today)
+        .eq("date", todayDate)
         .maybeSingle();
       
       if (error && error.code !== "PGRST116") {
@@ -73,7 +76,18 @@ export const useJournalOperations = (userId: string | undefined) => {
         throw error;
       }
       
-      return data.map(mapDatabaseEntryToJournalEntry);
+      // Ensure we don't have duplicate entries by using a Map with the entry date as key
+      const uniqueEntries = new Map();
+      data.forEach(entry => {
+        // Use date as the unique key
+        const dateKey = entry.date;
+        uniqueEntries.set(dateKey, mapDatabaseEntryToJournalEntry(entry));
+      });
+      
+      // Convert Map back to array and sort by date (newest first)
+      return Array.from(uniqueEntries.values()).sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
     },
     enabled: !!userId,
   });

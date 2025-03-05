@@ -1,5 +1,5 @@
 
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { JournalEntry, getMoodEmoji } from "@/types/journal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,6 +53,8 @@ export function JournalEntryList({
     );
   }
 
+  const today = format(new Date(), "yyyy-MM-dd");
+
   return (
     <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
       {entries.map((entry) => (
@@ -71,9 +73,14 @@ export function JournalEntryList({
           >
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <time className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(entry.date), { addSuffix: true })}
-                </time>
+                <div className="flex flex-col">
+                  <time className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(new Date(entry.date), { addSuffix: true })}
+                  </time>
+                  {entry.date === today && (
+                    <span className="text-xs text-primary">Today</span>
+                  )}
+                </div>
                 <span className="text-xl">{getMoodEmoji(entry.mood)}</span>
               </div>
               
