@@ -21,6 +21,7 @@ export interface StravaActivity {
   map: {
     id: string;
     summary_polyline: string;
+    polyline?: string;
     resource_state: number;
   };
   trainer: boolean;
@@ -49,6 +50,12 @@ export interface StravaActivity {
   max_cadence?: number;
   elevation_high?: number;
   elevation_low?: number;
+  kudos_count?: number;
+  achievement_count?: number;
+  athlete?: {
+    id: number;
+    [key: string]: any;
+  };
 }
 
 export interface StravaLap {

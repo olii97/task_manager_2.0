@@ -10,10 +10,12 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
 import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
+import { WrapUpDayButton } from "@/components/home/WrapUpDayButton";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
 import { useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Index = () => {
   const { session } = useAuth();
@@ -82,6 +84,21 @@ const Index = () => {
           activities={stravaActivities || []} 
           isLoading={isStravaLoading} 
         />
+      </div>
+      
+      {/* Wrap Up Day Button */}
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              Download a summary of your day including journal entries, completed tasks, and workout activities.
+            </p>
+            <WrapUpDayButton userId={userId} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Task Form Dialog */}

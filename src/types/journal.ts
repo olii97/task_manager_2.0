@@ -1,9 +1,9 @@
-
 import { Json } from "@/integrations/supabase/types";
 
 export interface ReflectionEntry {
   timestamp: string;
   content: string;
+  [key: string]: string; // Add index signature for flexibility
 }
 
 export interface JournalNutrition {
@@ -16,6 +16,7 @@ export interface JournalNutrition {
   protein?: boolean;
   calories?: number;
   feelings?: string;
+  [key: string]: string | number | boolean | undefined; // Add index signature to make it compatible with Json
 }
 
 export interface JournalEntry {
