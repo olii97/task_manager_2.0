@@ -1,6 +1,6 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchStravaActivities } from "@/services/stravaService";
+import { fetchStravaActivities } from "@/services/strava";
 
 export const useStravaActivities = (userId: string | undefined) => {
   const { data: stravaActivities, isLoading } = useQuery({

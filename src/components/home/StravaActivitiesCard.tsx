@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { getStravaActivities } from "@/services/stravaService";
+import { getStravaActivities } from "@/services/strava";
 import { SavedStravaActivity } from "@/types/strava";
 import { format } from "date-fns";
 
