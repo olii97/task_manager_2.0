@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { StravaActivitiesResponse, StravaActivityResult } from "./types";
@@ -84,14 +85,50 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
     
     if (storedActivity) {
       console.log("Retrieved activity from database");
-      return { 
-        activity: {
-          ...storedActivity,
-          saved: true,
-          start_date_local: storedActivity.start_date_local || storedActivity.start_date
-        } as StravaActivity, 
-        error: null 
+      // Fix the type casting issue here by properly mapping database fields to StravaActivity
+      const activity: StravaActivity = {
+        id: storedActivity.id,
+        name: storedActivity.name,
+        type: storedActivity.type,
+        distance: storedActivity.distance,
+        moving_time: storedActivity.moving_time,
+        elapsed_time: storedActivity.elapsed_time,
+        total_elevation_gain: storedActivity.total_elevation_gain || 0,
+        start_date: storedActivity.start_date,
+        start_date_local: storedActivity.start_date_local || storedActivity.start_date,
+        timezone: storedActivity.timezone || "",
+        utc_offset: storedActivity.utc_offset || 0,
+        location_city: storedActivity.location_city || null,
+        location_state: storedActivity.location_state || null,
+        location_country: storedActivity.location_country || null,
+        average_speed: storedActivity.average_speed || 0,
+        max_speed: storedActivity.max_speed || 0,
+        average_heartrate: storedActivity.average_heartrate || 0,
+        max_heartrate: storedActivity.max_heartrate || 0,
+        map: {
+          id: storedActivity.map_id || "",
+          summary_polyline: storedActivity.summary_polyline || "",
+          resource_state: 0
+        },
+        trainer: storedActivity.trainer || false,
+        commute: storedActivity.commute || false,
+        manual: storedActivity.manual || false,
+        private: storedActivity.private || false,
+        visibility: storedActivity.visibility || "",
+        average_cadence: storedActivity.average_cadence || 0,
+        average_watts: storedActivity.average_watts || 0,
+        kilojoules: storedActivity.kilojoules || 0,
+        description: storedActivity.description || null,
+        gear_id: storedActivity.gear_id || null,
+        average_temp: storedActivity.average_temp || 0,
+        average_watts_weighted: storedActivity.weighted_average_watts || 0,
+        display_hide_heartrate_zone: storedActivity.display_hide_heartrate_zone || false,
+        device_name: storedActivity.device_name || "",
+        pr_count: storedActivity.pr_count || 0,
+        saved: true
       };
+      
+      return { activity, error: null };
     }
     
     // Otherwise fetch from Strava API

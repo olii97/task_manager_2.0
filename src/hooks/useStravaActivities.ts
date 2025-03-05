@@ -1,21 +1,38 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
+import { SavedStravaActivity } from '@/types/strava';
+import { useQuery } from '@tanstack/react-query';
+// Update the import path
+import { getStravaActivities, checkStravaConnection } from '@/services/strava';
 
-import { useQuery } from "@tanstack/react-query";
-import { fetchStravaActivities } from "@/services/strava";
+export default function useStravaActivities() {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const [isConnected, setIsConnected] = useState(false);
 
-export const useStravaActivities = (userId: string | undefined) => {
-  const { data: stravaActivities, isLoading } = useQuery({
-    queryKey: ["strava-activities", userId, "recent"],
-    queryFn: async () => {
-      if (!userId) return [];
-      const { activities, error } = await fetchStravaActivities(userId);
-      if (error) {
-        console.error("Error fetching Strava activities:", error);
-        return [];
-      }
-      return activities.slice(0, 5); // Get only the 5 most recent activities
-    },
+  const { data: activities, isLoading, refetch } = useQuery({
+    queryKey: ['stravaActivities', userId],
+    queryFn: () => getStravaActivities(userId || ''),
     enabled: !!userId,
   });
 
-  return { stravaActivities, isLoading };
-};
+  const { data: connectionStatus, isLoading: isConnectionLoading } = useQuery({
+    queryKey: ['stravaConnection', userId],
+    queryFn: () => checkStravaConnection(userId || ''),
+    enabled: !!userId,
+  });
+
+  useEffect(() => {
+    if (connectionStatus) {
+      setIsConnected(connectionStatus.isConnected);
+    }
+  }, [connectionStatus]);
+
+  return {
+    activities: activities || [],
+    isLoading,
+    refetch,
+    isConnected,
+    isConnectionLoading,
+  };
+}
