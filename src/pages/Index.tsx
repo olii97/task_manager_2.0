@@ -13,7 +13,7 @@ import { BodyFeelingModal } from "@/components/weight/BodyFeelingModal";
 export default function Index() {
   const { session } = useAuth();
   const userId = session?.user.id;
-  const { todayEntry } = useJournalEntry(userId);
+  const { todayEntry, isLoading: journalLoading } = useJournalEntry(userId);
 
   // Use the weight entries hook for the home page
   const {
@@ -32,7 +32,7 @@ export default function Index() {
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <TodaysJournalCard entry={todayEntry} />
+        <TodaysJournalCard entry={todayEntry} isLoading={journalLoading} />
         <WeeklyIntentionsCard />
       </div>
 
@@ -46,7 +46,8 @@ export default function Index() {
           onLogWeight={() => setLogModalOpen(true)}
         />
 
-        <StravaActivitiesCard />
+        {/* Pass empty props to satisfy the type requirements */}
+        <StravaActivitiesCard isLoading={false} activities={[]} />
       </div>
       
       {/* Weight Modals */}

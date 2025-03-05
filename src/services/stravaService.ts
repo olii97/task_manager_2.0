@@ -208,28 +208,36 @@ const mapActivityFromAPI = (activity: any): StravaActivity => {
     elapsed_time: activity.elapsed_time,
     total_elevation_gain: activity.total_elevation_gain,
     start_date: activity.start_date || activity.start_date_local || new Date().toISOString(),
-    start_date_local: activity.start_date_local,
-    timezone: activity.timezone,
-    location_city: activity.location_city,
-    location_state: activity.location_state,
-    location_country: activity.location_country,
-    kudos_count: activity.kudos_count,
-    achievement_count: activity.achievement_count,
-    pr_count: activity.pr_count,
-    athlete: activity.athlete,
-    map: activity.map,
-    average_speed: activity.average_speed,
-    max_speed: activity.max_speed,
-    average_heartrate: activity.average_heartrate,
-    max_heartrate: activity.max_heartrate,
-    average_cadence: activity.average_cadence,
-    device_name: activity.device_name,
-    splits_metric: activity.splits_metric,
-    splits_standard: activity.splits_standard,
+    start_date_local: activity.start_date_local || activity.start_date,
+    timezone: activity.timezone || "",
+    utc_offset: activity.utc_offset || 0,
+    location_city: activity.location_city || null,
+    location_state: activity.location_state || null,
+    location_country: activity.location_country || null,
+    average_speed: activity.average_speed || 0,
+    max_speed: activity.max_speed || 0,
+    average_heartrate: activity.average_heartrate || 0,
+    max_heartrate: activity.max_heartrate || 0,
+    map: activity.map || { id: "", summary_polyline: "", resource_state: 0 },
+    trainer: activity.trainer || false,
+    commute: activity.commute || false,
+    manual: activity.manual || false,
+    private: activity.private || false,
+    visibility: activity.visibility || "",
+    average_cadence: activity.average_cadence || 0,
+    average_watts: activity.average_watts || 0,
+    kilojoules: activity.kilojoules || 0,
+    description: activity.description || null,
+    gear_id: activity.gear_id || null,
+    average_temp: activity.average_temp || 0,
+    average_watts_weighted: activity.average_watts_weighted || 0,
+    display_hide_heartrate_zone: activity.display_hide_heartrate_zone || false,
+    device_name: activity.device_name || "",
+    pr_count: activity.pr_count || 0,
   };
 };
 
-const transformActivityForDatabase = (activity: StravaActivity) => {
+const transformActivityForDatabase = async (activity: StravaActivity) => {
   const { 
     id,
     name,
@@ -244,20 +252,16 @@ const transformActivityForDatabase = (activity: StravaActivity) => {
     location_city,
     location_state,
     location_country,
-    kudos_count,
-    achievement_count,
-    pr_count,
-    athlete,
-    map,
     average_speed,
     max_speed,
     average_heartrate,
     max_heartrate,
     average_cadence,
     device_name,
-    splits_metric,
-    splits_standard,
   } = activity;
+
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id;
 
   return {
     id,
@@ -273,35 +277,27 @@ const transformActivityForDatabase = (activity: StravaActivity) => {
     location_city,
     location_state,
     location_country,
-    kudos_count,
-    achievement_count,
-    pr_count,
-    athlete_id: athlete.id,
-    map_id: map?.id,
-    map_polyline: map?.polyline,
-    map_summary_polyline: map?.summary_polyline,
+    map_id: activity.map?.id,
+    map_summary_polyline: activity.map?.summary_polyline,
     average_speed,
     max_speed,
     average_heartrate,
     max_heartrate,
     average_cadence,
     device_name,
-    splits_metric: splits_metric || null,
-    splits_standard: splits_standard || null,
-    user_id: (await supabase.auth.getUser()).data.user?.id,
+    splits_metric: activity.splits_metric ? JSON.stringify(activity.splits_metric) : null,
+    splits_standard: activity.splits_standard ? JSON.stringify(activity.splits_standard) : null,
+    user_id: userId,
   };
 };
 
-export const saveActivityToDatabase = async (activity: StravaActivity): Promise<StravaActivity | null> => {
+export const saveActivityToDatabase = async (activity: StravaActivity): Promise<SavedStravaActivity | null> => {
   try {
-    const dbActivity = transformActivityForDatabase(activity);
+    const dbActivity = await transformActivityForDatabase(activity);
     
     const { data, error } = await supabase
       .from("strava_activities")
-      .upsert(
-        dbActivity,
-        { onConflict: "id" }
-      )
+      .upsert(dbActivity, { onConflict: "id" })
       .select("*")
       .single();
 
@@ -310,10 +306,7 @@ export const saveActivityToDatabase = async (activity: StravaActivity): Promise<
       return null;
     }
 
-    return {
-      ...data,
-      saved: true,
-    } as StravaActivity;
+    return toSavedStravaActivity(activity, true);
   } catch (error) {
     console.error("Error in saveActivityToDatabase:", error);
     return null;

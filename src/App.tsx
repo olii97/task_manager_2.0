@@ -1,6 +1,7 @@
+
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Auth } from "@/pages/Auth";
+import Auth from "@/pages/Auth"; // Fix import
 import Index from "@/pages/Index";
 import Journal from "@/pages/Journal";
 import Tasks from "@/pages/Tasks";

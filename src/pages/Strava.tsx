@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { StravaActivity } from "@/types/strava";
-import { getStravaActivities, saveStravaActivity } from "@/services/stravaService";
+import { StravaActivity, SavedStravaActivity } from "@/types/strava";
+import { getStravaActivities, saveActivityToDatabase } from "@/services/stravaService";
 import { format } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -15,7 +16,7 @@ export default function Strava() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [activities, setActivities] = useState<StravaActivity[]>([]);
+  const [activities, setActivities] = useState<SavedStravaActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch Strava activities
@@ -37,7 +38,7 @@ export default function Strava() {
 
   // Save activity mutation
   const saveActivityMutation = useMutation({
-    mutationFn: (activity: StravaActivity) => saveStravaActivity(activity),
+    mutationFn: (activity: SavedStravaActivity) => saveActivityToDatabase(activity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stravaActivities', userId] });
       toast({
@@ -55,7 +56,7 @@ export default function Strava() {
     }
   });
 
-  const handleSaveActivity = (activity: StravaActivity) => {
+  const handleSaveActivity = (activity: SavedStravaActivity) => {
     saveActivityMutation.mutate(activity);
   };
 
