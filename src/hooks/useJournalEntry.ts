@@ -20,6 +20,8 @@ export const useJournalEntry = (userId: string | undefined) => {
         .select("*")
         .eq("user_id", userId)
         .eq("date", today)
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       
       if (error && error.code !== "PGRST116") {
@@ -33,5 +35,9 @@ export const useJournalEntry = (userId: string | undefined) => {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  return { todayEntry, isLoading };
+  const refreshTodayEntry = () => {
+    queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
+  };
+
+  return { todayEntry, isLoading, refreshTodayEntry };
 };

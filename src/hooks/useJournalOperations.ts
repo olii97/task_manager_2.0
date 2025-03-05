@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfDay } from "date-fns";
+import { format, startOfDay, parseISO } from "date-fns";
 import { JournalEntry, mapDatabaseEntryToJournalEntry } from "@/types/journal";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -34,6 +34,8 @@ export const useJournalOperations = (userId: string | undefined) => {
         .select("*")
         .eq("user_id", userId)
         .eq("date", todayDate)
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       
       if (error && error.code !== "PGRST116") {
@@ -44,6 +46,7 @@ export const useJournalOperations = (userId: string | undefined) => {
       return data ? mapDatabaseEntryToJournalEntry(data) : null;
     },
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Query for all journal entries
@@ -56,7 +59,8 @@ export const useJournalOperations = (userId: string | undefined) => {
         .from("journal_entries")
         .select("*")
         .eq("user_id", userId)
-        .order("date", { ascending: false });
+        .order("date", { ascending: false })
+        .order("updated_at", { ascending: false });
       
       if (searchTerm) {
         query = query.or(
@@ -81,7 +85,12 @@ export const useJournalOperations = (userId: string | undefined) => {
       data.forEach(entry => {
         // Use date as the unique key
         const dateKey = entry.date;
-        uniqueEntries.set(dateKey, mapDatabaseEntryToJournalEntry(entry));
+        
+        // Only replace if this entry is newer (has a more recent updated_at)
+        if (!uniqueEntries.has(dateKey) || 
+            parseISO(entry.updated_at) > parseISO(uniqueEntries.get(dateKey).updated_at)) {
+          uniqueEntries.set(dateKey, mapDatabaseEntryToJournalEntry(entry));
+        }
       });
       
       // Convert Map back to array and sort by date (newest first)
@@ -90,6 +99,7 @@ export const useJournalOperations = (userId: string | undefined) => {
       );
     },
     enabled: !!userId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Query for streak data

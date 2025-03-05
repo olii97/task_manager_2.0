@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { PenLine, Plus, RefreshCw } from "lucide-react";
 import { JournalEntry } from "@/types/journal";
 import { getMoodEmoji } from "@/types/journal";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, parseISO } from "date-fns";
 
 interface TodaysJournalCardProps {
   entry: JournalEntry | null;
@@ -19,7 +19,7 @@ export const TodaysJournalCard = ({ entry, isLoading }: TodaysJournalCardProps) 
         <CardTitle>Today's Journal</CardTitle>
         {entry && (
           <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(entry.updated_at), { addSuffix: true })}
+            {formatDistanceToNow(parseISO(entry.updated_at), { addSuffix: true })}
           </span>
         )}
       </CardHeader>

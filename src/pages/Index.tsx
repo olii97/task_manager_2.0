@@ -13,13 +13,14 @@ import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
+import { useEffect } from "react";
 
 const Index = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
 
   // Journal entry data
-  const { todayEntry, isLoading: isJournalLoading } = useJournalEntry(userId);
+  const { todayEntry, isLoading: isJournalLoading, refreshTodayEntry } = useJournalEntry(userId);
 
   // Task management
   const {
@@ -43,6 +44,13 @@ const Index = () => {
     queryFn: () => fetchTasks(userId!),
     enabled: !!userId,
   });
+
+  // Refresh journal entry when component mounts
+  useEffect(() => {
+    if (userId) {
+      refreshTodayEntry();
+    }
+  }, [userId]);
 
   return (
     <div className="container py-6">
