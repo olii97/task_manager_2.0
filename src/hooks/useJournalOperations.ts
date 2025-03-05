@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfDay, parseISO } from "date-fns";
-import { JournalEntry, mapDatabaseEntryToJournalEntry } from "@/types/journal";
+import { JournalEntry, ReflectionEntry, mapDatabaseEntryToJournalEntry } from "@/types/journal";
 import { useToast } from "@/components/ui/use-toast";
 
 export const useJournalOperations = (userId: string | undefined) => {
@@ -19,6 +18,7 @@ export const useJournalOperations = (userId: string | undefined) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [newReflection, setNewReflection] = useState("");
 
   // Query for today's entry
   const { isLoading: isTodayLoading, refetch: refetchToday } = useQuery({
@@ -133,6 +133,75 @@ export const useJournalOperations = (userId: string | undefined) => {
     });
   };
 
+  const addReflection = async (entryId: string, content: string) => {
+    if (!userId || !content.trim()) return;
+    
+    try {
+      const timestamp = new Date().toISOString();
+      const newReflectionEntry: ReflectionEntry = {
+        timestamp,
+        content: content.trim()
+      };
+      
+      // First get the current entry to get existing reflections
+      const { data: currentEntry, error: fetchError } = await supabase
+        .from("journal_entries")
+        .select("reflections")
+        .eq("id", entryId)
+        .eq("user_id", userId)
+        .single();
+      
+      if (fetchError) {
+        console.error("Error fetching journal entry for reflection:", fetchError);
+        throw fetchError;
+      }
+      
+      // Prepare the reflections array
+      let reflections: ReflectionEntry[] = [];
+      
+      if (currentEntry.reflections) {
+        reflections = [...currentEntry.reflections];
+      }
+      
+      // Add the new reflection
+      reflections.push(newReflectionEntry);
+      
+      // Update the entry with the new reflections array
+      const { error } = await supabase
+        .from("journal_entries")
+        .update({ 
+          reflections: reflections,
+          updated_at: timestamp
+        })
+        .eq("id", entryId)
+        .eq("user_id", userId);
+      
+      if (error) {
+        console.error("Error updating journal entry with new reflection:", error);
+        throw error;
+      }
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
+      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
+      
+      toast({
+        title: "Reflection Added",
+        description: "Your reflection has been added successfully",
+      });
+      
+      setNewReflection("");
+      
+    } catch (error: any) {
+      console.error("Error adding reflection:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add reflection",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEditEntry = (entry: JournalEntry) => {
     setSelectedEntry(entry);
     setIsEditing(true);
@@ -177,19 +246,16 @@ export const useJournalOperations = (userId: string | undefined) => {
     try {
       console.log("Deleting journal entry with ID:", selectedEntry.id);
       
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from("journal_entries")
         .delete()
         .eq("id", selectedEntry.id)
-        .eq("user_id", userId) // Add user_id check for additional security
-        .select("count");
+        .eq("user_id", userId);
         
       if (error) {
         console.error("Supabase delete error:", error);
         throw error;
       }
-      
-      console.log("Delete response count:", count);
       
       // Invalidate both queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
@@ -235,6 +301,9 @@ export const useJournalOperations = (userId: string | undefined) => {
     isEntriesLoading,
     allEntries,
     streakData,
+    newReflection,
+    setNewReflection,
+    addReflection,
     handleRefresh,
     handleEditEntry,
     handleNewEntry,

@@ -1,400 +1,481 @@
-
 import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
-import { Plus } from "lucide-react";
-import confetti from "canvas-confetti";
-import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/components/AuthProvider";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { JournalEntry, ReflectionEntry, MoodOptions, sliderToScale, scaleToSlider } from "@/types/journal";
-import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { JournalEntry, ReflectionEntry, JournalNutrition, scaleToSlider, sliderToScale, getMoodEmoji, getEnergyLabel } from "@/types/journal";
+import { useNavigate } from "react-router-dom";
+
+const formSchema = z.object({
+  date: z.string(),
+  mood: z.number().min(1).max(5),
+  energy: z.number().min(1).max(5),
+  reflection: z.string().optional(),
+  gratitude: z.string().optional(),
+  challenges: z.string().optional(),
+  intentions: z.string().optional(),
+  nutrition_breakfast: z.string().optional(),
+  nutrition_lunch: z.string().optional(),
+  nutrition_dinner: z.string().optional(),
+  nutrition_snacks: z.string().optional(),
+  nutrition_water: z.string().optional(),
+  nutrition_feelings: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface JournalEntryFormProps {
-  existingEntry?: JournalEntry;
-  onCancel?: () => void;
+  userId: string;
+  entry?: JournalEntry | null;
+  onCancel: () => void;
+  onSave: () => void;
 }
 
-export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormProps) => {
+export function JournalEntryForm({ userId, entry, onCancel, onSave }: JournalEntryFormProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  const [moodValue, setMoodValue] = useState(50);
-  const [energyLevel, setEnergyLevel] = useState(50);
-  const [reflections, setReflections] = useState<ReflectionEntry[]>([{ 
-    timestamp: new Date().toISOString(),
-    content: "" 
-  }]);
-  const [form, setForm] = useState({
-    intentions: "",
-    gratefulness: "",
-    challenges: "",
-    nutrition: {
-      meals: "",
-      feelings: "",
-      calories: "",
-      proteinTarget: false,
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [moodValue, setMoodValue] = useState(scaleToSlider(entry?.mood || 3));
+  const [energyValue, setEnergyValue] = useState(scaleToSlider(entry?.energy || 3));
+
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      date: entry?.date || today,
+      mood: entry?.mood || 3,
+      energy: entry?.energy || 3,
+      reflection: entry?.reflection || "",
+      gratitude: entry?.gratitude || "",
+      challenges: entry?.challenges || "",
+      intentions: entry?.intentions || "",
+      nutrition_breakfast: entry?.nutrition?.breakfast || "",
+      nutrition_lunch: entry?.nutrition?.lunch || "",
+      nutrition_dinner: entry?.nutrition?.dinner || "",
+      nutrition_snacks: entry?.nutrition?.snacks || "",
+      nutrition_water: entry?.nutrition?.water?.toString() || "",
+      nutrition_feelings: entry?.nutrition?.feelings || "",
     },
   });
 
-  // Initialize form with existing entry data if provided
   useEffect(() => {
-    if (existingEntry) {
-      // Convert mood and energy from 1-5 scale to 0-100 for slider
-      setMoodValue(scaleToSlider(existingEntry.mood));
-      setEnergyLevel(scaleToSlider(existingEntry.energy));
-      
-      // Set reflections - use the new format if available, otherwise convert from string
-      if (existingEntry.reflections && existingEntry.reflections.length > 0) {
-        setReflections(existingEntry.reflections);
-      } else if (existingEntry.reflection) {
-        setReflections([{
-          timestamp: existingEntry.created_at,
-          content: existingEntry.reflection
-        }]);
-      }
-      
-      // Set form values
-      setForm({
-        intentions: existingEntry.intentions || "",
-        gratefulness: existingEntry.gratitude || "",
-        challenges: existingEntry.challenges || "",
-        nutrition: {
-          meals: existingEntry.nutrition?.meals || "",
-          feelings: existingEntry.nutrition?.feelings || "",
-          calories: existingEntry.nutrition?.calories?.toString() || "",
-          proteinTarget: existingEntry.nutrition?.protein || false,
-        },
+    // Update form values when entry changes
+    if (entry) {
+      form.reset({
+        date: entry.date,
+        mood: entry.mood,
+        energy: entry.energy,
+        reflection: entry.reflection || "",
+        gratitude: entry.gratitude || "",
+        challenges: entry.challenges || "",
+        intentions: entry.intentions || "",
+        nutrition_breakfast: entry.nutrition?.breakfast || "",
+        nutrition_lunch: entry.nutrition?.lunch || "",
+        nutrition_dinner: entry.nutrition?.dinner || "",
+        nutrition_snacks: entry.nutrition?.snacks || "",
+        nutrition_water: entry.nutrition?.water?.toString() || "",
+        nutrition_feelings: entry.nutrition?.feelings || "",
       });
+      setMoodValue(scaleToSlider(entry.mood));
+      setEnergyValue(scaleToSlider(entry.energy));
     }
-  }, [existingEntry]);
+  }, [entry, form]);
 
-  const handleAddReflection = () => {
-    setReflections([
-      ...reflections,
-      { 
-        timestamp: new Date().toISOString(), 
-        content: "" 
-      }
-    ]);
-  };
-
-  const handleReflectionChange = (index: number, content: string) => {
-    const updatedReflections = [...reflections];
-    updatedReflections[index] = {
-      ...updatedReflections[index],
-      content
-    };
-    setReflections(updatedReflections);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
     
     try {
-      // Filter out empty reflections
-      const filteredReflections = reflections.filter(r => r.content.trim() !== "");
+      const timestamp = new Date().toISOString();
       
-      // Create a legacy reflection string for backward compatibility
-      const legacyReflection = filteredReflections.map(r => r.content).join("\n\n");
-      
-      const entryData = {
-        user_id: session?.user.id,
-        date: existingEntry?.date || new Date().toISOString().split('T')[0],
-        mood: sliderToScale(moodValue),
-        energy: sliderToScale(energyLevel),
-        intentions: form.intentions,
-        gratitude: form.gratefulness,
-        challenges: form.challenges,
-        reflection: legacyReflection, // For backward compatibility
-        reflections: filteredReflections.length > 0 ? filteredReflections : null,
-        nutrition: {
-          meals: form.nutrition.meals,
-          feelings: form.nutrition.feelings,
-          calories: parseInt(form.nutrition.calories) || 0,
-          protein: form.nutrition.proteinTarget,
-        },
+      // Format nutrition data
+      const nutrition: JournalNutrition = {
+        breakfast: data.nutrition_breakfast || undefined,
+        lunch: data.nutrition_lunch || undefined,
+        dinner: data.nutrition_dinner || undefined,
+        snacks: data.nutrition_snacks || undefined,
+        water: data.nutrition_water ? parseInt(data.nutrition_water) : undefined,
+        feelings: data.nutrition_feelings || undefined,
       };
 
-      let error;
-
-      if (existingEntry) {
-        // Update existing entry
-        const { error: updateError } = await supabase
-          .from("journal_entries")
-          .update(entryData)
-          .eq("id", existingEntry.id);
-        error = updateError;
-      } else {
-        // Insert new entry
-        const { error: insertError } = await supabase
-          .from("journal_entries")
-          .insert(entryData);
-        error = insertError;
-      }
-
-      if (error) throw error;
-
-      // Trigger confetti
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-
-      // Invalidate streak cache to recalculate
-      queryClient.invalidateQueries({ queryKey: ["journal-streaks"] });
+      // Prepare reflection data
+      const newReflectionContent = data.reflection?.trim();
+      let reflections: ReflectionEntry[] | null = null;
       
-      // Invalidate journal entries to refetch the list
-      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["journal-entry", entryData.date] });
-
-      toast({
-        title: existingEntry ? "Journal Entry Updated" : "Journal Entry Saved",
-        description: existingEntry 
-          ? "Your journal entry has been updated successfully." 
-          : "Your reflection has been recorded successfully.",
-      });
-
-      // If editing, call onCancel to go back to view mode
-      if (existingEntry && onCancel) {
-        onCancel();
-      } else {
-        // Navigate back to journal page if creating a new entry
-        navigate("/journal");
+      // If we have existing reflections, use those
+      if (entry?.reflections && entry.reflections.length > 0) {
+        reflections = [...entry.reflections];
+        
+        // Only add a new reflection if content is provided and it's different from the last one
+        if (newReflectionContent && 
+            (reflections.length === 0 || 
+             reflections[reflections.length - 1].content !== newReflectionContent)) {
+          reflections.push({
+            timestamp,
+            content: newReflectionContent
+          });
+        }
+      } 
+      // Otherwise, create a new reflections array if we have content
+      else if (newReflectionContent) {
+        reflections = [{
+          timestamp,
+          content: newReflectionContent
+        }];
       }
+
+      if (entry) {
+        // Update existing entry
+        const { error } = await supabase
+          .from("journal_entries")
+          .update({
+            date: data.date,
+            mood: data.mood,
+            energy: data.energy,
+            reflection: data.reflection || null,
+            reflections: reflections,
+            gratitude: data.gratitude || null,
+            challenges: data.challenges || null,
+            intentions: data.intentions || null,
+            nutrition: Object.keys(nutrition).length > 0 ? nutrition : null,
+            updated_at: timestamp,
+          })
+          .eq("id", entry.id)
+          .eq("user_id", userId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Entry Updated",
+          description: "Your journal entry has been updated successfully",
+        });
+      } else {
+        // Create new entry
+        const { error } = await supabase.from("journal_entries").insert({
+          user_id: userId,
+          date: data.date,
+          mood: data.mood,
+          energy: data.energy,
+          reflection: data.reflection || null,
+          reflections: reflections,
+          gratitude: data.gratitude || null,
+          challenges: data.challenges || null,
+          intentions: data.intentions || null,
+          nutrition: Object.keys(nutrition).length > 0 ? nutrition : null,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Entry Created",
+          description: "Your journal entry has been created successfully",
+        });
+      }
+
+      onSave();
+      navigate("/journal");
     } catch (error: any) {
+      console.error("Error saving journal entry:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to save journal entry",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Get the mood emoji for the current slider value
-  const currentMoodEmoji = MoodOptions[sliderToScale(moodValue) - 1];
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="w-full max-w-4xl mx-auto"
-    >
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <Card className="p-6">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-6">
-            {/* Reflections Section - Moved to top for emphasis */}
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Daily Reflections</h3>
-              
-              {reflections.map((reflection, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor={`reflection-${index}`} className="text-sm text-muted-foreground">
-                      {format(new Date(reflection.timestamp), "h:mm a")}
-                    </Label>
-                  </div>
-                  <Textarea
-                    id={`reflection-${index}`}
-                    value={reflection.content}
-                    onChange={(e) => handleReflectionChange(index, e.target.value)}
-                    placeholder={index === 0 ? "What's on your mind today?" : "What's changed since your last reflection?"}
-                    className="min-h-[150px] text-base resize-vertical"
-                  />
-                </div>
-              ))}
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={handleAddReflection}
-                className="flex items-center gap-1 mt-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Another Reflection
-              </Button>
-            </div>
+              <FormField
+                control={form.control}
+                name="mood"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mood: {getMoodEmoji(field.value)} {field.value}/5</FormLabel>
+                    <FormControl>
+                      <Slider
+                        value={[moodValue]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={(value) => {
+                          const scaledValue = sliderToScale(value[0]);
+                          setMoodValue(value[0]);
+                          field.onChange(scaledValue);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>How did you feel today?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h3 className="font-semibold">How are you feeling?</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label>Mood {currentMoodEmoji}</Label>
-                    <span className="text-lg">{currentMoodEmoji}</span>
-                  </div>
-                  <Slider
-                    value={[moodValue]}
-                    onValueChange={([value]) => setMoodValue(value)}
-                    max={100}
-                    step={1}
-                    className="py-4"
-                  />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>😔</span>
-                    <span>😐</span>
-                    <span>🙂</span>
-                    <span>😊</span>
-                    <span>😃</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Energy Level</Label>
-                  <Slider
-                    value={[energyLevel]}
-                    onValueChange={([value]) => setEnergyLevel(value)}
-                    max={100}
-                    step={1}
-                    className="py-4"
-                  />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Very Low</span>
-                    <span>Low</span>
-                    <span>Moderate</span>
-                    <span>High</span>
-                    <span>Very High</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="intentions">Today's Intentions</Label>
-                  <Textarea
-                    id="intentions"
-                    value={form.intentions}
-                    onChange={(e) =>
-                      setForm({ ...form, intentions: e.target.value })
-                    }
-                    placeholder="What do you want to accomplish today?"
-                    className="min-h-[80px] resize-vertical"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gratefulness">Gratitude</Label>
-                  <Textarea
-                    id="gratefulness"
-                    value={form.gratefulness}
-                    onChange={(e) =>
-                      setForm({ ...form, gratefulness: e.target.value })
-                    }
-                    placeholder="What are you grateful for today?"
-                    className="min-h-[80px] resize-vertical"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="challenges">Challenges</Label>
-              <Textarea
-                id="challenges"
-                value={form.challenges}
-                onChange={(e) =>
-                  setForm({ ...form, challenges: e.target.value })
-                }
-                placeholder="What challenges did you face?"
-                className="min-h-[100px] resize-vertical"
+              <FormField
+                control={form.control}
+                name="energy"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Energy: {getEnergyLabel(field.value)} {field.value}/5</FormLabel>
+                    <FormControl>
+                      <Slider
+                        value={[energyValue]}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onValueChange={(value) => {
+                          const scaledValue = sliderToScale(value[0]);
+                          setEnergyValue(value[0]);
+                          field.onChange(scaledValue);
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>How was your energy level today?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            <div className="space-y-4">
-              <h3 className="font-semibold">Nutrition Tracking</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="meals">Meals</Label>
-                <Textarea
-                  id="meals"
-                  value={form.nutrition.meals}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      nutrition: { ...form.nutrition, meals: e.target.value },
-                    })
-                  }
-                  placeholder="What did you eat today?"
-                  className="resize-vertical"
-                />
-              </div>
+            <FormField
+              control={form.control}
+              name="reflection"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reflection</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="What happened today? How do you feel about it?" 
+                      className="min-h-[200px] resize-y" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Write about your day, thoughts, feelings, and experiences.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <div className="space-y-2">
-                <Label htmlFor="feelings">How did you feel after eating?</Label>
-                <Textarea
-                  id="feelings"
-                  value={form.nutrition.feelings}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      nutrition: { ...form.nutrition, feelings: e.target.value },
-                    })
-                  }
-                  placeholder="Describe how you felt after your meals..."
-                  className="resize-vertical"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="calories">Estimated Calories</Label>
-                <Input
-                  id="calories"
-                  type="number"
-                  value={form.nutrition.calories}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      nutrition: { ...form.nutrition, calories: e.target.value },
-                    })
-                  }
-                  placeholder="Enter estimated calories"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="proteinTarget"
-                  checked={form.nutrition.proteinTarget}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      nutrition: {
-                        ...form.nutrition,
-                        proteinTarget: e.target.checked,
-                      },
-                    })
-                  }
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="proteinTarget">Hit protein target for today</Label>
-              </div>
-            </div>
+            <FormField
+              control={form.control}
+              name="gratitude"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gratitude</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="What are you grateful for today?" 
+                      className="min-h-[100px]" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
-        </Card>
 
-        <div className="flex justify-between space-x-4">
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel} className="w-full">
-              Cancel
-            </Button>
-          )}
-          <Button type="submit" className="w-full">
-            {existingEntry ? "Update Journal Entry" : "Save Journal Entry"}
+          <div className="space-y-6">
+            <FormField
+              control={form.control}
+              name="challenges"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Challenges</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="What challenges did you face today?" 
+                      className="min-h-[100px]" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="intentions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Intentions</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="What are your intentions for tomorrow?" 
+                      className="min-h-[100px]" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="nutrition">
+                <AccordionTrigger>Nutrition</AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="nutrition_breakfast"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Breakfast</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="What did you have for breakfast?" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nutrition_lunch"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Lunch</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="What did you have for lunch?" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nutrition_dinner"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dinner</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="What did you have for dinner?" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nutrition_snacks"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Snacks</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="What snacks did you have?" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nutrition_water"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Water (glasses)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="How many glasses of water did you drink?" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nutrition_feelings"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>How did you feel about your eating today?</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Were you satisfied with your nutrition today?" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : entry ? "Update Entry" : "Create Entry"}
           </Button>
         </div>
       </form>
-    </motion.div>
+    </Form>
   );
-};
+}
