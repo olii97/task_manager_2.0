@@ -1,67 +1,109 @@
 
 import { useAuth } from "@/components/AuthProvider";
+import { useQuery } from "@tanstack/react-query";
+import { JournalStreak } from "@/components/JournalStreak";
+import { fetchTasks } from "@/services/tasks";
 import { FeaturedGoal } from "@/components/FeaturedGoal";
 import { WeeklyIntentionsCard } from "@/components/WeeklyIntentionsCard";
+import { TodaysTasks } from "@/components/tasks/TodaysTasks";
+import { TaskForm } from "@/components/tasks/TaskForm";
+import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
 import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
-import { WeightHomeTile } from "@/components/home/WeightHomeTile";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
-import { useWeightEntries } from "@/hooks/useWeightEntries";
-import { WeightLogModal } from "@/components/weight/WeightLogModal";
-import { BodyFeelingModal } from "@/components/weight/BodyFeelingModal";
+import { useTaskManager } from "@/hooks/useTaskManager";
+import { useStravaActivities } from "@/hooks/useStravaActivities";
+import { useEffect } from "react";
 
-export default function Index() {
+const Index = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
-  const { todayEntry, isLoading: journalLoading } = useJournalEntry(userId);
 
-  // Use the weight entries hook for the home page
+  // Journal entry data
+  const { todayEntry, isLoading: isJournalLoading, refreshTodayEntry } = useJournalEntry(userId);
+
+  // Task management
   const {
-    latestEntry,
-    isLatestLoading,
-    logModalOpen,
-    setLogModalOpen,
-    feelingModalOpen,
-    setFeelingModalOpen,
-    handleLogWeight,
-    handleLogFeelingAndWeight
-  } = useWeightEntries(userId);
+    taskFormOpen,
+    setTaskFormOpen,
+    plannerOpen,
+    setPlannerOpen,
+    editingTask,
+    setEditingTask,
+    handleAddTask,
+    handleUpdateTask,
+    handleEditTask
+  } = useTaskManager(userId);
+
+  // Strava activities
+  const { stravaActivities, isLoading: isStravaLoading } = useStravaActivities(userId);
+
+  // Fetch tasks
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks", userId],
+    queryFn: () => fetchTasks(userId!),
+    enabled: !!userId,
+  });
+
+  // Refresh journal entry when component mounts
+  useEffect(() => {
+    if (userId) {
+      refreshTodayEntry();
+    }
+  }, [userId]);
 
   return (
     <div className="container py-6">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <TodaysJournalCard entry={todayEntry} isLoading={journalLoading} />
+      {/* Weekly Intentions at the top */}
+      <div className="mb-6">
         <WeeklyIntentionsCard />
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <FeaturedGoal />
-        
-        {/* Weight Tracking Tile */}
-        <WeightHomeTile 
-          latestEntry={latestEntry}
-          isLoading={isLatestLoading}
-          onLogWeight={() => setLogModalOpen(true)}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Today's Tasks */}
+        <TodaysTasks 
+          onEditTask={handleEditTask} 
+          onPlanTasks={() => setPlannerOpen(true)} 
         />
 
-        {/* Pass empty props to satisfy the type requirements */}
-        <StravaActivitiesCard isLoading={false} activities={[]} />
+        {/* Today's Journal Entry */}
+        <TodaysJournalCard 
+          entry={todayEntry} 
+          isLoading={isJournalLoading} 
+        />
+
+        {/* Featured Goal */}
+        <FeaturedGoal />
       </div>
-      
-      {/* Weight Modals */}
-      <WeightLogModal
-        open={logModalOpen}
-        onClose={() => setLogModalOpen(false)}
-        onSave={handleLogWeight}
+
+      {/* Strava Activities */}
+      <div className="mt-6">
+        <StravaActivitiesCard 
+          activities={stravaActivities || []} 
+          isLoading={isStravaLoading} 
+        />
+      </div>
+
+      {/* Task Form Dialog */}
+      <TaskForm
+        open={taskFormOpen}
+        onClose={() => {
+          setTaskFormOpen(false);
+          setEditingTask(undefined);
+        }}
+        onSave={editingTask ? handleUpdateTask : handleAddTask}
+        task={editingTask}
+        title={editingTask ? "Edit Task" : "Add New Task"}
       />
-      
-      <BodyFeelingModal
-        open={feelingModalOpen}
-        onClose={() => setFeelingModalOpen(false)}
-        onSave={handleLogFeelingAndWeight}
+
+      {/* Task Planner Dialog */}
+      <TaskPlanner
+        open={plannerOpen}
+        onClose={() => setPlannerOpen(false)}
+        tasks={tasks}
       />
     </div>
   );
-}
+};
+
+export default Index;

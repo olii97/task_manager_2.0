@@ -10,7 +10,6 @@ interface StravaActivityListProps {
   onRefresh?: () => void;
   onDisconnect?: () => void;
   onSelectActivity?: (activity: SavedStravaActivity) => void;
-  onSave?: (activity: SavedStravaActivity) => void;
   compact?: boolean;
 }
 
@@ -20,7 +19,6 @@ export function StravaActivityList({
   onRefresh,
   onDisconnect,
   onSelectActivity,
-  onSave,
   compact = false
 }: StravaActivityListProps) {
   if (isLoading) {

@@ -8,8 +8,6 @@ interface StravaConnectFormProps {
   error?: string | null;
   onConnect?: () => void;
   onSuccess?: () => void;
-  setIsConnected: (value: boolean) => void;
-  setStravaError: (value: string | null) => void;
 }
 
 export function StravaConnectForm({ 
@@ -17,9 +15,7 @@ export function StravaConnectForm({
   isConnected = false,
   error = null, 
   onConnect,
-  onSuccess,
-  setIsConnected,
-  setStravaError
+  onSuccess
 }: StravaConnectFormProps) {
   const handleConnect = () => {
     if (onConnect) {
