@@ -1,40 +1,131 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Auth from '@/pages/Auth';
-import Index from '@/pages/Index';
-import Journal from '@/pages/Journal';
-import Tasks from '@/pages/Tasks';
-import Goals from '@/pages/Goals';
-import Intentions from '@/pages/Intentions';
-import IntentionsEdit from '@/pages/IntentionsEdit';
-import Strava from '@/pages/Strava';
-import NotFound from '@/pages/NotFound';
-import DefaultLayout from '@/layouts/DefaultLayout';
-import { Toaster } from "@/components/ui/sonner";
-import Weight from '@/pages/Weight';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/components/AuthProvider";
+import { AppHeader } from "@/components/AppHeader";
+import { MotionConfig } from "framer-motion";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Goals from "./pages/Goals";
+import Journal from "./pages/Journal";
+import Strava from "./pages/Strava";
+import Tasks from "./pages/Tasks";
+import Intentions from "./pages/Intentions";
+import IntentionsEdit from "./pages/IntentionsEdit";
+import NotFound from "./pages/NotFound";
+import { QuarterEndReminder } from "./components/QuarterEndReminder";
+import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
+import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
+import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 
-function App() {
+const queryClient = new QueryClient();
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!session) {
+    return <Navigate to="/auth" />;
+  }
+
   return (
     <>
-      <Router>
-        <Routes>
-          <Route path="/" element={<DefaultLayout />}>
-            <Route path="/" element={<Index />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/goals" element={<Goals />} />
-            <Route path="/intentions" element={<Intentions />} />
-            <Route path="/intentions/edit" element={<IntentionsEdit />} />
-            <Route path="/strava" element={<Strava />} />
-            <Route path="/weight" element={<Weight />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-          <Route path="/auth" element={<Auth />} />
-        </Routes>
-      </Router>
-      <Toaster />
+      <AppHeader />
+      {children}
     </>
   );
-}
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <MotionConfig reducedMotion="user">
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <PomodoroProvider>
+            <QuarterEndReminder />
+            <PomodoroBlurOverlay />
+            <PomodoroTimer />
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/goals"
+                element={
+                  <ProtectedRoute>
+                    <Goals />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/journal"
+                element={
+                  <ProtectedRoute>
+                    <Journal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intentions"
+                element={
+                  <ProtectedRoute>
+                    <Intentions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intentions/edit"
+                element={
+                  <ProtectedRoute>
+                    <IntentionsEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intentions/edit/:id"
+                element={
+                  <ProtectedRoute>
+                    <IntentionsEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/strava"
+                element={
+                  <ProtectedRoute>
+                    <Strava />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tasks"
+                element={
+                  <ProtectedRoute>
+                    <Tasks />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PomodoroProvider>
+        </AuthProvider>
+      </MotionConfig>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;

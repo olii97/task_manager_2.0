@@ -10,13 +10,9 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
 import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
-import { WeightHomeTile } from "@/components/weight/WeightHomeTile";
-import { LogWeightModal } from "@/components/weight/LogWeightModal";
-import { BodyFeelingModal } from "@/components/weight/BodyFeelingModal";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
-import { useWeightEntries } from "@/hooks/useWeightEntries";
 import { useEffect } from "react";
 
 const Index = () => {
@@ -41,18 +37,6 @@ const Index = () => {
 
   // Strava activities
   const { stravaActivities, isLoading: isStravaLoading } = useStravaActivities(userId);
-
-  // Weight entries
-  const {
-    latestEntry,
-    isLatestLoading,
-    logModalOpen,
-    setLogModalOpen,
-    feelingModalOpen,
-    setFeelingModalOpen,
-    logWeight,
-    recordBodyFeeling
-  } = useWeightEntries(userId);
 
   // Fetch tasks
   const { data: tasks = [] } = useQuery({
@@ -88,19 +72,12 @@ const Index = () => {
           isLoading={isJournalLoading} 
         />
 
-        {/* Weight Tracker */}
-        <WeightHomeTile
-          latestEntry={latestEntry}
-          isLoading={isLatestLoading}
-          onLogWeight={() => setLogModalOpen(true)}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Featured Goal */}
         <FeaturedGoal />
+      </div>
 
-        {/* Strava Activities */}
+      {/* Strava Activities */}
+      <div className="mt-6">
         <StravaActivitiesCard 
           activities={stravaActivities || []} 
           isLoading={isStravaLoading} 
@@ -124,19 +101,6 @@ const Index = () => {
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
-      />
-
-      {/* Weight Modals */}
-      <LogWeightModal
-        open={logModalOpen}
-        onClose={() => setLogModalOpen(false)}
-        onSave={logWeight}
-      />
-
-      <BodyFeelingModal
-        open={feelingModalOpen}
-        onClose={() => setFeelingModalOpen(false)}
-        onSave={recordBodyFeeling}
       />
     </div>
   );

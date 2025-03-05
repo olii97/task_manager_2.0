@@ -447,36 +447,6 @@ export type Database = {
         }
         Relationships: []
       }
-      weight_entries: {
-        Row: {
-          body_feeling: string | null
-          created_at: string
-          feeling_note: string | null
-          id: string
-          updated_at: string
-          user_id: string
-          weight: number
-        }
-        Insert: {
-          body_feeling?: string | null
-          created_at?: string
-          feeling_note?: string | null
-          id?: string
-          updated_at?: string
-          user_id: string
-          weight: number
-        }
-        Update: {
-          body_feeling?: string | null
-          created_at?: string
-          feeling_note?: string | null
-          id?: string
-          updated_at?: string
-          user_id?: string
-          weight?: number
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

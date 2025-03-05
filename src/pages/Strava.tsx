@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
@@ -77,17 +78,9 @@ const Strava = () => {
   });
 
   const saveActivityMutation = useMutation({
-    mutationFn: async (activity: SavedStravaActivity) => {
+    mutationFn: async (activity: StravaActivity) => {
       if (!userId) throw new Error("User not authenticated");
-      const stravaActivity: StravaActivity = {
-        ...activity,
-        elapsed_time: activity.elapsed_time,
-        total_elevation_gain: activity.total_elevation_gain || 0,
-        timezone: activity.timezone || '',
-        start_date_local: activity.start_date_local
-      } as StravaActivity;
-      
-      return await saveActivityToDatabase(stravaActivity);
+      return await saveActivityToDatabase(userId, activity);
     },
     onSuccess: () => {
       toast.success("Activity saved to your account");
@@ -176,8 +169,8 @@ const Strava = () => {
     setError(null);
   };
 
-  const handleSelectActivity = (activity: SavedStravaActivity) => {
-    setSelectedActivity(activity);
+  const handleSelectActivity = (activity: StravaActivity) => {
+    setSelectedActivity(toSavedStravaActivity(activity, activity['saved'] as boolean));
     setSearchParams({ activityId: activity.id.toString() });
   };
 
