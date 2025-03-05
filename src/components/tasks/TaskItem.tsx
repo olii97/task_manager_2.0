@@ -10,6 +10,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { FloatingXP } from "@/components/animations/FloatingXP";
+import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 
 interface TaskItemProps {
   task: Task;
@@ -22,6 +23,7 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
   const [showXP, setShowXP] = useState(false);
   const [xpPosition, setXpPosition] = useState({ x: 0, y: 0 });
   const checkboxRef = useRef<HTMLButtonElement>(null);
+  const { startPomodoro } = usePomodoro();
 
   const { mutate: onToggleComplete } = useMutation({
     mutationFn: ({ taskId, isCompleted }: { taskId: string; isCompleted: boolean }) => 
@@ -76,6 +78,10 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
     if (window.confirm("Are you sure you want to delete this task?")) {
       onDeleteTask(task.id);
     }
+  };
+  
+  const handleStartPomodoro = () => {
+    startPomodoro(task);
   };
 
   // Determine energy class based on task energy level
@@ -144,8 +150,9 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-8 w-8 text-energy-high hover:bg-energy-high/10 hover:text-energy-high btn-glow"
-                  title="Focus Mode (Coming Soon)"
+                  className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+                  title="Focus Mode"
+                  onClick={handleStartPomodoro}
                 >
                   <Play className="h-4 w-4" />
                 </Button>

@@ -17,6 +17,9 @@ import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
+import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
+import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
+import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 
 const queryClient = new QueryClient();
 
@@ -46,75 +49,79 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
-          <QuarterEndReminder />
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/goals"
-              element={
-                <ProtectedRoute>
-                  <Goals />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/journal"
-              element={
-                <ProtectedRoute>
-                  <Journal />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/intentions"
-              element={
-                <ProtectedRoute>
-                  <Intentions />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/intentions/edit"
-              element={
-                <ProtectedRoute>
-                  <IntentionsEdit />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/intentions/edit/:id"
-              element={
-                <ProtectedRoute>
-                  <IntentionsEdit />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/strava"
-              element={
-                <ProtectedRoute>
-                  <Strava />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tasks"
-              element={
-                <ProtectedRoute>
-                  <Tasks />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <PomodoroProvider>
+            <QuarterEndReminder />
+            <PomodoroBlurOverlay />
+            <PomodoroTimer />
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/goals"
+                element={
+                  <ProtectedRoute>
+                    <Goals />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/journal"
+                element={
+                  <ProtectedRoute>
+                    <Journal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intentions"
+                element={
+                  <ProtectedRoute>
+                    <Intentions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intentions/edit"
+                element={
+                  <ProtectedRoute>
+                    <IntentionsEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/intentions/edit/:id"
+                element={
+                  <ProtectedRoute>
+                    <IntentionsEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/strava"
+                element={
+                  <ProtectedRoute>
+                    <Strava />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tasks"
+                element={
+                  <ProtectedRoute>
+                    <Tasks />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PomodoroProvider>
         </AuthProvider>
       </MotionConfig>
     </TooltipProvider>
