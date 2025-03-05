@@ -21,7 +21,6 @@ export type Database = {
           mood: number
           nutrition: Json | null
           reflection: string | null
-          reflections: Json | null
           updated_at: string
           user_id: string
         }
@@ -36,7 +35,6 @@ export type Database = {
           mood: number
           nutrition?: Json | null
           reflection?: string | null
-          reflections?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -51,7 +49,6 @@ export type Database = {
           mood?: number
           nutrition?: Json | null
           reflection?: string | null
-          reflections?: Json | null
           updated_at?: string
           user_id?: string
         }

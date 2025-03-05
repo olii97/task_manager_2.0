@@ -1,9 +1,9 @@
+
 import { Json } from "@/integrations/supabase/types";
 
 export interface ReflectionEntry {
   timestamp: string;
   content: string;
-  [key: string]: string; // Add index signature to make it compatible with Json type
 }
 
 export interface JournalNutrition {
