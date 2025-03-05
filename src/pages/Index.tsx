@@ -10,13 +10,17 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
 import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
+import { WeightHomeTile } from "@/components/home/WeightHomeTile";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
+import { useWeightEntries } from "@/hooks/useWeightEntries";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const { session } = useAuth();
+  const navigate = useNavigate();
   const userId = session?.user.id;
 
   // Journal entry data
@@ -37,6 +41,18 @@ const Index = () => {
 
   // Strava activities
   const { stravaActivities, isLoading: isStravaLoading } = useStravaActivities(userId);
+
+  // Weight tracker
+  const {
+    latestEntry,
+    isLatestLoading,
+    logModalOpen,
+    setLogModalOpen,
+    feelingModalOpen,
+    setFeelingModalOpen,
+    handleLogWeight,
+    handleLogFeelingAndWeight,
+  } = useWeightEntries(userId);
 
   // Fetch tasks
   const { data: tasks = [] } = useQuery({
@@ -72,12 +88,19 @@ const Index = () => {
           isLoading={isJournalLoading} 
         />
 
-        {/* Featured Goal */}
-        <FeaturedGoal />
+        {/* Weight Tracker Tile */}
+        <WeightHomeTile 
+          entry={latestEntry} 
+          isLoading={isLatestLoading}
+          onLogWeight={() => setLogModalOpen(true)}
+          onViewProgress={() => navigate('/weight')}
+        />
       </div>
 
-      {/* Strava Activities */}
-      <div className="mt-6">
+      {/* Featured Goal & Strava Activities in a second row */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FeaturedGoal />
+        
         <StravaActivitiesCard 
           activities={stravaActivities || []} 
           isLoading={isStravaLoading} 
@@ -101,6 +124,20 @@ const Index = () => {
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
+      />
+
+      {/* Weight Log Modal */}
+      <WeightLogModal
+        open={logModalOpen}
+        onClose={() => setLogModalOpen(false)}
+        onSave={handleLogWeight}
+      />
+
+      {/* Body Feeling Modal */}
+      <BodyFeelingModal
+        open={feelingModalOpen}
+        onClose={() => setFeelingModalOpen(false)}
+        onSave={handleLogFeelingAndWeight}
       />
     </div>
   );

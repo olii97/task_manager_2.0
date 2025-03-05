@@ -15,6 +15,7 @@ import Strava from "./pages/Strava";
 import Tasks from "./pages/Tasks";
 import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
+import Weight from "./pages/Weight";
 import NotFound from "./pages/NotFound";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
@@ -108,6 +109,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Strava />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/weight"
+                element={
+                  <ProtectedRoute>
+                    <Weight />
                   </ProtectedRoute>
                 }
               />

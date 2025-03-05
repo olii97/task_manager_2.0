@@ -63,6 +63,13 @@ export const AppHeader = () => {
           >
             <Link to="/strava">Strava</Link>
           </Button>
+          <Button 
+            asChild 
+            variant={isActiveRoute("/weight") ? "default" : "ghost"} 
+            size="sm"
+          >
+            <Link to="/weight">Weight</Link>
+          </Button>
         </nav>
       </div>
     </header>
