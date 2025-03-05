@@ -145,7 +145,7 @@ export const useJournalOperations = (userId: string | undefined) => {
   };
 
   const handleDeleteEntry = async () => {
-    if (!selectedEntry) return;
+    if (!selectedEntry || !userId) return;
     
     try {
       const { error } = await supabase
@@ -160,15 +160,21 @@ export const useJournalOperations = (userId: string | undefined) => {
         description: "Your journal entry has been deleted successfully",
       });
       
+      // Invalidate both queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
+      
       // Refetch data and reset selection
-      await refetchAll();
+      await Promise.all([refetchAll(), refetchToday()]);
+      
       setSelectedEntry(null);
       setShowDeleteAlert(false);
       
     } catch (error: any) {
+      console.error("Error deleting journal entry:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete journal entry",
         variant: "destructive",
       });
     }

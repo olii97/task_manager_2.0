@@ -10,7 +10,7 @@ import { JournalHeader } from "@/components/journal/JournalHeader";
 import { JournalSearchBar } from "@/components/journal/JournalSearchBar";
 import { useJournalOperations } from "@/hooks/useJournalOperations";
 import { format } from "date-fns";
-import { PenLine, Trash } from "lucide-react";
+import { PenLine, Trash, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
   AlertDialog,
