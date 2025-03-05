@@ -1,23 +1,17 @@
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { JournalEntryForm } from "@/components/JournalEntryForm";
-import { JournalEntryCard } from "@/components/JournalEntryCard";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Card, CardContent } from "@/components/ui/card";
-import { format } from "date-fns";
-import { JournalEntry, mapDatabaseEntryToJournalEntry } from "@/types/journal";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, Calendar, Search, Plus, Trash, PenLine } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { calculateStreakAndXP } from "@/types/streaks";
 import { JournalEntryList } from "@/components/journal/JournalEntryList";
 import { JournalEntryDetail } from "@/components/journal/JournalEntryDetail";
 import { JournalStreakCards } from "@/components/journal/JournalStreakCards";
-import { useToast } from "@/components/ui/use-toast";
+import { JournalHeader } from "@/components/journal/JournalHeader";
+import { JournalSearchBar } from "@/components/journal/JournalSearchBar";
+import { useJournalOperations } from "@/hooks/useJournalOperations";
+import { format } from "date-fns";
+import { PenLine, Trash } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { 
   AlertDialog,
   AlertDialogContent,
@@ -31,253 +25,47 @@ import {
 
 const Journal = () => {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   const userId = session?.user.id;
-  const today = format(new Date(), "yyyy-MM-dd");
   
-  // State management
-  const [isEditing, setIsEditing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateRange, setDateRange] = useState<Date | undefined>(undefined);
-  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const {
+    today,
+    searchTerm,
+    dateRange,
+    selectedEntry,
+    showDeleteAlert,
+    setShowDeleteAlert,
+    isEditing,
+    isCreatingNew,
+    isEntriesLoading,
+    allEntries,
+    streakData,
+    handleRefresh,
+    handleEditEntry,
+    handleNewEntry,
+    handleCancelEdit,
+    handleSearchChange,
+    handleDateSelect,
+    handleSelectEntry,
+    confirmDeleteEntry,
+    handleDeleteEntry
+  } = useJournalOperations(userId);
 
   useEffect(() => {
     document.title = "Journal | Daily Driver";
   }, []);
 
-  // Query for today's entry
-  const { data: todayEntry, isLoading: isTodayLoading, refetch: refetchToday } = useQuery({
-    queryKey: ["journal-entry", today],
-    queryFn: async () => {
-      if (!userId) return null;
-      
-      const { data, error } = await supabase
-        .from("journal_entries")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("date", today)
-        .maybeSingle();
-      
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching journal entry:", error);
-        throw error;
-      }
-      
-      return data ? mapDatabaseEntryToJournalEntry(data) : null;
-    },
-    enabled: !!userId,
-  });
-
-  // Query for all journal entries
-  const { data: allEntries, isLoading: isEntriesLoading, refetch: refetchAll } = useQuery({
-    queryKey: ["journal-entries", userId, searchTerm, dateRange],
-    queryFn: async () => {
-      if (!userId) return [];
-      
-      let query = supabase
-        .from("journal_entries")
-        .select("*")
-        .eq("user_id", userId)
-        .order("date", { ascending: false });
-      
-      if (searchTerm) {
-        query = query.or(
-          `intentions.ilike.%${searchTerm}%,reflection.ilike.%${searchTerm}%,challenges.ilike.%${searchTerm}%,gratitude.ilike.%${searchTerm}%`
-        );
-      }
-      
-      if (dateRange) {
-        const formattedDate = format(dateRange, "yyyy-MM-dd");
-        query = query.eq("date", formattedDate);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching journal entries:", error);
-        throw error;
-      }
-      
-      return data.map(mapDatabaseEntryToJournalEntry);
-    },
-    enabled: !!userId,
-  });
-
-  // Query for streak data
-  const { data: streakData } = useQuery({
-    queryKey: ["journal-streaks", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      
-      const { data, error } = await supabase
-        .from("journal_entries")
-        .select("date")
-        .eq("user_id", userId)
-        .order("date", { ascending: false });
-      
-      if (error) {
-        console.error("Error fetching streak data:", error);
-        throw error;
-      }
-      
-      return calculateStreakAndXP(data || []);
-    },
-    enabled: !!userId,
-  });
-
-  // Set first entry as selected when data loads
-  useEffect(() => {
-    if (allEntries && allEntries.length > 0 && !selectedEntry) {
-      setSelectedEntry(allEntries[0]);
-    }
-  }, [allEntries, selectedEntry]);
-
-  const handleRefresh = async () => {
-    await Promise.all([refetchToday(), refetchAll()]);
-    toast({
-      title: "Refreshed",
-      description: "Journal entries have been refreshed",
-    });
-  };
-
-  const handleEditEntry = (entry: JournalEntry) => {
-    setSelectedEntry(entry);
-    setIsEditing(true);
-    setIsCreatingNew(false);
-  };
-
-  const handleNewEntry = () => {
-    setIsEditing(true);
-    setSelectedEntry(null);
-    setIsCreatingNew(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    queryClient.invalidateQueries({ queryKey: ["journal-entry", today] });
-    queryClient.invalidateQueries({ queryKey: ["journal-entries"] });
-    setIsCreatingNew(false);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleDateSelect = (date: Date | undefined) => {
-    setDateRange(date);
-  };
-
-  const handleSelectEntry = (entry: JournalEntry) => {
-    setSelectedEntry(entry);
-    setIsEditing(false);
-  };
-
-  const confirmDeleteEntry = () => {
-    setShowDeleteAlert(true);
-  };
-
-  const handleDeleteEntry = async () => {
-    if (!selectedEntry) return;
-    
-    try {
-      const { error } = await supabase
-        .from("journal_entries")
-        .delete()
-        .eq("id", selectedEntry.id);
-        
-      if (error) throw error;
-      
-      toast({
-        title: "Journal Entry Deleted",
-        description: "Your journal entry has been deleted successfully",
-      });
-      
-      // Refetch data and reset selection
-      await refetchAll();
-      setSelectedEntry(null);
-      setShowDeleteAlert(false);
-      
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="container py-6">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-blue-700 mb-2">Daily Journal</h1>
-          <p className="text-muted-foreground">
-            Reflect on your day, capture your thoughts, and track your progress.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={handleNewEntry}
-            className="flex items-center gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            New Entry
-          </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handleRefresh}
-            title="Refresh journal entries"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <JournalHeader onNewEntry={handleNewEntry} onRefresh={handleRefresh} />
 
       {streakData && <JournalStreakCards streakData={streakData} />}
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search journal entries..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={handleSearchChange}
-          />
-        </div>
-        
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              {dateRange ? format(dateRange, "PPP") : "Filter by date"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <CalendarComponent
-              mode="single"
-              selected={dateRange}
-              onSelect={handleDateSelect}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-        
-        {dateRange && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setDateRange(undefined)}
-          >
-            Clear filter
-          </Button>
-        )}
-      </div>
+      <JournalSearchBar 
+        searchTerm={searchTerm}
+        dateRange={dateRange}
+        onSearchChange={handleSearchChange}
+        onDateSelect={handleDateSelect}
+      />
 
       {isCreatingNew ? (
         <div className="w-full max-w-4xl mx-auto animate-fade-in">
