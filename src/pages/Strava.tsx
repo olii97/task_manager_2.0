@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
@@ -14,7 +13,7 @@ import {
   getStravaActivityDetails,
   saveActivityToDatabase,
   deleteActivityFromDatabase
-} from "@/services/stravaService";
+} from "@/services/strava";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";

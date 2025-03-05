@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { DailyWrapup, StravaActivitySummary } from "@/types/wrapup";
@@ -84,9 +83,6 @@ const fetchTodaysStravaActivities = async (userId: string, today: string): Promi
       start_date_local: activity.start_date, // Use start_date as start_date_local
       timezone: "", // Default empty timezone
       utc_offset: 0, // Default value
-      location_city: activity.location_city || null,
-      location_state: activity.location_state || null,
-      location_country: activity.location_country || null,
       average_speed: activity.average_speed || 0,
       max_speed: activity.max_speed || 0,
       average_heartrate: activity.average_heartrate || 0,

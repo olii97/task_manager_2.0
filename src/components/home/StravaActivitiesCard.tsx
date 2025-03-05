@@ -14,7 +14,7 @@ interface StravaActivitiesCardProps {
 export const StravaActivitiesCard = ({ activities, isLoading }: StravaActivitiesCardProps) => {
   // Convert StravaActivity[] to SavedStravaActivity[] for compatibility with StravaActivityList
   const savedActivities: SavedStravaActivity[] = activities.map(activity => 
-    toSavedStravaActivity(activity)
+    toSavedStravaActivity(activity, activity['saved'] as boolean || false)
   );
 
   return (
