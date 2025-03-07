@@ -1,167 +1,129 @@
+import { supabase } from '@/integrations/supabase/client';
+import { Task } from '@/types/task';
 
-import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
-import { DailyWrapup, StravaActivitySummary } from "@/types/wrapup";
-import { JournalEntry } from "@/types/journal";
-import { Task } from "@/types/tasks";
-import { StravaActivity } from "@/types/strava";
-import { formatDistance, formatTime, formatPace } from "@/utils/formatters";
+export const getTasks = async (userId: string): Promise<Task[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-export const generateDailyWrapup = async (userId: string): Promise<DailyWrapup> => {
-  const today = format(new Date(), "yyyy-MM-dd");
-  
-  // Fetch today's journal entry
-  const journalEntry = await fetchTodaysJournalEntry(userId, today);
-  
-  // Fetch today's Strava activities
-  const stravaActivities = await fetchTodaysStravaActivities(userId, today);
-  
-  // Fetch today's tasks
-  const tasks = await fetchTodaysTasks(userId);
-  
-  // Create the daily wrap-up object
-  const wrapup: DailyWrapup = {
-    date: today,
-    journal_entry: journalEntry?.reflection || getJournalContent(journalEntry) || null,
-    strava_activities: stravaActivities.length > 0 
-      ? stravaActivities.map(mapStravaActivityToSummary) 
-      : null,
-    todo_list: {
-      planned: tasks.filter(task => task.is_scheduled_today).map(task => task.title),
-      completed: tasks.filter(task => task.is_completed && task.completion_date && 
-        task.completion_date.startsWith(today)).map(task => task.title)
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      return [];
     }
-  };
-  
-  return wrapup;
+
+    return data as Task[];
+  } catch (error) {
+    console.error('Unexpected error fetching tasks:', error);
+    return [];
+  }
 };
 
-// Helper function to fetch today's journal entry
-const fetchTodaysJournalEntry = async (userId: string, today: string): Promise<JournalEntry | null> => {
-  const { data, error } = await supabase
-    .from("journal_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("date", today)
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-    
-  if (error || !data) {
-    console.error("Error fetching journal entry:", error);
+export const getScheduledTasksForToday = async (userId: string): Promise<Task[]> => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('scheduled_for', today)
+      .order('priority', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching scheduled tasks for today:', error);
+      return [];
+    }
+
+    return data as Task[];
+  } catch (error) {
+    console.error('Unexpected error fetching scheduled tasks for today:', error);
+    return [];
+  }
+};
+
+export const addTask = async (task: Omit<Task, 'id' | 'created_at'>): Promise<Task | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([task])
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error adding task:', error);
+      return null;
+    }
+
+    return data as Task;
+  } catch (error) {
+    console.error('Unexpected error adding task:', error);
     return null;
   }
-  
-  return data as JournalEntry;
 };
 
-// Helper function to fetch today's Strava activities
-const fetchTodaysStravaActivities = async (userId: string, today: string): Promise<StravaActivity[]> => {
-  const { data, error } = await supabase
-    .from("strava_activities")
-    .select("*")
-    .eq("user_id", userId)
-    .gte("start_date", `${today}T00:00:00Z`)
-    .lte("start_date", `${today}T23:59:59Z`)
-    .order("start_date", { ascending: false });
-    
-  if (error || !data) {
-    console.error("Error fetching Strava activities:", error);
-    return [];
+export const updateTask = async (id: string, updates: Partial<Task>): Promise<Task | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(updates)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating task:', error);
+      return null;
+    }
+
+    return data as Task;
+  } catch (error) {
+    console.error('Unexpected error updating task:', error);
+    return null;
   }
-  
-  // Convert database records to StravaActivity type
-  return data.map(activity => {
-    return {
-      id: activity.id,
-      name: activity.name,
-      type: activity.type,
-      distance: activity.distance,
-      moving_time: activity.moving_time,
-      elapsed_time: activity.elapsed_time,
-      total_elevation_gain: activity.total_elevation_gain || 0,
-      start_date: activity.start_date,
-      start_date_local: activity.start_date, // Use start_date as start_date_local
-      timezone: "", // Default empty timezone
-      utc_offset: 0, // Default value
-      location_city: null,
-      location_state: null,
-      location_country: null,
-      average_speed: activity.average_speed || 0,
-      max_speed: activity.max_speed || 0,
-      average_heartrate: activity.average_heartrate || 0,
-      max_heartrate: activity.max_heartrate || 0,
-      map: {
-        id: activity.map_data ? JSON.parse(activity.map_data).id : '',
-        summary_polyline: activity.summary_polyline || '',
-        resource_state: 2,
-      },
-      trainer: false,
-      commute: false,
-      manual: false,
-      private: false,
-      visibility: '',
-      average_cadence: activity.average_cadence || 0,
-      average_watts: activity.average_watts || 0,
-      kilojoules: activity.kilojoules || 0,
-      description: null,
-      gear_id: activity.gear_id,
-      average_temp: 0,
-      average_watts_weighted: activity.weighted_average_watts || 0,
-      display_hide_heartrate_zone: false,
-    } as StravaActivity;
-  });
 };
 
-// Helper function to fetch today's tasks
-const fetchTodaysTasks = async (userId: string): Promise<Task[]> => {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("user_id", userId);
-    
-  if (error || !data) {
-    console.error("Error fetching tasks:", error);
-    return [];
+export const deleteTask = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting task:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Unexpected error deleting task:', error);
+    return false;
   }
-  
-  return data as Task[];
 };
 
-// Helper function to map Strava activity to summary
-const mapStravaActivityToSummary = (activity: StravaActivity): StravaActivitySummary => {
-  return {
-    activity_type: activity.type,
-    distance_km: parseFloat((activity.distance / 1000).toFixed(2)),
-    duration: formatTime(activity.moving_time),
-    pace: formatPace(activity.average_speed)
-  };
-};
+export const wrapupDay = async (userId: string): Promise<{ task_ids: string }> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('wrapup-day', {
+      body: { user_id: userId },
+    });
 
-// Helper function to get content from journal entry
-const getJournalContent = (entry: JournalEntry | null): string | null => {
-  if (!entry) return null;
-  
-  // If we have reflections array, concatenate them
-  if (entry.reflections && entry.reflections.length > 0) {
-    return entry.reflections.map(r => r.content).join("\n\n");
+    if (error) {
+      console.error('Function invocation error:', error);
+      throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error('No data received from function');
+    }
+
+    const taskIds = String(data.task_ids);
+
+    return { task_ids: taskIds };
+  } catch (error) {
+    console.error('Error in wrapupDay:', error);
+    throw error;
   }
-  
-  // Otherwise use the main reflection
-  return entry.reflection || null;
-};
-
-// Function to download the wrap-up as a JSON file
-export const downloadWrapupAsJson = (wrapup: DailyWrapup) => {
-  const fileName = `daily-wrapup-${wrapup.date}.json`;
-  const jsonStr = JSON.stringify(wrapup, null, 2);
-  const blob = new Blob([jsonStr], { type: "application/json" });
-  
-  // Create a download link and trigger it
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 };
