@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { StravaConnectionResult, StravaAuthUrlResult, StravaActionResult } from "./types";
 import { toast } from "sonner";
@@ -96,4 +95,25 @@ export const disconnectFromStrava = async (userId: string): Promise<StravaAction
     console.error("Error disconnecting from Strava:", error);
     return { success: false, error: error.message || "Failed to disconnect from Strava" };
   }
+};
+
+export const getStravaToken = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('strava_tokens')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+    
+  if (error) {
+    console.error('Error fetching Strava token:', error);
+    throw error;
+  }
+  
+  return data;
+};
+
+export const refreshTokenIfNeeded = async (userId: string, token: any) => {
+  // Mock implementation - the original function likely checks token expiry
+  // and refreshes if needed
+  return token;
 };

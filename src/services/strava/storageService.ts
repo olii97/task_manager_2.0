@@ -1,190 +1,156 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { StravaActivity, SavedStravaActivity } from '@/types/strava';
-import { toast } from '@/components/ui/use-toast';
-
-interface StravaActivitiesResult {
-  activities: SavedStravaActivity[];
-  error: string | null;
-}
 
 /**
- * Gets stored activity IDs for a user
+ * Saves a Strava activity to the database
  */
-export const getStoredActivityIds = async (userId: string): Promise<number[]> => {
+export const saveStravaActivity = async (userId: string, activity: SavedStravaActivity): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
-      .from("strava_activities")
-      .select("id")
-      .eq("user_id", userId);
+    console.log("Saving activity:", activity.id);
     
-    if (error) {
-      console.error("Error fetching stored activity IDs:", error);
-      return [];
+    // Check if activity already exists
+    const { data: existingActivity, error: selectError } = await supabase
+      .from('strava_activities')
+      .select('id')
+      .eq('id', activity.id)
+      .single();
+      
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error("Error checking existing activity:", selectError);
+      return false;
     }
     
-    return data ? data.map(item => Number(item.id)) : [];
+    const { data, error } = await supabase
+      .from('strava_activities')
+      .upsert({
+        id: activity.id,
+        user_id: userId,
+        name: activity.name,
+        type: activity.type || activity.sport_type,
+        distance: activity.distance,
+        moving_time: activity.moving_time,
+        elapsed_time: activity.elapsed_time,
+        total_elevation_gain: activity.total_elevation_gain,
+        start_date: activity.start_date,
+        average_speed: activity.average_speed,
+        max_speed: activity.max_speed,
+        average_heartrate: activity.average_heartrate,
+        max_heartrate: activity.max_heartrate,
+        summary_polyline: activity.map?.summary_polyline || '',
+        map_data: JSON.stringify(activity.map || {}),
+        // Add any other fields you want to store
+      });
+
+    if (error) {
+      console.error("Error saving activity:", error);
+      return false;
+    }
+
+    console.log("Activity saved successfully:", activity.id);
+    return true;
   } catch (error) {
-    console.error("Error in getStoredActivityIds:", error);
-    return [];
+    console.error("Error saving activity:", error);
+    return false;
   }
 };
 
 /**
- * Gets activities stored in the database
- */
-export const getStoredStravaActivities = async (userId: string): Promise<StravaActivitiesResult> => {
-  try {
-    const { data, error } = await supabase
-      .from("strava_activities")
-      .select("*")
-      .eq("user_id", userId);
-    
-    if (error) {
-      console.error("Error fetching stored activities:", error);
-      throw error;
-    }
-    
-    const formattedActivities: SavedStravaActivity[] = data.map(activity => ({
-      id: Number(activity.id),
-      name: activity.name,
-      type: activity.type,
-      sport_type: activity.type,
-      distance: activity.distance,
-      moving_time: activity.moving_time,
-      elapsed_time: activity.elapsed_time,
-      total_elevation_gain: activity.total_elevation_gain || 0,
-      start_date: activity.start_date,
-      start_date_local: activity.start_date, // Use the same as start_date
-      timezone: "", // Default empty
-      utc_offset: 0, // Default to 0
-      location_city: null,
-      location_state: null,
-      location_country: null,
-      average_speed: activity.average_speed || 0,
-      max_speed: activity.max_speed || 0,
-      average_heartrate: activity.average_heartrate || 0,
-      max_heartrate: activity.max_heartrate || 0,
-      map: {
-        id: activity.map_polyline ? `map_${activity.id}` : "",
-        summary_polyline: activity.summary_polyline || "",
-        resource_state: 2
-      },
-      saved: true
-    }));
-
-    return { activities: formattedActivities, error: null };
-  } catch (error: any) {
-    console.error("Error in getStoredStravaActivities:", error);
-    return { activities: [], error: error.message || "Failed to fetch stored activities" };
-  }
-};
-
-/**
- * Gets a single activity by ID
+ * Retrieves a Strava activity by its ID
  */
 export const getStravaActivityById = async (userId: string, activityId: number): Promise<SavedStravaActivity | null> => {
   try {
+    console.log(`Getting activity by id ${activityId}`);
+    
     const { data, error } = await supabase
-      .from("strava_activities")
-      .select("*")
-      .eq("id", activityId)
-      .eq("user_id", userId);
-    
+      .from('strava_activities')
+      .select('*')
+      .eq('id', activityId)
+      .eq('user_id', userId)
+      .single();
+
     if (error) {
-      console.error("Error fetching activity by ID:", error);
-      return null;
+      // If no data is found, it's not an error, just return null
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error("Error fetching activity:", error);
+      throw error;
     }
-    
-    if (!data || data.length === 0) {
-      console.log(`No stored activity found with ID ${activityId}`);
-      return null;
-    }
-    
-    const activity = data[0];
-    
-    return {
-      id: Number(activity.id),
-      name: activity.name,
-      type: activity.type,
-      sport_type: activity.type,
-      distance: activity.distance,
-      moving_time: activity.moving_time,
-      elapsed_time: activity.elapsed_time,
-      total_elevation_gain: activity.total_elevation_gain || 0,
-      start_date: activity.start_date,
-      start_date_local: activity.start_date, // Use the same as start_date
-      timezone: "", // Default empty
-      utc_offset: 0, // Default to 0
-      location_city: null,
-      location_state: null,
-      location_country: null,
-      average_speed: activity.average_speed || 0,
-      max_speed: activity.max_speed || 0,
-      average_heartrate: activity.average_heartrate || 0,
-      max_heartrate: activity.max_heartrate || 0,
-      map: {
-        id: activity.map_polyline ? `map_${activity.id}` : "",
-        summary_polyline: activity.summary_polyline || "",
-        resource_state: 2
-      },
-      saved: true
-    };
+
+    return data as SavedStravaActivity;
   } catch (error) {
-    console.error("Error in getStravaActivityById:", error);
+    console.error("Error fetching activity:", error);
     return null;
   }
 };
 
 /**
- * Saves a Strava activity to the database
+ * Retrieves all stored activity IDs for a user
  */
-export const saveStravaActivity = async (userId: string, activity: StravaActivity): Promise<boolean> => {
+export const getStoredActivityIds = async (userId: string): Promise<number[]> => {
   try {
-    console.log(`Saving activity ${activity.id} for user ${userId}`);
+    console.log("Getting stored activity ids");
     
-    const { error } = await supabase.from("strava_activities").upsert({
+    const { data, error } = await supabase
+      .from('strava_activities')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error("Error fetching activity IDs:", error);
+      throw error;
+    }
+
+    // Extract and return only the IDs
+    const activityIds = data.map(activity => activity.id);
+    return activityIds;
+  } catch (error) {
+    console.error("Error fetching activity IDs:", error);
+    return [];
+  }
+};
+
+/**
+ * Retrieves all stored activities for a user
+ */
+export const getStoredStravaActivities = async (userId: string): Promise<SavedStravaActivity[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('strava_activities')
+      .select('*')
+      .eq('user_id', userId);
+      
+    if (error) {
+      console.error("Error fetching stored activities:", error);
+      throw error;
+    }
+    
+    return data.map((activity: any) => ({
       id: activity.id,
-      user_id: userId,
       name: activity.name,
       type: activity.type,
+      sport_type: activity.type,
       distance: activity.distance,
       moving_time: activity.moving_time,
       elapsed_time: activity.elapsed_time,
       total_elevation_gain: activity.total_elevation_gain,
       start_date: activity.start_date,
+      start_date_local: activity.start_date,
+      timezone: "",
+      utc_offset: 0,
       average_speed: activity.average_speed,
       max_speed: activity.max_speed,
       average_heartrate: activity.average_heartrate,
       max_heartrate: activity.max_heartrate,
-      summary_polyline: activity.map?.summary_polyline || "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-    
-    if (error) {
-      console.error("Error saving activity:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save activity",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    toast({
-      title: "Success",
-      description: "Activity saved successfully"
-    });
-    
-    return true;
+      map: {
+        id: "",
+        summary_polyline: activity.summary_polyline || "",
+        resource_state: 2
+      },
+      saved: true
+    }));
   } catch (error) {
-    console.error("Error in saveStravaActivity:", error);
-    toast({
-      title: "Error",
-      description: "An unexpected error occurred while saving the activity",
-      variant: "destructive"
-    });
-    return false;
+    console.error("Error fetching stored activities:", error);
+    return [];
   }
 };

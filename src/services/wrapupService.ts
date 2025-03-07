@@ -1,151 +1,140 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { DailySummary } from '@/types/wrapup';
 import { format } from 'date-fns';
-import { DailySummary, DailySummaryDownloadResult } from '@/types/wrapup';
-import { Task } from '@/types/tasks';
-import { JournalEntry } from '@/types/journal';
-import { SavedStravaActivity } from '@/types/strava';
-import { toast } from '@/components/ui/use-toast';
+
+export interface PomodoroStats {
+  completed_count: number;
+  total_minutes: number;
+  streak_days: number;
+}
 
 /**
- * Generates a daily summary for the specified date
+ * Gets daily summary for a specific date
  */
-export const generateDailyWrapup = async (userId: string, date: string): Promise<DailySummary | null> => {
+export const getDailySummary = async (userId: string, date: Date): Promise<DailySummary | null> => {
   try {
-    console.log(`Generating daily wrapup for ${date}`);
+    const dateStr = format(date, 'yyyy-MM-dd');
     
-    // Fetch journal entry for the day
-    const { data: journalEntries, error: journalError } = await supabase
-      .from("journal_entries")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", date);
-    
-    if (journalError) {
-      console.error("Error fetching journal entries:", journalError);
-      throw journalError;
+    // Check if we already have a stored summary
+    const { data: existingSummary } = await supabase
+      .from('daily_summaries')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', dateStr)
+      .single();
+      
+    if (existingSummary) {
+      return existingSummary as DailySummary;
     }
     
-    // Get completed tasks for the day
-    const { data: completedTasks, error: tasksError } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("is_completed", true)
-      .gte("completion_date", `${date}T00:00:00`)
-      .lt("completion_date", `${date}T23:59:59`);
-    
-    if (tasksError) {
-      console.error("Error fetching completed tasks:", tasksError);
-      throw tasksError;
-    }
-    
-    // Get workouts for the day
-    const { data: workouts, error: workoutsError } = await supabase
-      .from("strava_activities")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("start_date", `${date}T00:00:00`)
-      .lt("start_date", `${date}T23:59:59`);
-    
-    if (workoutsError) {
-      console.error("Error fetching workouts:", workoutsError);
-      throw workoutsError;
-    }
-    
-    const journalEntry = journalEntries && journalEntries.length > 0 ? journalEntries[0] as unknown as JournalEntry : null;
-    const tasks = completedTasks as unknown as Task[];
-    
-    // Convert database workouts to SavedStravaActivity format
-    const formattedWorkouts = workouts ? workouts.map(workout => ({
-      id: Number(workout.id),
-      name: workout.name,
-      type: workout.type,
-      sport_type: workout.type,
-      distance: workout.distance,
-      moving_time: workout.moving_time,
-      elapsed_time: workout.elapsed_time,
-      total_elevation_gain: workout.total_elevation_gain || 0,
-      start_date: workout.start_date,
-      start_date_local: workout.start_date, // Use the same as start_date
-      timezone: "", // Default empty
-      utc_offset: 0, // Default to 0
-      location_city: null,
-      location_state: null,
-      location_country: null,
-      average_speed: workout.average_speed || 0,
-      max_speed: workout.max_speed || 0,
-      average_heartrate: workout.average_heartrate || 0,
-      max_heartrate: workout.max_heartrate || 0,
-      map: {
-        id: workout.map_polyline ? `map_${workout.id}` : "",
-        summary_polyline: workout.summary_polyline || "",
-        resource_state: 2
-      },
-      saved: true
-    })) : [];
-    
-    // Calculate stats
-    const totalWorkoutMinutes = formattedWorkouts.reduce((total, workout) => total + Math.floor(workout.moving_time / 60), 0);
-    
+    // Get completed tasks
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .gte('completed_at', `${dateStr}T00:00:00`)
+      .lte('completed_at', `${dateStr}T23:59:59`);
+      
+    // Get journal entry
+    const { data: journalEntries } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', dateStr);
+      
+    // Get pomodoro sessions
+    const { data: pomodoroSessions } = await supabase
+      .from('pomodoro_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .gte('start_time', `${dateStr}T00:00:00`)
+      .lte('start_time', `${dateStr}T23:59:59`);
+      
+    // Get strava activities
+    const { data: stravaActivities } = await supabase
+      .from('strava_activities')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('start_date', `${dateStr}T00:00:00`)
+      .lte('start_date', `${dateStr}T23:59:59`);
+      
+    // Create summary
     const summary: DailySummary = {
-      date: date,
-      journalEntry: journalEntry,
-      completedTasks: tasks,
-      workouts: formattedWorkouts as SavedStravaActivity[],
-      stats: {
-        tasksCompleted: tasks.length,
-        moodScore: journalEntry?.mood || null,
-        energyLevel: journalEntry?.energy || null,
-        workoutCount: formattedWorkouts.length,
-        totalWorkoutMinutes: totalWorkoutMinutes
-      }
+      id: crypto.randomUUID(),
+      user_id: userId,
+      date: dateStr,
+      tasks_completed: tasks?.length || 0,
+      tasks: tasks || [],
+      journal_entry: journalEntries?.length ? journalEntries[0] : null,
+      pomodoro_sessions: pomodoroSessions?.length || 0,
+      pomodoro_minutes: pomodoroSessions?.reduce((total, session) => total + (session.duration_minutes || 0), 0) || 0,
+      strava_activities: stravaActivities?.map(activity => ({
+        id: activity.id,
+        name: activity.name,
+        type: activity.type,
+        distance: activity.distance,
+        moving_time: activity.moving_time,
+        elapsed_time: activity.elapsed_time,
+        total_elevation_gain: activity.total_elevation_gain,
+        average_speed: activity.average_speed,
+        max_speed: activity.max_speed,
+        average_heartrate: activity.average_heartrate,
+        max_heartrate: activity.max_heartrate,
+        summary_polyline: activity.summary_polyline || ''
+      })) || [],
+      created_at: new Date().toISOString()
     };
     
     // Save the summary to the database for future reference
-    await supabase.from("daily_summaries").upsert({
-      user_id: userId,
-      date: date,
-      summary_data: summary,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-    
+    await supabase
+      .from('daily_summaries')
+      .insert(summary);
+      
     return summary;
   } catch (error) {
-    console.error("Error generating daily wrapup:", error);
+    console.error('Error generating daily summary:', error);
     return null;
   }
 };
 
 /**
- * Downloads the daily summary as a JSON file
+ * Gets pomodoro stats for a user
  */
-export const downloadWrapupAsJson = (summary: DailySummary): void => {
+export const getPomodoroStats = async (userId: string): Promise<PomodoroStats> => {
   try {
-    // Create a blob with the data
-    const blob = new Blob([JSON.stringify(summary, null, 2)], { type: 'application/json' });
+    // Get total completed pomodoros
+    const { count: completedCount } = await supabase
+      .from('pomodoro_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('completed', true);
+      
+    // Get total minutes
+    const { data: sessions } = await supabase
+      .from('pomodoro_sessions')
+      .select('duration_minutes')
+      .eq('user_id', userId)
+      .eq('completed', true);
     
-    // Create a link element to trigger the download
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `daily-summary-${summary.date}.json`;
+    const totalMinutes = sessions?.reduce((total, session) => total + (session.duration_minutes || 0), 0) || 0;
     
-    // Append to the document, click, and remove
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // Simplified streak calculation (dummy implementation)
+    const streakDays = 1;
     
-    toast({
-      title: "Success",
-      description: "Daily summary downloaded successfully"
-    });
+    return {
+      completed_count: completedCount || 0,
+      total_minutes: totalMinutes,
+      streak_days: streakDays
+    };
   } catch (error) {
-    console.error("Error downloading wrapup:", error);
-    toast({
-      title: "Error",
-      description: "Failed to download summary",
-      variant: "destructive"
-    });
+    console.error('Error getting pomodoro stats:', error);
+    return {
+      completed_count: 0,
+      total_minutes: 0,
+      streak_days: 0
+    };
   }
 };
