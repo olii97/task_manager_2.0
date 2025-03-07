@@ -7,8 +7,8 @@ export const markTaskComplete = async (taskId: string): Promise<{ success: boole
     const { error } = await supabase
       .from('tasks')
       .update({ 
-        completed: true,
-        completed_at: new Date().toISOString()
+        is_completed: true,
+        completion_date: new Date().toISOString()
       })
       .eq('id', taskId);
 
@@ -40,7 +40,11 @@ export const getTasks = async (userId: string): Promise<Task[]> => {
       return [];
     }
 
-    return data || [];
+    // Convert database priority to Task priority (1|2|3|4)
+    return (data || []).map(task => ({
+      ...task,
+      priority: task.priority >= 1 && task.priority <= 4 ? (task.priority as 1|2|3|4) : 4
+    }));
   } catch (error) {
     console.error('Unexpected error fetching tasks:', error);
     return [];
@@ -51,7 +55,16 @@ export const createTask = async (task: Omit<Task, 'id' | 'created_at' | 'updated
   try {
     const { data, error } = await supabase
       .from('tasks')
-      .insert([task])
+      .insert([{
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        energy_level: task.energy_level,
+        is_completed: task.is_completed,
+        is_scheduled_today: task.is_scheduled_today,
+        user_id: task.user_id,
+        completion_date: task.completion_date
+      }])
       .select()
       .single();
 
@@ -60,7 +73,13 @@ export const createTask = async (task: Omit<Task, 'id' | 'created_at' | 'updated
       return { task: null, error: error.message };
     }
 
-    return { task: data, error: null };
+    // Convert to Task type with correct priority typing
+    const typedTask: Task = {
+      ...data,
+      priority: data.priority >= 1 && data.priority <= 4 ? (data.priority as 1|2|3|4) : 4
+    };
+
+    return { task: typedTask, error: null };
   } catch (error) {
     console.error('Unexpected error creating task:', error);
     return { 

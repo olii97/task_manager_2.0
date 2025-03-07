@@ -14,39 +14,13 @@ export const addUserXP = async (
   reason?: string
 ): Promise<{ success: boolean; error: string | null }> => {
   try {
-    // First get the current XP
-    const { data: userData, error: fetchError } = await supabase
-      .from('profiles')
-      .select('xp')
-      .eq('id', userId)
-      .single();
-
-    if (fetchError) {
-      console.error('Error fetching user XP:', fetchError);
-      return { success: false, error: fetchError.message };
-    }
-
-    const currentXP = userData?.xp || 0;
-    const newXP = currentXP + amount;
-
-    // Update the XP
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({ xp: newXP })
-      .eq('id', userId);
-
-    if (updateError) {
-      console.error('Error updating user XP:', updateError);
-      return { success: false, error: updateError.message };
-    }
-
     // Log the XP gain
     const { error: logError } = await supabase
-      .from('xp_history')
+      .from('user_xp')
       .insert([
         {
           user_id: userId,
-          amount,
+          xp_amount: amount,
           reason: reason || 'XP added',
           created_at: new Date().toISOString()
         }
@@ -54,7 +28,7 @@ export const addUserXP = async (
 
     if (logError) {
       console.error('Error logging XP gain:', logError);
-      // We don't return an error here because the XP was already added successfully
+      return { success: false, error: logError.message };
     }
 
     return { success: true, error: null };
@@ -74,18 +48,20 @@ export const addUserXP = async (
  */
 export const getUserXP = async (userId: string): Promise<number | null> => {
   try {
+    // Get sum of all XP awarded to user
     const { data, error } = await supabase
-      .from('profiles')
-      .select('xp')
-      .eq('id', userId)
-      .single();
+      .from('user_xp')
+      .select('xp_amount')
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error fetching user XP:', error);
       return null;
     }
 
-    return data?.xp || 0;
+    // Sum up all XP amounts
+    const totalXP = data.reduce((sum, item) => sum + (item.xp_amount || 0), 0);
+    return totalXP;
   } catch (error) {
     console.error('Unexpected error fetching user XP:', error);
     return null;
@@ -100,7 +76,7 @@ export const getUserXP = async (userId: string): Promise<number | null> => {
 export const getXPHistory = async (userId: string): Promise<any[]> => {
   try {
     const { data, error } = await supabase
-      .from('xp_history')
+      .from('user_xp')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });

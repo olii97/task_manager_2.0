@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { generateDailyWrapup, downloadWrapupAsJson } from "@/services/wrapupService";
+import { getDailySummary } from "@/services/wrapupService";
 
 interface WrapUpDayButtonProps {
   userId: string | undefined;
@@ -26,10 +26,26 @@ export const WrapUpDayButton = ({ userId }: WrapUpDayButtonProps) => {
     setIsLoading(true);
     try {
       // Generate daily wrap-up data
-      const wrapupData = await generateDailyWrapup(userId);
+      const today = new Date();
+      const summary = await getDailySummary(userId, today);
       
-      // Download the data as JSON
-      downloadWrapupAsJson(wrapupData);
+      if (!summary) {
+        throw new Error("Failed to generate daily summary");
+      }
+      
+      // Download the summary as JSON
+      const jsonString = JSON.stringify(summary, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      // Create a link and trigger download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `daily-summary-${summary.date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
       toast({
         title: "Day Wrapped Up!",

@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Task } from '@/types/tasks';
-import { JournalEntry } from '@/types/journal';
+import { JournalEntry, mapDatabaseEntryToJournalEntry } from '@/types/journal';
 import { StravaActivity } from '@/types/strava';
 
 export interface DailySummary {
@@ -17,7 +17,7 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
     const dateString = format(date, 'yyyy-MM-dd');
     
     // Get journal entries for the day
-    const { data: journalEntries, error: journalError } = await supabase
+    const { data: journalEntriesData, error: journalError } = await supabase
       .from('journal_entries')
       .select('*')
       .eq('user_id', userId)
@@ -29,12 +29,12 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
     }
     
     // Get completed tasks for the day
-    const { data: completedTasks, error: tasksError } = await supabase
+    const { data: completedTasksData, error: tasksError } = await supabase
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
-      .eq('completed', true)
-      .like('completed_at', `${dateString}%`);
+      .eq('is_completed', true)
+      .like('completion_date', `${dateString}%`);
     
     if (tasksError) {
       console.error('Error fetching completed tasks:', tasksError);
@@ -42,28 +42,49 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
     }
     
     // Get Strava activities for the day
-    const { data: stravaActivities, error: stravaError } = await supabase
+    const { data: stravaActivitiesData, error: stravaError } = await supabase
       .from('strava_activities')
-      .select('data')
+      .select('*')
       .eq('user_id', userId)
-      .like('created_at', `${dateString}%`);
+      .like('start_date', `${dateString}%`);
     
     if (stravaError) {
       console.error('Error fetching Strava activities:', stravaError);
       return null;
     }
     
-    // Transform Strava activities to match the expected format
-    const transformedActivities = stravaActivities.map(record => ({
-      ...record.data,
-      saved: true
+    // Convert raw database entries to proper typed objects
+    const journalEntries = (journalEntriesData || []).map(entry => mapDatabaseEntryToJournalEntry(entry));
+    
+    const completedTasks = (completedTasksData || []).map(task => ({
+      ...task,
+      priority: task.priority >= 1 && task.priority <= 4 ? (task.priority as 1|2|3|4) : 4
     }));
+    
+    // Transform Strava activities
+    const stravaActivities = (stravaActivitiesData || []).map(activity => ({
+      id: activity.id,
+      name: activity.name,
+      distance: activity.distance,
+      moving_time: activity.moving_time,
+      elapsed_time: activity.elapsed_time,
+      type: activity.type,
+      sport_type: activity.type,
+      start_date: activity.start_date,
+      start_date_local: activity.start_date,
+      total_elevation_gain: activity.total_elevation_gain || 0,
+      average_speed: activity.average_speed || 0,
+      max_speed: activity.max_speed || 0,
+      timezone: "",
+      utc_offset: 0,
+      saved: true
+    } as StravaActivity));
     
     return {
       date: dateString,
-      journalEntries: journalEntries || [],
-      completedTasks: completedTasks || [],
-      stravaActivities: transformedActivities || []
+      journalEntries,
+      completedTasks,
+      stravaActivities
     };
   } catch (error) {
     console.error('Unexpected error getting daily summary:', error);
@@ -78,8 +99,9 @@ export const saveDailySummary = async (userId: string, summary: {
   date: string
 }): Promise<{ success: boolean, error: string | null }> => {
   try {
+    // Since there's no daily_summaries table yet, we'll save this as a journal entry instead
     const { error } = await supabase
-      .from('daily_summaries')
+      .from('journal_entries')
       .insert([{
         user_id: userId,
         date: summary.date,

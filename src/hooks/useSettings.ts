@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +27,7 @@ export const useSettings = () => {
         setLoading(true);
         const { data, error } = await supabase
           .from('profiles')
-          .select('work_duration, break_duration, long_break_duration, sessions_before_long_break, id, created_at, updated_at')
+          .select('id, created_at, updated_at')
           .eq('id', session.user.id)
           .single();
 
@@ -37,10 +36,10 @@ export const useSettings = () => {
         // If settings are found, use them, otherwise use defaults
         if (data) {
           setSettings({
-            work_duration: data.work_duration || DEFAULT_WORK_DURATION,
-            break_duration: data.break_duration || DEFAULT_BREAK_DURATION,
-            long_break_duration: data.long_break_duration || DEFAULT_LONG_BREAK_DURATION,
-            sessions_before_long_break: data.sessions_before_long_break || DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
+            work_duration: DEFAULT_WORK_DURATION,
+            break_duration: DEFAULT_BREAK_DURATION,
+            long_break_duration: DEFAULT_LONG_BREAK_DURATION,
+            sessions_before_long_break: DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
             id: data.id,
             created_at: data.created_at,
             updated_at: data.updated_at
@@ -68,40 +67,15 @@ export const useSettings = () => {
     if (!session?.user?.id || !settings) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          work_duration: updatedSettings.work_duration !== undefined 
-            ? updatedSettings.work_duration 
-            : settings.work_duration,
-          break_duration: updatedSettings.break_duration !== undefined 
-            ? updatedSettings.break_duration 
-            : settings.break_duration,
-          long_break_duration: updatedSettings.long_break_duration !== undefined 
-            ? updatedSettings.long_break_duration 
-            : settings.long_break_duration,
-          sessions_before_long_break: updatedSettings.sessions_before_long_break !== undefined 
-            ? updatedSettings.sessions_before_long_break 
-            : settings.sessions_before_long_break
-        })
-        .eq('id', session.user.id);
-
-      if (error) {
-        console.error('Error updating settings:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to update settings',
-          variant: 'destructive'
-        });
-        return;
-      }
-
+      // Since profiles table doesn't have these columns yet, we'll simply update local state
+      // and keep the UI working until the database is updated
+      
       // Update local state
       setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
       
       toast({
         title: 'Settings updated',
-        description: 'Your preferences have been saved',
+        description: 'Your preferences have been saved in your local session',
       });
     } catch (error) {
       console.error('Error updating settings:', error);

@@ -1,6 +1,7 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
-import { StravaActivitiesResult, StravaActivityDetailsResult, StravaActionResult } from "./types";
+import { StravaActivity, SavedStravaActivity } from "@/types/strava";
+import { StravaActivitiesResult, StravaActivityDetailsResult } from "./types";
 import { getStoredActivityIds } from "./storageService";
 
 /**
@@ -74,21 +75,22 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
   try {
     console.log(`Fetching details for activity ${activityId}`);
     
-    const { data: storedActivity } = await supabase
+    const { data: storedActivities } = await supabase
       .from("strava_activities")
       .select("*")
       .eq("id", activityId)
-      .eq("user_id", userId)
-      .maybeSingle();
+      .eq("user_id", userId);
     
-    if (storedActivity) {
+    if (storedActivities && storedActivities.length > 0) {
       console.log("Retrieved activity from database");
+      const storedActivity = storedActivities[0];
       
       // Map the database record to a SavedStravaActivity
       const savedActivity: SavedStravaActivity = {
         id: storedActivity.id,
         name: storedActivity.name,
         type: storedActivity.type,
+        sport_type: storedActivity.type,
         distance: storedActivity.distance,
         moving_time: storedActivity.moving_time,
         elapsed_time: storedActivity.elapsed_time,
@@ -109,33 +111,7 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
           summary_polyline: storedActivity.summary_polyline || "",
           resource_state: 2,
         },
-        trainer: false,
-        commute: false,
-        manual: false,
-        private: false,
-        visibility: "",
-        average_cadence: storedActivity.average_cadence || 0,
-        average_watts: storedActivity.average_watts || 0,
-        kilojoules: storedActivity.kilojoules || 0,
-        description: null,
-        gear_id: storedActivity.gear_id,
-        average_temp: 0,
-        average_watts_weighted: storedActivity.weighted_average_watts || 0,
-        display_hide_heartrate_zone: false,
-        saved: true,
-        // Parse JSON fields from the database
-        laps: storedActivity.laps ? JSON.parse(String(storedActivity.laps)) : undefined,
-        splits_metric: storedActivity.splits_metric ? JSON.parse(String(storedActivity.splits_metric)) : undefined,
-        splits_standard: storedActivity.splits_standard ? JSON.parse(String(storedActivity.splits_standard)) : undefined,
-        segment_efforts: storedActivity.segment_efforts ? JSON.parse(String(storedActivity.segment_efforts)) : undefined,
-        start_latlng: storedActivity.start_latlng ? JSON.parse(String(storedActivity.start_latlng)) : undefined,
-        end_latlng: storedActivity.end_latlng ? JSON.parse(String(storedActivity.end_latlng)) : undefined,
-        calories: storedActivity.calories,
-        device_name: storedActivity.device_name,
-        pr_count: storedActivity.pr_count,
-        max_watts: storedActivity.max_watts,
-        elevation_high: storedActivity.elevation_high,
-        elevation_low: storedActivity.elevation_low,
+        saved: true
       };
       
       return { activity: savedActivity, error: null };
