@@ -13,7 +13,7 @@ export interface Message {
 
 export interface AssistantInfo {
   model: string;
-  assistantId?: string;
+  assistantId?: string | null;
 }
 
 export interface FunctionCallResult {

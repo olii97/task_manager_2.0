@@ -68,7 +68,27 @@ serve(async (req) => {
     // Log that we're processing a request
     console.log("Processing OpenAI chat request");
 
-    const { messages, threadId, useAssistant, functionResults } = await req.json()
+    // Parse the request body
+    let reqBody;
+    try {
+      reqBody = await req.json();
+      console.log("Request body parsed successfully");
+    } catch (error) {
+      console.error("Error parsing request body:", error);
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { message, threadId, useAssistant, functionResults } = reqBody;
+
+    console.log("Request parameters:", { 
+      hasMessage: !!message, 
+      threadId, 
+      useAssistant, 
+      hasFunctionResults: !!functionResults 
+    });
 
     if (useAssistant) {
       // Assistant mode
@@ -76,16 +96,13 @@ serve(async (req) => {
         // Create a new thread
         console.log("Creating a new thread");
         try {
-          const thread = await openai.beta.threads.create()
+          const thread = await openai.beta.threads.create();
           console.log("Thread created successfully:", thread.id);
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              messages: [],
-              assistantInfo: {
-                model: "gpt-4o-mini",
-                assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
-              }
+              assistantId: "asst_2LtO43entDi3setFlbgvsoM5",
+              model: "gpt-4o-mini"
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
@@ -124,13 +141,12 @@ serve(async (req) => {
       }
 
       // Add the message to the thread
-      if (messages?.length > 0) {
-        const lastMessage = messages[messages.length - 1]
+      if (message) {
         console.log("Adding message to thread:", threadId);
         try {
           await openai.beta.threads.messages.create(threadId, {
             role: 'user',
-            content: lastMessage.content[0],
+            content: message,
           })
         } catch (error) {
           console.error("Error adding message to thread:", error);
@@ -224,9 +240,23 @@ serve(async (req) => {
         );
       }
       
+      // Get the latest assistant message
+      const assistantMessages = messageList.data.filter(msg => msg.role === 'assistant');
+      let latestResponse = "No response from assistant.";
+      
+      if (assistantMessages.length > 0) {
+        const latestMessage = assistantMessages[0];
+        if (latestMessage.content && latestMessage.content.length > 0) {
+          const textContent = latestMessage.content.find(content => content.type === 'text');
+          if (textContent && 'text' in textContent && textContent.text.value) {
+            latestResponse = textContent.text.value;
+          }
+        }
+      }
+      
       return new Response(
         JSON.stringify({ 
-          messages: messageList.data,
+          response: latestResponse,
           assistantInfo: {
             model: "gpt-4o-mini",
             assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
@@ -238,6 +268,7 @@ serve(async (req) => {
       // Standard ChatGPT mode
       console.log("Using standard chat completion");
       try {
+        const messages = reqBody.messages || [];
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: messages.map((msg: any) => ({

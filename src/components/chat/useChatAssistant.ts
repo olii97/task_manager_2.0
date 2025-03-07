@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Message, AssistantInfo } from './types';
@@ -39,14 +40,20 @@ export const useChatAssistant = (userId?: string) => {
         return;
       }
 
-      if (data?.assistantId) {
+      console.log('Response from openai-chat:', data);
+
+      if (data?.threadId) {
+        setThreadId(data.threadId);
         setAssistantInfo({
           model: data.model || 'gpt-4o-mini',
           assistantId: data.assistantId
         });
         
-        console.log('Assistant info:', data);
-        setThreadId(data.threadId);
+        console.log('Assistant info:', {
+          threadId: data.threadId,
+          model: data.model || 'gpt-4o-mini',
+          assistantId: data.assistantId
+        });
         
         const welcomeMessage: Message = {
           id: 'welcome',
@@ -56,10 +63,15 @@ export const useChatAssistant = (userId?: string) => {
         };
         setMessages([welcomeMessage]);
       } else {
-        console.warn('No assistant ID returned:', data);
+        console.warn('No thread ID returned:', data);
         setAssistantInfo({
-          model: 'Unknown model',
-          assistantId: 'Configuration error'
+          model: 'Configuration error',
+          assistantId: null
+        });
+        toast({
+          title: 'Error initializing AI assistant',
+          description: 'Invalid response from the server. Please try again later.',
+          variant: 'destructive'
         });
       }
     } catch (err) {
@@ -109,6 +121,8 @@ export const useChatAssistant = (userId?: string) => {
         });
         return;
       }
+      
+      console.log('Response data:', data);
       
       if (data?.response) {
         const assistantMessage: Message = {
