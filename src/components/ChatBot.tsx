@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send } from "lucide-react";
+import { Send, Info } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,10 +10,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { addTask } from "@/services/tasks";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string[];
+}
+
+interface AssistantInfo {
+  model: string;
+  assistantId?: string;
 }
 
 const ChatBot: React.FC = () => {
@@ -23,6 +29,7 @@ const ChatBot: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [assistantInfo, setAssistantInfo] = useState<AssistantInfo | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -40,14 +47,25 @@ const ChatBot: React.FC = () => {
   useEffect(() => {
     const initializeThread = async () => {
       try {
+        setIsLoading(true);
         const { data, error } = await supabase.functions.invoke("openai-chat", {
           body: { useAssistant: true },
         });
 
         if (error) throw error;
         setThreadId(data.threadId);
+        if (data.assistantInfo) {
+          setAssistantInfo(data.assistantInfo);
+        }
       } catch (error) {
         console.error("Error initializing chat thread:", error);
+        toast({
+          title: "Error connecting to AI assistant",
+          description: "Please try again later",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -77,6 +95,11 @@ const ChatBot: React.FC = () => {
       });
 
       if (error) throw error;
+
+      // Update assistant info if available
+      if (data.assistantInfo) {
+        setAssistantInfo(data.assistantInfo);
+      }
 
       // Handle function calls
       if (data.functionCall) {
@@ -154,8 +177,26 @@ const ChatBot: React.FC = () => {
 
   return (
     <Card className="shadow-md border-primary/20">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">AI Assistant</CardTitle>
+        {assistantInfo && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Info className="h-3 w-3" />
+                  {assistantInfo.model}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Model: {assistantInfo.model}</p>
+                {assistantInfo.assistantId && (
+                  <p>Assistant ID: {assistantInfo.assistantId}</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <ScrollArea className="h-60 px-1" ref={scrollAreaRef}>

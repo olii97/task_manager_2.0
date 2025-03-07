@@ -52,8 +52,11 @@ serve(async (req) => {
 
   try {
     const openai = new OpenAI({
-      apiKey: Deno.env.get('OPENAI_API_KEY')!,
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
     })
+
+    // Log the API key existence (not the actual key) for debugging
+    console.log("OpenAI API Key exists:", !!Deno.env.get('OPENAI_API_KEY'))
 
     const { messages, threadId, useAssistant, functionResults } = await req.json()
 
@@ -65,7 +68,11 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             threadId: thread.id,
-            messages: [] 
+            messages: [],
+            assistantInfo: {
+              model: "gpt-4o-mini",
+              assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
@@ -107,7 +114,7 @@ serve(async (req) => {
       
       while (runStatus.status !== 'completed' && runStatus.status !== 'requires_action') {
         if (runStatus.status === 'failed') {
-          throw new Error('Assistant run failed')
+          throw new Error('Assistant run failed: ' + JSON.stringify(runStatus.last_error))
         }
         await new Promise(resolve => setTimeout(resolve, 1000))
         runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
@@ -125,6 +132,10 @@ serve(async (req) => {
               toolCallId: toolCalls[0].id,
               name: toolCalls[0].function.name,
               arguments: JSON.parse(toolCalls[0].function.arguments)
+            },
+            assistantInfo: {
+              model: "gpt-4o-mini",
+              assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -135,7 +146,13 @@ serve(async (req) => {
       const messageList = await openai.beta.threads.messages.list(threadId)
       
       return new Response(
-        JSON.stringify({ messages: messageList.data }),
+        JSON.stringify({ 
+          messages: messageList.data,
+          assistantInfo: {
+            model: "gpt-4o-mini",
+            assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
+          } 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } else {
@@ -153,7 +170,10 @@ serve(async (req) => {
           messages: [{
             role: 'assistant',
             content: [completion.choices[0].message.content]
-          }] 
+          }],
+          assistantInfo: {
+            model: "gpt-4o-mini"
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
