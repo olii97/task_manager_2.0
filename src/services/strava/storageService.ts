@@ -1,105 +1,107 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { StravaActivity, SavedStravaActivity } from "@/types/strava";
-import { StravaActionResult } from "./types";
+import { supabase } from '@/integrations/supabase/client';
+import { StravaActivity } from '@/types/strava';
 
-/**
- * Saves a Strava activity to the database
- */
-export const saveStravaActivity = async (
-  userId: string, 
-  activity: StravaActivity
-): Promise<StravaActionResult> => {
+export const saveStravaActivity = async (userId: string, activity: StravaActivity): Promise<{ success: boolean, error: string | null }> => {
   try {
-    // Process polyline and other map data
-    const mapData = activity.map ? JSON.stringify(activity.map) : null;
-    const summaryPolyline = activity.map?.summary_polyline || null;
-    
-    // Process arrays
-    const laps = activity.laps ? JSON.stringify(activity.laps) : null;
-    const splitsMetric = activity.splits_metric ? JSON.stringify(activity.splits_metric) : null;
-    const splitsStandard = activity.splits_standard ? JSON.stringify(activity.splits_standard) : null;
-    const segmentEfforts = activity.segment_efforts ? JSON.stringify(activity.segment_efforts) : null;
-    const startLatLng = activity.start_latlng ? JSON.stringify(activity.start_latlng) : null;
-    const endLatLng = activity.end_latlng ? JSON.stringify(activity.end_latlng) : null;
-    
-    const { error } = await supabase
-      .from("strava_activities")
-      .upsert({
-        id: activity.id,
-        user_id: userId,
-        name: activity.name,
-        type: activity.type,
-        distance: activity.distance,
-        moving_time: activity.moving_time,
-        elapsed_time: activity.elapsed_time,
-        total_elevation_gain: activity.total_elevation_gain,
-        start_date: activity.start_date,
-        average_speed: activity.average_speed,
-        max_speed: activity.max_speed,
-        average_heartrate: activity.average_heartrate,
-        max_heartrate: activity.max_heartrate,
-        average_cadence: activity.average_cadence,
-        average_watts: activity.average_watts,
-        kilojoules: activity.kilojoules,
-        max_watts: activity.max_watts,
-        elevation_high: activity.elevation_high,
-        elevation_low: activity.elevation_low,
-        pr_count: activity.pr_count,
-        device_name: activity.device_name,
-        gear_id: activity.gear_id,
-        calories: activity.calories,
-        temperature: activity.average_temp,
-        weighted_average_watts: activity.average_watts_weighted,
-        map_data: mapData,
-        summary_polyline: summaryPolyline,
-        laps: laps,
-        splits_metric: splitsMetric,
-        splits_standard: splitsStandard,
-        segment_efforts: segmentEfforts,
-        start_latlng: startLatLng,
-        end_latlng: endLatLng,
-      });
+    // Check if the activity already exists
+    const { data: existingActivity, error: checkError } = await supabase
+      .from('strava_activities')
+      .select('id')
+      .eq('activity_id', activity.id.toString())
+      .eq('user_id', userId)
+      .single();
 
-    if (error) {
-      console.error("Error saving activity:", error);
-      return {
-        success: false,
-        error: "Failed to save activity",
-      };
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "Results contain 0 rows" which is expected
+      console.error('Error checking for existing activity:', checkError);
+      return { success: false, error: checkError.message };
     }
 
-    return {
-      success: true,
-      error: null,
-    };
-  } catch (error: any) {
-    console.error("Error in saveStravaActivity:", error);
-    return {
-      success: false,
-      error: error.message || "An unexpected error occurred",
+    if (existingActivity) {
+      // Activity already exists, update it
+      const { error: updateError } = await supabase
+        .from('strava_activities')
+        .update({
+          data: activity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingActivity.id);
+
+      if (updateError) {
+        console.error('Error updating activity:', updateError);
+        return { success: false, error: updateError.message };
+      }
+    } else {
+      // Activity doesn't exist, insert it
+      const { error: insertError } = await supabase
+        .from('strava_activities')
+        .insert([{
+          user_id: userId,
+          activity_id: activity.id.toString(),
+          data: activity,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
+
+      if (insertError) {
+        console.error('Error inserting activity:', insertError);
+        return { success: false, error: insertError.message };
+      }
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Unexpected error saving Strava activity:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
     };
   }
 };
 
-/**
- * Gets IDs of activities that have been saved to the database
- */
-export const getStoredActivityIds = async (userId: string): Promise<number[]> => {
+export const getSavedStravaActivities = async (userId: string): Promise<StravaActivity[]> => {
   try {
     const { data, error } = await supabase
-      .from("strava_activities")
-      .select("id")
-      .eq("user_id", userId);
+      .from('strava_activities')
+      .select('data')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("Error fetching stored activity IDs:", error);
+      console.error('Error fetching saved Strava activities:', error);
       return [];
     }
 
-    return data.map(item => item.id);
+    // Extract the activity data from each record
+    return (data || []).map(record => ({
+      ...record.data,
+      saved: true
+    }));
   } catch (error) {
-    console.error("Error in getStoredActivityIds:", error);
+    console.error('Unexpected error fetching saved Strava activities:', error);
     return [];
+  }
+};
+
+export const deleteSavedStravaActivity = async (userId: string, activityId: string): Promise<{ success: boolean, error: string | null }> => {
+  try {
+    const { error } = await supabase
+      .from('strava_activities')
+      .delete()
+      .eq('user_id', userId)
+      .eq('activity_id', activityId);
+
+    if (error) {
+      console.error('Error deleting saved Strava activity:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Unexpected error deleting saved Strava activity:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+    };
   }
 };

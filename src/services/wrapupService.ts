@@ -1,136 +1,124 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { Task } from '@/types/tasks';
+import { JournalEntry } from '@/types/journal';
+import { StravaActivity } from '@/types/strava';
 
-// Define the types needed
-interface WrapUpData {
-  productivityRating: number;
-  energyRating: number;
-  focusRating: number;
-  completedTasksCount: number;
-  uncompletedTasksCount: number;
-  highPriorityCompleted: number;
-  reflections: string;
-  journalContent?: string;
+export interface DailySummary {
+  date: string;
+  journalEntries: JournalEntry[];
+  completedTasks: Task[];
+  stravaActivities: StravaActivity[];
 }
 
-interface WrapUpResponse {
-  success: boolean;
-  error?: string;
-}
-
-/**
- * Processes the wrap-up survey for a day and stores the results
- */
-export const submitWrapUpSurvey = async (
-  userId: string,
-  data: WrapUpData
-): Promise<WrapUpResponse> => {
+export const getDailySummary = async (userId: string, date: Date): Promise<DailySummary | null> => {
   try {
-    // Validate user ID
-    if (!userId) {
-      return {
-        success: false,
-        error: "User ID is required",
-      };
+    const dateString = format(date, 'yyyy-MM-dd');
+    
+    // Get journal entries for the day
+    const { data: journalEntries, error: journalError } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .like('date', `${dateString}%`);
+    
+    if (journalError) {
+      console.error('Error fetching journal entries:', journalError);
+      return null;
     }
-
-    // Format date to YYYY-MM-DD
-    const wrapupDate = new Date().toISOString().split("T")[0];
-
-    // Store the data in the journal_entries table instead of daily_wrapup
-    // which doesn't exist in the database schema
-    const { error } = await supabase
-      .from("journal_entries")
-      .upsert({
-        user_id: userId,
-        date: wrapupDate,
-        reflection: data.reflections || "",
-        energy: data.energyRating || 0,
-        mood: data.productivityRating || 0, // Using productivityRating as mood since mood is required
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,date'
-      });
-
-    if (error) {
-      console.error("Error storing wrapup data:", error);
-      return {
-        success: false,
-        error: "Failed to store wrap-up data",
-      };
+    
+    // Get completed tasks for the day
+    const { data: completedTasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .like('completed_at', `${dateString}%`);
+    
+    if (tasksError) {
+      console.error('Error fetching completed tasks:', tasksError);
+      return null;
     }
-
+    
+    // Get Strava activities for the day
+    const { data: stravaActivities, error: stravaError } = await supabase
+      .from('strava_activities')
+      .select('data')
+      .eq('user_id', userId)
+      .like('created_at', `${dateString}%`);
+    
+    if (stravaError) {
+      console.error('Error fetching Strava activities:', stravaError);
+      return null;
+    }
+    
+    // Transform Strava activities to match the expected format
+    const transformedActivities = stravaActivities.map(record => ({
+      ...record.data,
+      saved: true
+    }));
+    
     return {
-      success: true,
+      date: dateString,
+      journalEntries: journalEntries || [],
+      completedTasks: completedTasks || [],
+      stravaActivities: transformedActivities || []
     };
-  } catch (error: any) {
-    console.error("Unexpected error in wrapup service:", error);
-    return {
-      success: false,
-      error: error.message || "An unexpected error occurred",
-    };
-  }
-};
-
-// Add these functions that were missing
-export const generateDailyWrapup = async (userId: string) => {
-  // Implement a simple function to get data for the day
-  const today = new Date().toISOString().split("T")[0];
-  
-  try {
-    // Get journal entry for today
-    const { data: journalEntry } = await supabase
-      .from("journal_entries")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", today)
-      .maybeSingle();
-
-    // Get task counts
-    const { data: completedTasks } = await supabase
-      .from("tasks")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("is_completed", true)
-      .gte("created_at", `${today}T00:00:00`)
-      .lte("created_at", `${today}T23:59:59`);
-
-    // Create a summary object
-    const wrapupData = {
-      date: today,
-      journalData: journalEntry || null,
-      taskData: {
-        completedCount: completedTasks?.length || 0,
-      },
-      summary: "Your day at a glance",
-    };
-
-    return wrapupData;
   } catch (error) {
-    console.error("Error generating daily wrapup:", error);
-    return {
-      date: today,
-      error: "Failed to generate wrapup data",
-      summary: "Could not generate summary",
+    console.error('Unexpected error getting daily summary:', error);
+    return null;
+  }
+};
+
+export const saveDailySummary = async (userId: string, summary: {
+  reflection: string,
+  energy: number,
+  mood: number,
+  date: string
+}): Promise<{ success: boolean, error: string | null }> => {
+  try {
+    const { error } = await supabase
+      .from('daily_summaries')
+      .insert([{
+        user_id: userId,
+        date: summary.date,
+        reflection: summary.reflection,
+        energy: summary.energy,
+        mood: summary.mood,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }]);
+    
+    if (error) {
+      console.error('Error saving daily summary:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Unexpected error saving daily summary:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
     };
   }
 };
 
-export const downloadWrapupAsJson = (data: any) => {
-  // Create a blob with the data
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  
-  // Create a download link
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `daily-wrapup-${new Date().toISOString().split("T")[0]}.json`;
-  
-  // Trigger the download
-  document.body.appendChild(link);
-  link.click();
-  
-  // Clean up
-  URL.revokeObjectURL(url);
-  document.body.removeChild(link);
+export const generateDailySummaryPDF = async (userId: string, date: Date): Promise<{ url: string | null, error: string | null }> => {
+  try {
+    // This would typically call an edge function to generate a PDF
+    // For now, we'll just return a mock response
+    
+    return { 
+      url: `https://example.com/summaries/${userId}/${format(date, 'yyyy-MM-dd')}.pdf`, 
+      error: null 
+    };
+  } catch (error) {
+    console.error('Unexpected error generating daily summary PDF:', error);
+    return { 
+      url: null, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+    };
+  }
 };

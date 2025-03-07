@@ -1,206 +1,102 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { PomodoroSession, PomodoroDistraction, DistractionInput } from "@/types/pomodoro";
-import { useToast } from "@/components/ui/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+import { PomodoroSession, PomodoroStats } from '@/types/pomodoro';
 
-export const startPomodoroSession = async (
-  userId: string,
-  taskId: string,
-  durationMinutes: number
-): Promise<PomodoroSession | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("pomodoro_sessions")
-      .insert({
-        user_id: userId,
-        task_id: taskId,
-        duration_minutes: durationMinutes,
-        start_time: new Date().toISOString(),
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Error starting Pomodoro session:", error);
-      throw error;
-    }
-
-    return data as PomodoroSession;
-  } catch (error) {
-    console.error("Error in startPomodoroSession:", error);
-    return null;
-  }
-};
-
-export const createPomodoroSession = async (sessionData: {
+export interface CreatePomodoroSessionParams {
   user_id: string;
-  task_id: string;
   duration_minutes: number;
+  task_id?: string;
   completed: boolean;
-}): Promise<PomodoroSession | null> => {
+}
+
+export const completePomodoroSession = async (params: CreatePomodoroSessionParams): Promise<{ session: PomodoroSession | null, error: string | null }> => {
   try {
     const { data, error } = await supabase
-      .from("pomodoro_sessions")
-      .insert({
-        user_id: sessionData.user_id,
-        task_id: sessionData.task_id,
-        duration_minutes: sessionData.duration_minutes,
-        start_time: new Date().toISOString(),
-        end_time: sessionData.completed ? new Date().toISOString() : null,
-        completed: sessionData.completed,
-      })
-      .select("*")
+      .from('pomodoro_sessions')
+      .insert([{
+        user_id: params.user_id,
+        duration_minutes: params.duration_minutes,
+        task_id: params.task_id,
+        completed: params.completed,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select()
       .single();
 
     if (error) {
-      console.error("Error creating Pomodoro session:", error);
-      throw error;
+      console.error('Error creating pomodoro session:', error);
+      return { session: null, error: error.message };
     }
 
-    return data as PomodoroSession;
+    return { session: data, error: null };
   } catch (error) {
-    console.error("Error in createPomodoroSession:", error);
-    return null;
+    console.error('Unexpected error creating pomodoro session:', error);
+    return { 
+      session: null, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+    };
   }
 };
 
-export const completePomodoroSession = async (
-  sessionId: string,
-  taskTitle: string
-): Promise<PomodoroSession | null> => {
+// Alias for compatibility with existing code
+export const createPomodoroSession = completePomodoroSession;
+
+export const getPomodoroStats = async (userId: string): Promise<PomodoroStats | null> => {
   try {
-    const { data, error } = await supabase
-      .from("pomodoro_sessions")
-      .update({
-        completed: true,
-        end_time: new Date().toISOString(),
-      })
-      .eq("id", sessionId)
-      .select("*")
-      .single();
+    // Count total completed sessions
+    const { count, error } = await supabase
+      .from('pomodoro_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('completed', true);
 
     if (error) {
-      console.error("Error completing Pomodoro session:", error);
-      throw error;
-    }
-
-    // Only add XP if we successfully marked the session as completed
-    if (data) {
-      try {
-        await supabase
-          .from("user_xp")
-          .insert({
-            user_id: data.user_id,
-            xp_amount: 20,
-            reason: `Completed Pomodoro session for: ${taskTitle}`,
-          });
-
-        console.log("Added 20 XP for completing a Pomodoro session");
-      } catch (xpError) {
-        console.error("Error adding XP for Pomodoro:", xpError);
-      }
-    }
-
-    return data as PomodoroSession;
-  } catch (error) {
-    console.error("Error in completePomodoroSession:", error);
-    return null;
-  }
-};
-
-export const addPomodoroDistraction = async (
-  sessionId: string,
-  distraction: DistractionInput
-): Promise<PomodoroDistraction | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("pomodoro_distractions")
-      .insert({
-        session_id: sessionId,
-        description: distraction.description,
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Error adding Pomodoro distraction:", error);
-      throw error;
-    }
-
-    return data as PomodoroDistraction;
-  } catch (error) {
-    console.error("Error in addPomodoroDistraction:", error);
-    return null;
-  }
-};
-
-export const getPomodoroStats = async (userId: string): Promise<{ completed_count: number } | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("pomodoro_sessions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("completed", true);
-
-    if (error) {
-      console.error("Error fetching Pomodoro stats:", error);
+      console.error('Error fetching pomodoro stats:', error);
       return null;
     }
 
-    return { completed_count: data.length };
+    // Get total minutes
+    const { data: minutesData, error: minutesError } = await supabase
+      .from('pomodoro_sessions')
+      .select('duration_minutes')
+      .eq('user_id', userId)
+      .eq('completed', true);
+
+    if (minutesError) {
+      console.error('Error fetching pomodoro minutes:', minutesError);
+      return null;
+    }
+
+    const totalMinutes = minutesData.reduce((acc, session) => acc + (session.duration_minutes || 0), 0);
+
+    return {
+      completed_count: count || 0,
+      total_minutes: totalMinutes,
+      streak_days: 0, // This would require more complex logic to calculate
+    };
   } catch (error) {
-    console.error("Error in getPomodoroStats:", error);
+    console.error('Unexpected error fetching pomodoro stats:', error);
     return null;
   }
 };
 
-export const getPomodoroSessionsByUser = async (
-  userId: string,
-  limit: number = 10
-): Promise<PomodoroSession[]> => {
+export const getPomodoroSessions = async (userId: string): Promise<PomodoroSession[]> => {
   try {
     const { data, error } = await supabase
-      .from("pomodoro_sessions")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("completed", true)
-      .order("start_time", { ascending: false })
-      .limit(limit);
+      .from('pomodoro_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.error("Error fetching Pomodoro sessions:", error);
-      throw error;
+      console.error('Error fetching pomodoro sessions:', error);
+      return [];
     }
 
-    return data as PomodoroSession[];
+    return data || [];
   } catch (error) {
-    console.error("Error in getPomodoroSessionsByUser:", error);
+    console.error('Unexpected error fetching pomodoro sessions:', error);
     return [];
-  }
-};
-
-export const getPomodoroSessionsCompletedToday = async (
-  userId: string
-): Promise<number> => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const { data, error } = await supabase
-      .from("pomodoro_sessions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("completed", true)
-      .gte("start_time", today.toISOString());
-
-    if (error) {
-      console.error("Error fetching today's Pomodoro sessions:", error);
-      throw error;
-    }
-
-    return data.length;
-  } catch (error) {
-    console.error("Error in getPomodoroSessionsCompletedToday:", error);
-    return 0;
   }
 };

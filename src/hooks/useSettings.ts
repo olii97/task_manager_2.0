@@ -1,97 +1,117 @@
 
-import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/components/AuthProvider";
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/AuthProvider';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
+import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from '@/constants';
 
-interface UserSettings {
+export interface UserSettings {
   work_duration: number;
   break_duration: number;
   long_break_duration: number;
   sessions_before_long_break: number;
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const useSettings = () => {
   const { session } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchSettings = useCallback(async () => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!session?.user?.id) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('work_duration, break_duration, long_break_duration, sessions_before_long_break, id, created_at, updated_at')
+          .eq('id', session.user.id)
+          .single();
 
-      // Check if the user has settings in the profiles table
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
+        if (error) throw error;
 
-      if (error) {
-        throw error;
+        // If settings are found, use them, otherwise use defaults
+        if (data) {
+          setSettings({
+            work_duration: data.work_duration || DEFAULT_WORK_DURATION,
+            break_duration: data.break_duration || DEFAULT_BREAK_DURATION,
+            long_break_duration: data.long_break_duration || DEFAULT_LONG_BREAK_DURATION,
+            sessions_before_long_break: data.sessions_before_long_break || DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
+            id: data.id,
+            created_at: data.created_at,
+            updated_at: data.updated_at
+          });
+        } else {
+          // Set default settings
+          setSettings({
+            work_duration: DEFAULT_WORK_DURATION,
+            break_duration: DEFAULT_BREAK_DURATION,
+            long_break_duration: DEFAULT_LONG_BREAK_DURATION,
+            sessions_before_long_break: DEFAULT_SESSIONS_BEFORE_LONG_BREAK
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Set default values or use existing ones
-      const userSettings: UserSettings = {
-        work_duration: data.work_duration || 25,
-        break_duration: data.break_duration || 5,
-        long_break_duration: data.long_break_duration || 15,
-        sessions_before_long_break: data.sessions_before_long_break || 4
-      };
+    fetchSettings();
+  }, [session?.user?.id]);
 
-      setSettings(userSettings);
-    } catch (err: any) {
-      console.error("Error fetching settings:", err);
-      setError("Failed to load user settings");
-      
-      // Set default values if there's an error
-      setSettings({
-        work_duration: 25,
-        break_duration: 5,
-        long_break_duration: 15,
-        sessions_before_long_break: 4
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
-
-  const updateSettings = useCallback(async (newSettings: Partial<UserSettings>) => {
-    if (!session?.user) return;
+  const updateSettings = async (updatedSettings: Partial<UserSettings>) => {
+    if (!session?.user?.id || !settings) return;
 
     try {
       const { error } = await supabase
-        .from("profiles")
-        .update(newSettings)
-        .eq("id", session.user.id);
+        .from('profiles')
+        .update({
+          work_duration: updatedSettings.work_duration !== undefined 
+            ? updatedSettings.work_duration 
+            : settings.work_duration,
+          break_duration: updatedSettings.break_duration !== undefined 
+            ? updatedSettings.break_duration 
+            : settings.break_duration,
+          long_break_duration: updatedSettings.long_break_duration !== undefined 
+            ? updatedSettings.long_break_duration 
+            : settings.long_break_duration,
+          sessions_before_long_break: updatedSettings.sessions_before_long_break !== undefined 
+            ? updatedSettings.sessions_before_long_break 
+            : settings.sessions_before_long_break
+        })
+        .eq('id', session.user.id);
 
       if (error) {
-        throw error;
+        console.error('Error updating settings:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update settings',
+          variant: 'destructive'
+        });
+        return;
       }
 
       // Update local state
-      setSettings(prev => prev ? { ...prev, ...newSettings } : null);
-    } catch (err: any) {
-      console.error("Error updating settings:", err);
-      setError("Failed to update settings");
+      setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
+      
+      toast({
+        title: 'Settings updated',
+        description: 'Your preferences have been saved',
+      });
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update settings',
+        variant: 'destructive'
+      });
     }
-  }, [session]);
-
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
-
-  return {
-    settings,
-    loading,
-    error,
-    updateSettings,
-    refetchSettings: fetchSettings
   };
+
+  return { settings, loading, updateSettings };
 };
