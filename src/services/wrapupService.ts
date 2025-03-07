@@ -46,6 +46,7 @@ export const submitWrapUpSurvey = async (
         date: wrapupDate,
         reflection: data.reflections || "",
         energy: data.energyRating || 0,
+        mood: data.productivityRating || 0, // Using productivityRating as mood since mood is required
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'user_id,date'
@@ -76,34 +77,43 @@ export const generateDailyWrapup = async (userId: string) => {
   // Implement a simple function to get data for the day
   const today = new Date().toISOString().split("T")[0];
   
-  // Get journal entry for today
-  const { data: journalEntry } = await supabase
-    .from("journal_entries")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("date", today)
-    .single();
+  try {
+    // Get journal entry for today
+    const { data: journalEntry } = await supabase
+      .from("journal_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("date", today)
+      .maybeSingle();
 
-  // Get task counts
-  const { data: completedTasks } = await supabase
-    .from("tasks")
-    .select("*", { count: "exact" })
-    .eq("user_id", userId)
-    .eq("completed", true)
-    .gte("created_at", `${today}T00:00:00`)
-    .lte("created_at", `${today}T23:59:59`);
+    // Get task counts
+    const { data: completedTasks } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_completed", true)
+      .gte("created_at", `${today}T00:00:00`)
+      .lte("created_at", `${today}T23:59:59`);
 
-  // Create a summary object
-  const wrapupData = {
-    date: today,
-    journalData: journalEntry || null,
-    taskData: {
-      completedCount: completedTasks?.length || 0,
-    },
-    summary: "Your day at a glance",
-  };
+    // Create a summary object
+    const wrapupData = {
+      date: today,
+      journalData: journalEntry || null,
+      taskData: {
+        completedCount: completedTasks?.length || 0,
+      },
+      summary: "Your day at a glance",
+    };
 
-  return wrapupData;
+    return wrapupData;
+  } catch (error) {
+    console.error("Error generating daily wrapup:", error);
+    return {
+      date: today,
+      error: "Failed to generate wrapup data",
+      summary: "Could not generate summary",
+    };
+  }
 };
 
 export const downloadWrapupAsJson = (data: any) => {

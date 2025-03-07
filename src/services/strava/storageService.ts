@@ -1,10 +1,89 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity } from "@/types/strava";
 import { StravaActionResult } from "./types";
 
 /**
- * Gets IDs of activities that are stored in the database
+ * Saves a Strava activity to the database
+ */
+export const saveStravaActivity = async (
+  userId: string, 
+  activity: StravaActivity
+): Promise<StravaActionResult> => {
+  try {
+    // Process polyline and other map data
+    const mapData = activity.map ? JSON.stringify(activity.map) : null;
+    const summaryPolyline = activity.map?.summary_polyline || null;
+    
+    // Process arrays
+    const laps = activity.laps ? JSON.stringify(activity.laps) : null;
+    const splitsMetric = activity.splits_metric ? JSON.stringify(activity.splits_metric) : null;
+    const splitsStandard = activity.splits_standard ? JSON.stringify(activity.splits_standard) : null;
+    const segmentEfforts = activity.segment_efforts ? JSON.stringify(activity.segment_efforts) : null;
+    const startLatLng = activity.start_latlng ? JSON.stringify(activity.start_latlng) : null;
+    const endLatLng = activity.end_latlng ? JSON.stringify(activity.end_latlng) : null;
+    
+    const { error } = await supabase
+      .from("strava_activities")
+      .upsert({
+        id: activity.id,
+        user_id: userId,
+        name: activity.name,
+        type: activity.type,
+        distance: activity.distance,
+        moving_time: activity.moving_time,
+        elapsed_time: activity.elapsed_time,
+        total_elevation_gain: activity.total_elevation_gain,
+        start_date: activity.start_date,
+        average_speed: activity.average_speed,
+        max_speed: activity.max_speed,
+        average_heartrate: activity.average_heartrate,
+        max_heartrate: activity.max_heartrate,
+        average_cadence: activity.average_cadence,
+        average_watts: activity.average_watts,
+        kilojoules: activity.kilojoules,
+        max_watts: activity.max_watts,
+        elevation_high: activity.elevation_high,
+        elevation_low: activity.elevation_low,
+        pr_count: activity.pr_count,
+        device_name: activity.device_name,
+        gear_id: activity.gear_id,
+        calories: activity.calories,
+        temperature: activity.average_temp,
+        weighted_average_watts: activity.average_watts_weighted,
+        map_data: mapData,
+        summary_polyline: summaryPolyline,
+        laps: laps,
+        splits_metric: splitsMetric,
+        splits_standard: splitsStandard,
+        segment_efforts: segmentEfforts,
+        start_latlng: startLatLng,
+        end_latlng: endLatLng,
+      });
+
+    if (error) {
+      console.error("Error saving activity:", error);
+      return {
+        success: false,
+        error: "Failed to save activity",
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (error: any) {
+    console.error("Error in saveStravaActivity:", error);
+    return {
+      success: false,
+      error: error.message || "An unexpected error occurred",
+    };
+  }
+};
+
+/**
+ * Gets IDs of activities that have been saved to the database
  */
 export const getStoredActivityIds = async (userId: string): Promise<number[]> => {
   try {
@@ -20,100 +99,7 @@ export const getStoredActivityIds = async (userId: string): Promise<number[]> =>
 
     return data.map(item => item.id);
   } catch (error) {
-    console.error("Error fetching stored activity IDs:", error);
+    console.error("Error in getStoredActivityIds:", error);
     return [];
-  }
-};
-
-/**
- * Saves an activity to the database
- */
-export const saveActivityToDatabase = async (
-  activity: StravaActivity
-): Promise<SavedStravaActivity> => {
-  try {
-    const currentUser = await supabase.auth.getUser();
-    if (!currentUser.data.user) {
-      throw new Error("User not authenticated");
-    }
-
-    // Extract fields that exist in the database table based on the Supabase schema
-    const activityData = {
-      id: activity.id,
-      name: activity.name,
-      type: activity.type,
-      distance: activity.distance,
-      moving_time: activity.moving_time,
-      elapsed_time: activity.elapsed_time,
-      total_elevation_gain: activity.total_elevation_gain || null,
-      start_date: activity.start_date,
-      average_speed: activity.average_speed || null,
-      max_speed: activity.max_speed || null,
-      average_heartrate: activity.average_heartrate || null,
-      max_heartrate: activity.max_heartrate || null,
-      average_cadence: activity.average_cadence || null,
-      device_name: activity.device_name || null,
-      average_watts: activity.average_watts || null,
-      kilojoules: activity.kilojoules || null,
-      gear_id: activity.gear_id || null,
-      calories: activity.calories || null,
-      elevation_high: activity.elevation_high || null,
-      elevation_low: activity.elevation_low || null,
-      pr_count: activity.pr_count || null,
-      max_watts: activity.max_watts || null,
-      weighted_average_watts: activity.average_watts_weighted || null,
-      user_id: currentUser.data.user.id,
-      // Store the map data correctly
-      summary_polyline: activity.map?.summary_polyline || null,
-      // Convert complex objects to JSON
-      start_latlng: activity.start_latlng ? JSON.stringify(activity.start_latlng) : null,
-      end_latlng: activity.end_latlng ? JSON.stringify(activity.end_latlng) : null,
-      map_data: activity.map ? JSON.stringify(activity.map) : null,
-      segment_efforts: activity.segment_efforts ? JSON.stringify(activity.segment_efforts) : null,
-      laps: activity.laps ? JSON.stringify(activity.laps) : null,
-      splits_metric: activity.splits_metric ? JSON.stringify(activity.splits_metric) : null,
-      splits_standard: activity.splits_standard ? JSON.stringify(activity.splits_standard) : null,
-    };
-
-    const { data, error } = await supabase
-      .from("strava_activities")
-      .upsert(activityData, { onConflict: "id" })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error saving activity:", error);
-      throw error;
-    }
-
-    return toSavedStravaActivity(activity, true);
-  } catch (error) {
-    console.error("Error in saveActivityToDatabase:", error);
-    throw error;
-  }
-};
-
-/**
- * Deletes an activity from the database
- */
-export const deleteActivityFromDatabase = async (userId: string, activityId: number): Promise<StravaActionResult> => {
-  try {
-    console.log(`Deleting activity ${activityId} from database`);
-    
-    const { error } = await supabase
-      .from("strava_activities")
-      .delete()
-      .eq("id", activityId)
-      .eq("user_id", userId);
-
-    if (error) {
-      console.error("Error deleting activity from database:", error);
-      throw error;
-    }
-
-    return { success: true, error: null };
-  } catch (error: any) {
-    console.error("Error deleting activity:", error);
-    return { success: false, error: error.message || "Failed to delete activity" };
   }
 };

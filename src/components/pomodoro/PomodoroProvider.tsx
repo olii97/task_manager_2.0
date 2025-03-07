@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useState,
@@ -6,17 +7,13 @@ import React, {
   useCallback,
 } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import {
-  createPomodoroSession,
+import { 
+  createPomodoroSession, 
   getPomodoroStats,
+  completePomodoroSession
 } from "@/services/pomodoroService";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  DEFAULT_WORK_DURATION,
-  DEFAULT_BREAK_DURATION,
-  DEFAULT_LONG_BREAK_DURATION,
-  DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
-} from "@/constants";
+import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from "@/constants";
 import { useSettings } from "@/hooks/useSettings";
 import { markTaskComplete } from "@/services/taskService";
 import { addUserXP } from "@/services/userService";
@@ -51,6 +48,8 @@ interface PomodoroContextProps {
   completePomodoro: () => Promise<any>;
   autoCompleteTask: boolean;
   setAutoCompleteTask: (autoComplete: boolean) => void;
+  // Add new properties for PomodoroTimer
+  startPomodoro: (task: Task) => void;
 }
 
 // Create the context with a default value
@@ -75,6 +74,7 @@ const PomodoroContext = createContext<PomodoroContextProps>({
   completePomodoro: () => Promise.resolve(),
   autoCompleteTask: false,
   setAutoCompleteTask: () => {},
+  startPomodoro: () => {},
 });
 
 interface PomodoroProviderProps {
@@ -151,6 +151,23 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
     }
   }, [session]);
 
+  const startPomodoro = useCallback((task: Task) => {
+    setSelectedTask({
+      id: task.id,
+      title: task.title
+    });
+    setIsTimerRunning(true);
+    
+    // Track the event
+    if (session?.user) {
+      trackPomodoroEvent({
+        user_id: session.user.id,
+        event_type: 'pomodoro_started',
+        task_id: task.id
+      });
+    }
+  }, [session]);
+
   const startNextSession = useCallback(() => {
     setCurrentSession((prevSession) => prevSession + 1);
   }, []);
@@ -209,7 +226,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
     } finally {
       setIsLoading(false);
     }
-  }, [session, selectedTask, timerSettings.workDuration, autoCompleteTask]);
+  }, [session, selectedTask, timerSettings.workDuration, autoCompleteTask, toast]);
 
   return (
     <PomodoroContext.Provider
@@ -229,6 +246,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
         completePomodoro,
         autoCompleteTask,
         setAutoCompleteTask,
+        startPomodoro,
       }}
     >
       {children}

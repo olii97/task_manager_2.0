@@ -1,18 +1,19 @@
+
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { StravaConnectForm } from "./StravaConnectForm";
 import { StravaActivityList } from "./StravaActivityList";
 import { StravaErrorDisplay } from "./StravaErrorDisplay";
 import { 
-  isConnectedToStrava, 
+  checkStravaConnection, 
   getStravaActivities, 
   disconnectFromStrava, 
-  connectToStrava,
-  fetchStravaActivities
+  connectToStrava
 } from "@/services/strava";
+import { StravaConnectionResult, StravaActivitiesResult, StravaAuthUrlResult } from "@/services/strava/types";
 
 export function StravaActivities() {
   const [activities, setActivities] = useState<SavedStravaActivity[]>([]);
@@ -21,6 +22,7 @@ export function StravaActivities() {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { session } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (session) {
@@ -35,7 +37,7 @@ export function StravaActivities() {
       setIsLoading(true);
       setError(null);
       
-      const result = await isConnectedToStrava(session.user.id);
+      const result: StravaConnectionResult = await checkStravaConnection(session.user.id);
       setIsConnected(result.isConnected);
       
       if (result.isConnected) {
@@ -53,25 +55,21 @@ export function StravaActivities() {
       setIsLoading(true);
       setError(null);
       
-      const result = await getStravaActivities(session.user.id);
+      const activities = await getStravaActivities(session.user.id);
       
-      if (result.error) {
-        setError("Failed to fetch Strava activities. Please try reconnecting your account.");
-        
-        // If we get an authorization error, we should disconnect
-        if (result.error.includes('No Strava tokens found') || 
-            result.error.includes('User not connected to Strava') ||
-            result.error.includes('Failed to refresh token')) {
-          setIsConnected(false);
-        }
-        return;
+      // Set the activities directly
+      setActivities(activities as SavedStravaActivity[]);
+    } catch (error: any) {
+      console.error("Error fetching activities:", error);
+      setError(error.message || "Failed to fetch activities");
+      
+      // If we get an authorization error, we should disconnect
+      if (error.message && (
+          error.message.includes('No Strava tokens found') || 
+          error.message.includes('User not connected to Strava') ||
+          error.message.includes('Failed to refresh token'))) {
+        setIsConnected(false);
       }
-      
-      // Convert StravaActivity[] to SavedStravaActivity[]
-      const savedActivities = result.activities.map(activity => 
-        toSavedStravaActivity(activity, false)
-      );
-      setActivities(savedActivities);
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +77,11 @@ export function StravaActivities() {
 
   const connectStrava = async () => {
     if (!session) {
-      toast.error("You must be logged in to connect Strava");
+      toast({
+        title: "Error",
+        description: "You must be logged in to connect Strava",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -87,7 +89,7 @@ export function StravaActivities() {
       setIsConnecting(true);
       setError(null);
 
-      const result = await connectToStrava(session.access_token);
+      const result: StravaAuthUrlResult = await connectToStrava(session.access_token);
       
       if (result.error) {
         setError(result.error);
@@ -99,7 +101,11 @@ export function StravaActivities() {
         window.location.href = result.url;
       }
     } catch (error: any) {
-      toast.error("Failed to connect to Strava");
+      toast({
+        title: "Error",
+        description: "Failed to connect to Strava",
+        variant: "destructive"
+      });
       setError(error.message || "Failed to connect to Strava");
     } finally {
       setIsConnecting(false);
@@ -115,13 +121,20 @@ export function StravaActivities() {
       const result = await disconnectFromStrava(session.user.id);
       
       if (result.error) {
-        toast.error("Error disconnecting Strava");
+        toast({
+          title: "Error",
+          description: "Error disconnecting Strava",
+          variant: "destructive"
+        });
         return;
       }
 
       setIsConnected(false);
       setActivities([]);
-      toast.success("Disconnected from Strava");
+      toast({
+        title: "Success",
+        description: "Disconnected from Strava"
+      });
     } finally {
       setIsLoading(false);
     }

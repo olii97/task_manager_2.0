@@ -1,8 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { PomodoroSession, PomodoroDistraction, DistractionInput } from "@/types/pomodoro";
-import { toast } from "@/hooks/use-toast";
-import { addTaskCompletionXP } from "./tasks/taskXpService";
+import { useToast } from "@/components/ui/use-toast";
 
 export const startPomodoroSession = async (
   userId: string,
@@ -29,6 +28,38 @@ export const startPomodoroSession = async (
     return data as PomodoroSession;
   } catch (error) {
     console.error("Error in startPomodoroSession:", error);
+    return null;
+  }
+};
+
+export const createPomodoroSession = async (sessionData: {
+  user_id: string;
+  task_id: string;
+  duration_minutes: number;
+  completed: boolean;
+}): Promise<PomodoroSession | null> => {
+  try {
+    const { data, error } = await supabase
+      .from("pomodoro_sessions")
+      .insert({
+        user_id: sessionData.user_id,
+        task_id: sessionData.task_id,
+        duration_minutes: sessionData.duration_minutes,
+        start_time: new Date().toISOString(),
+        end_time: sessionData.completed ? new Date().toISOString() : null,
+        completed: sessionData.completed,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Error creating Pomodoro session:", error);
+      throw error;
+    }
+
+    return data as PomodoroSession;
+  } catch (error) {
+    console.error("Error in createPomodoroSession:", error);
     return null;
   }
 };
@@ -64,11 +95,7 @@ export const completePomodoroSession = async (
             reason: `Completed Pomodoro session for: ${taskTitle}`,
           });
 
-        toast({
-          title: "+20 XP!",
-          description: "You earned XP for completing a Pomodoro session!",
-          className: "bg-yellow-100 border-yellow-400",
-        });
+        console.log("Added 20 XP for completing a Pomodoro session");
       } catch (xpError) {
         console.error("Error adding XP for Pomodoro:", xpError);
       }
@@ -103,6 +130,26 @@ export const addPomodoroDistraction = async (
     return data as PomodoroDistraction;
   } catch (error) {
     console.error("Error in addPomodoroDistraction:", error);
+    return null;
+  }
+};
+
+export const getPomodoroStats = async (userId: string): Promise<{ completed_count: number } | null> => {
+  try {
+    const { data, error } = await supabase
+      .from("pomodoro_sessions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("completed", true);
+
+    if (error) {
+      console.error("Error fetching Pomodoro stats:", error);
+      return null;
+    }
+
+    return { completed_count: data.length };
+  } catch (error) {
+    console.error("Error in getPomodoroStats:", error);
     return null;
   }
 };

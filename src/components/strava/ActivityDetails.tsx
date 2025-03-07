@@ -1,17 +1,17 @@
 
 import React from 'react';
-import { StravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { StravaActivitySummary } from "./StravaActivitySummary";
 import { StravaPerformanceMetrics } from "./StravaPerformanceMetrics";
 import { format } from 'date-fns';
 import { useToast } from "@/components/ui/use-toast";
-import { saveStravaActivity } from "@/services/strava";
+import { saveStravaActivity } from "@/services/strava/storageService";
 import { useAuth } from "@/components/AuthProvider";
 
 interface ActivityDetailsProps {
-  activity: StravaActivity;
+  activity: SavedStravaActivity;
   isOpen: boolean;
   onClose: () => void;
 }

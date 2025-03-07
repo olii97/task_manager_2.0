@@ -4,9 +4,9 @@ import { usePomodoro } from "./PomodoroProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const PomodoroBlurOverlay: React.FC = () => {
-  const { state, isActive } = usePomodoro();
+  const { isTimerRunning } = usePomodoro();
   
-  if (!isActive) {
+  if (!isTimerRunning) {
     return null;
   }
   

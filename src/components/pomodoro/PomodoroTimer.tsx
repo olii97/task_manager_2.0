@@ -20,23 +20,123 @@ import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 
+// Define the state type to match what we reference in the component
+interface PomodoroState {
+  status: 'idle' | 'running' | 'paused' | 'completed';
+  timeRemaining: number;
+  originalDuration: number;
+  isBreak: boolean;
+  sessionsCompleted: number;
+  currentTask?: {
+    id: string;
+    title: string;
+  };
+}
+
 export const PomodoroTimer: React.FC = () => {
   const {
-    state,
-    pausePomodoro,
-    resumePomodoro,
-    stopPomodoro,
+    timerSettings,
+    selectedTask,
+    isTimerRunning,
+    currentSession,
+    completedCount,
     completePomodoro,
-    addDistraction,
-    startBreak,
-    skipBreak,
-    isActive
+    setIsTimerRunning,
+    autoCompleteTask,
+    setAutoCompleteTask
   } = usePomodoro();
+
+  // Mock state for compatibility
+  const [mockState, setMockState] = useState<PomodoroState>({
+    status: 'idle',
+    timeRemaining: timerSettings.workDuration * 60,
+    originalDuration: timerSettings.workDuration * 60,
+    isBreak: false,
+    sessionsCompleted: completedCount,
+    currentTask: selectedTask,
+  });
 
   const [showConfetti, setShowConfetti] = useState(false);
   const [showDistractionDialog, setShowDistractionDialog] = useState(false);
   const [distractionText, setDistractionText] = useState("");
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+
+  // Update mock state when timer settings change
+  useEffect(() => {
+    setMockState(prev => ({
+      ...prev,
+      timeRemaining: timerSettings.workDuration * 60,
+      originalDuration: timerSettings.workDuration * 60,
+      currentTask: selectedTask
+    }));
+  }, [timerSettings, selectedTask]);
+
+  // Update status based on isTimerRunning
+  useEffect(() => {
+    setMockState(prev => ({
+      ...prev,
+      status: isTimerRunning ? 'running' : 'idle',
+      sessionsCompleted: completedCount
+    }));
+  }, [isTimerRunning, completedCount]);
+
+  // Mock functions for compatibility
+  const pausePomodoro = () => {
+    setIsTimerRunning(false);
+    setMockState(prev => ({
+      ...prev,
+      status: 'paused'
+    }));
+  };
+
+  const resumePomodoro = () => {
+    setIsTimerRunning(true);
+    setMockState(prev => ({
+      ...prev,
+      status: 'running'
+    }));
+  };
+
+  const stopPomodoro = () => {
+    setIsTimerRunning(false);
+    setMockState(prev => ({
+      ...prev,
+      status: 'idle',
+      timeRemaining: timerSettings.workDuration * 60,
+      originalDuration: timerSettings.workDuration * 60
+    }));
+  };
+
+  const addDistraction = (distraction: { description: string }) => {
+    console.log('Distraction logged:', distraction.description);
+    // In a real implementation, this would save the distraction to the database
+  };
+
+  const startBreak = () => {
+    setMockState(prev => ({
+      ...prev,
+      isBreak: true,
+      timeRemaining: timerSettings.breakDuration * 60,
+      originalDuration: timerSettings.breakDuration * 60,
+      status: 'running'
+    }));
+    setIsTimerRunning(true);
+  };
+
+  const skipBreak = () => {
+    setMockState(prev => ({
+      ...prev,
+      isBreak: false,
+      timeRemaining: timerSettings.workDuration * 60,
+      originalDuration: timerSettings.workDuration * 60,
+      status: 'idle'
+    }));
+    setIsTimerRunning(false);
+    setShowCompletionDialog(false);
+  };
+
+  // This replaces state in the component
+  const state = mockState;
 
   useEffect(() => {
     // Show completion dialog when pomodoro is completed
@@ -88,7 +188,7 @@ export const PomodoroTimer: React.FC = () => {
   };
 
   // Don't render if not active
-  if (!isActive) {
+  if (!isTimerRunning && state.status === 'idle') {
     return null;
   }
 
@@ -148,7 +248,7 @@ export const PomodoroTimer: React.FC = () => {
                 ) : state.status === 'paused' ? (
                   <Button 
                     onClick={resumePomodoro} 
-                    variant="pomodoro" 
+                    variant="outline" 
                     size="sm"
                     className="w-28"
                   >
@@ -253,7 +353,7 @@ export const PomodoroTimer: React.FC = () => {
             </Button>
             <Button 
               onClick={handleStartBreak}
-              variant="pomodoro"
+              variant="outline"
               className="sm:flex-1"
             >
               <Coffee className="mr-1 h-4 w-4" /> Take a 5 Min Break
