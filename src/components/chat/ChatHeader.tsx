@@ -17,7 +17,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ assistantInfo }) => {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
                 <Info className="h-3 w-3" />
                 {assistantInfo.model}
               </div>

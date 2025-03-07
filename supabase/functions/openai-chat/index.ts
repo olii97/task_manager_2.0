@@ -51,12 +51,22 @@ serve(async (req) => {
   }
 
   try {
+    // Check for OpenAI API key
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!apiKey) {
+      console.error("OpenAI API Key is missing");
+      return new Response(
+        JSON.stringify({ error: "OpenAI API Key is missing" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const openai = new OpenAI({
-      apiKey: Deno.env.get('OPENAI_API_KEY'),
+      apiKey: apiKey,
     })
 
-    // Log the API key existence (not the actual key) for debugging
-    console.log("OpenAI API Key exists:", !!Deno.env.get('OPENAI_API_KEY'))
+    // Log that we're processing a request
+    console.log("Processing OpenAI chat request");
 
     const { messages, threadId, useAssistant, functionResults } = await req.json()
 
@@ -64,64 +74,123 @@ serve(async (req) => {
       // Assistant mode
       if (!threadId) {
         // Create a new thread
-        const thread = await openai.beta.threads.create()
-        return new Response(
-          JSON.stringify({ 
-            threadId: thread.id,
-            messages: [],
-            assistantInfo: {
-              model: "gpt-4o-mini",
-              assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        console.log("Creating a new thread");
+        try {
+          const thread = await openai.beta.threads.create()
+          console.log("Thread created successfully:", thread.id);
+          return new Response(
+            JSON.stringify({ 
+              threadId: thread.id,
+              messages: [],
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        } catch (error) {
+          console.error("Error creating thread:", error);
+          return new Response(
+            JSON.stringify({ error: `Error creating thread: ${error.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // If we have function results from a previous run, submit them
       if (functionResults) {
-        await openai.beta.threads.runs.submitToolOutputs(
-          threadId,
-          functionResults.runId,
-          {
-            tool_outputs: [
-              {
-                tool_call_id: functionResults.toolCallId,
-                output: JSON.stringify({ success: true, message: "Task added successfully" }),
-              },
-            ],
-          }
-        );
+        console.log("Submitting function results for run:", functionResults.runId);
+        try {
+          await openai.beta.threads.runs.submitToolOutputs(
+            threadId,
+            functionResults.runId,
+            {
+              tool_outputs: [
+                {
+                  tool_call_id: functionResults.toolCallId,
+                  output: JSON.stringify({ success: true, message: "Task added successfully" }),
+                },
+              ],
+            }
+          );
+        } catch (error) {
+          console.error("Error submitting function results:", error);
+          return new Response(
+            JSON.stringify({ error: `Error submitting function results: ${error.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Add the message to the thread
       if (messages?.length > 0) {
         const lastMessage = messages[messages.length - 1]
-        await openai.beta.threads.messages.create(threadId, {
-          role: 'user',
-          content: lastMessage.content[0],
-        })
+        console.log("Adding message to thread:", threadId);
+        try {
+          await openai.beta.threads.messages.create(threadId, {
+            role: 'user',
+            content: lastMessage.content[0],
+          })
+        } catch (error) {
+          console.error("Error adding message to thread:", error);
+          return new Response(
+            JSON.stringify({ error: `Error adding message to thread: ${error.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Run the assistant with function calling enabled
-      const run = await openai.beta.threads.runs.create(threadId, {
-        assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
-        tools: [{ type: "function", function: functions[0] }]
-      })
+      console.log("Running assistant for thread:", threadId);
+      let run;
+      try {
+        run = await openai.beta.threads.runs.create(threadId, {
+          assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
+          tools: [{ type: "function", function: functions[0] }]
+        })
+      } catch (error) {
+        console.error("Error running assistant:", error);
+        return new Response(
+          JSON.stringify({ error: `Error running assistant: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       // Poll for the run completion
-      let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
-      
-      while (runStatus.status !== 'completed' && runStatus.status !== 'requires_action') {
-        if (runStatus.status === 'failed') {
-          throw new Error('Assistant run failed: ' + JSON.stringify(runStatus.last_error))
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log("Polling for run completion:", run.id);
+      let runStatus;
+      try {
         runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+        
+        let attempts = 0;
+        const maxAttempts = 30; // Prevent infinite looping
+        
+        while ((runStatus.status === 'in_progress' || runStatus.status === 'queued') && attempts < maxAttempts) {
+          console.log(`Run status (attempt ${attempts+1}/${maxAttempts}):`, runStatus.status);
+          if (runStatus.status === 'failed') {
+            throw new Error('Assistant run failed: ' + JSON.stringify(runStatus.last_error))
+          }
+          // Wait for a second before checking again
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+          attempts++;
+        }
+        
+        if (attempts >= maxAttempts && (runStatus.status === 'in_progress' || runStatus.status === 'queued')) {
+          throw new Error('Assistant run timed out after ' + maxAttempts + ' attempts')
+        }
+      } catch (error) {
+        console.error("Error retrieving run status:", error);
+        return new Response(
+          JSON.stringify({ error: `Error retrieving run status: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Check if the run requires action (function calling)
       if (runStatus.status === 'requires_action') {
+        console.log("Run requires action (function call)");
         const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
         
         // We'll return the function call information to the client
@@ -143,7 +212,17 @@ serve(async (req) => {
       }
 
       // Get the messages
-      const messageList = await openai.beta.threads.messages.list(threadId)
+      console.log("Getting messages for thread:", threadId);
+      let messageList;
+      try {
+        messageList = await openai.beta.threads.messages.list(threadId)
+      } catch (error) {
+        console.error("Error listing messages:", error);
+        return new Response(
+          JSON.stringify({ error: `Error listing messages: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       return new Response(
         JSON.stringify({ 
@@ -157,29 +236,38 @@ serve(async (req) => {
       )
     } else {
       // Standard ChatGPT mode
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: messages.map((msg: any) => ({
-          role: msg.role,
-          content: msg.content[0]
-        }))
-      })
+      console.log("Using standard chat completion");
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: messages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content[0]
+          }))
+        })
 
-      return new Response(
-        JSON.stringify({ 
-          messages: [{
-            role: 'assistant',
-            content: [completion.choices[0].message.content]
-          }],
-          assistantInfo: {
-            model: "gpt-4o-mini"
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+        return new Response(
+          JSON.stringify({ 
+            messages: [{
+              role: 'assistant',
+              content: [completion.choices[0].message.content]
+            }],
+            assistantInfo: {
+              model: "gpt-4o-mini"
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } catch (error) {
+        console.error("Error creating chat completion:", error);
+        return new Response(
+          JSON.stringify({ error: `Error creating chat completion: ${error.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error processing request:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

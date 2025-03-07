@@ -24,7 +24,7 @@ const ChatBot: React.FC = () => {
   return (
     <Card className="shadow-md border-primary/20">
       <ChatHeader assistantInfo={assistantInfo} />
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-4">
         <ChatMessages 
           messages={messages} 
           isLoading={isLoading} 

@@ -24,10 +24,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
         onChange={(e) => setInput(e.target.value)}
         placeholder="Type a message..."
         className="min-h-10 resize-none"
+        disabled={isLoading}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSendMessage();
+            if (!isLoading && input.trim()) {
+              handleSendMessage();
+            }
           }
         }}
       />
