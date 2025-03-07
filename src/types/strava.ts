@@ -30,6 +30,7 @@ export interface StravaActivity {
     id: string;
     summary_polyline?: string;
     polyline?: string;
+    resource_state?: number;
   };
   gear?: {
     id: string;
@@ -48,6 +49,14 @@ export interface StravaActivity {
     };
   };
   saved?: boolean;
+  // Additional properties required by StravaPerformanceMetrics
+  average_cadence?: number;
+  average_watts_weighted?: number;
+  kilojoules?: number;
+  calories?: number;
+  average_temp?: number;
+  elevation_high?: number;
+  elevation_low?: number;
 }
 
 export interface SavedStravaActivity extends StravaActivity {
@@ -79,3 +88,11 @@ export interface StravaTokens {
   refresh_token: string;
   expires_at: number;
 }
+
+// Helper function to convert StravaActivity to SavedStravaActivity
+export const toSavedStravaActivity = (activity: StravaActivity, isSaved: boolean = false): SavedStravaActivity => {
+  return {
+    ...activity,
+    saved: isSaved
+  };
+};
