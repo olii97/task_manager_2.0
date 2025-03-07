@@ -51,7 +51,7 @@ export const WrapUpDayButton = ({ userId }: WrapUpDayButtonProps) => {
     <Button 
       onClick={handleWrapUpDay} 
       disabled={isLoading || !userId}
-      variant="gamification"
+      variant="outline"
       className="w-full"
     >
       {isLoading ? (

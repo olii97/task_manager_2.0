@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/components/AuthProvider";
 import { checkStravaConnection, connectToStrava } from "@/services/strava";
@@ -73,7 +74,7 @@ const Strava: React.FC = () => {
       setSelectedActivity({
         ...activity,
         saved: false // Ensure the saved property is set
-      });
+      } as StravaActivity);
       setShowActivityDetails(true);
     }
   };
