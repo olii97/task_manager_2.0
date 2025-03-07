@@ -1,229 +1,156 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
-import { ChatMessage, AssistantInfo, FunctionCallResult } from './types';
-import { addTask } from "@/services/tasks";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Message, AssistantInfo } from './types';
+import { toast } from '@/components/ui/use-toast';
 
-export const useChatAssistant = (userId: string | undefined) => {
+export const useChatAssistant = (userId?: string) => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [assistantInfo, setAssistantInfo] = useState<AssistantInfo | null>(null);
-  const queryClient = useQueryClient();
 
-  // Initialize thread on component mount
+  // Initialize chat thread
   useEffect(() => {
-    const initializeThread = async () => {
-      if (!userId) return;
-
-      try {
-        setIsLoading(true);
-        console.log('Initializing chat thread');
-        
-        const { data, error } = await supabase.functions.invoke("openai-chat", {
-          body: { useAssistant: true },
-        });
-
-        if (error) {
-          console.error("Error initializing chat thread:", error);
-          throw error;
-        }
-
-        console.log('Thread initialized:', data);
-        
-        setThreadId(data.threadId);
-        if (data.assistantInfo) {
-          console.log('Setting assistant info:', data.assistantInfo);
-          setAssistantInfo(data.assistantInfo);
-        }
-      } catch (error) {
-        console.error("Error initializing chat thread:", error);
-        toast({
-          title: "Error connecting to AI assistant",
-          description: "Please try again later",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (userId) {
-      initializeThread();
+      initializeChatThread();
     }
   }, [userId]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || !threadId || !userId) return;
-
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content: [input],
-    };
-
-    // Add user message to chat
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
+  // Initialize the chat thread and get assistant info
+  const initializeChatThread = async () => {
     try {
-      console.log('Sending message to thread:', threadId);
+      setIsLoading(true);
+      console.log('Initializing chat thread...');
       
-      const { data, error } = await supabase.functions.invoke("openai-chat", {
-        body: {
-          messages: [userMessage],
-          threadId,
-          useAssistant: true,
-        },
+      const { data, error } = await supabase.functions.invoke('openai-chat', {
+        body: { useAssistant: true }
       });
 
       if (error) {
-        console.error("Error sending message:", error);
-        throw error;
+        console.error('Error initializing chat thread:', error);
+        setAssistantInfo({
+          model: 'Error connecting to OpenAI',
+          assistantId: null
+        });
+        toast({
+          title: 'Error initializing AI assistant',
+          description: error.message || 'Please try again later',
+          variant: 'destructive'
+        });
+        return;
       }
-      
-      console.log('Received response:', data);
 
-      // Update assistant info if available
-      if (data.assistantInfo) {
-        console.log('Updating assistant info:', data.assistantInfo);
-        setAssistantInfo(data.assistantInfo);
-      }
-
-      // Handle function calls
-      if (data.functionCall) {
-        console.log('Function call detected:', data.functionCall);
-        await handleFunctionCall(data.functionCall, userId);
-      } else if (data.messages && data.messages.length > 0) {
-        // Extract the message content correctly
-        const firstMessage = data.messages[0];
-        let messageContent = "";
+      if (data?.assistantId) {
+        setAssistantInfo({
+          model: data.model || 'gpt-4o-mini',
+          assistantId: data.assistantId
+        });
         
-        if (firstMessage.content && firstMessage.content.length > 0) {
-          const contentItem = firstMessage.content[0];
-          if (contentItem.type === 'text') {
-            messageContent = contentItem.text.value;
-          } else {
-            messageContent = JSON.stringify(contentItem);
-          }
-        }
+        console.log('Assistant info:', data);
+        setThreadId(data.threadId);
         
-        console.log('Adding assistant message:', messageContent);
-        
-        // Regular message (no function call)
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: [messageContent]
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages(prev => [
-        ...prev,
-        {
+        // Add welcome message
+        const welcomeMessage: Message = {
+          id: 'welcome',
           role: 'assistant',
-          content: ['Sorry, I encountered an error. Please try again.']
-        }
-      ]);
+          content: "Hello! I'm your personal AI assistant. How can I help you today?",
+          timestamp: new Date().toISOString()
+        };
+        setMessages([welcomeMessage]);
+      } else {
+        console.warn('No assistant ID returned:', data);
+        setAssistantInfo({
+          model: 'Unknown model',
+          assistantId: 'Configuration error'
+        });
+      }
+    } catch (err) {
+      console.error('Unexpected error initializing chat:', err);
+      toast({
+        title: 'Error initializing AI assistant',
+        description: 'An unexpected error occurred. Please try again later.',
+        variant: 'destructive'
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleFunctionCall = async (functionCall: FunctionCallResult, userId: string) => {
-    const { name, arguments: args } = functionCall;
+  // Send message to assistant
+  const handleSendMessage = useCallback(async () => {
+    if (!input.trim() || !threadId || isLoading) return;
     
-    if (name === 'add_task') {
-      console.log('Adding task:', args);
+    try {
+      setIsLoading(true);
       
-      try {
-        // Add the task to the database
-        await addTask(userId, {
-          title: args.title,
-          description: args.description || "",
-          priority: args.priority || 4,
-          is_completed: false,
-          is_scheduled_today: args.is_scheduled_today || false,
-          energy_level: args.energy_level || undefined
-        });
-
-        // Invalidate tasks query to refresh task lists
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        
-        // Show success toast
+      // Add user message to the list
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: input,
+        timestamp: new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+      setInput('');
+      
+      console.log('Sending message to thread:', threadId);
+      
+      // Send message to OpenAI
+      const { data, error } = await supabase.functions.invoke('openai-chat', {
+        body: {
+          threadId,
+          message: input,
+          useAssistant: true
+        }
+      });
+      
+      if (error) {
+        console.error('Error sending message:', error);
         toast({
-          title: "Task added",
-          description: `Added "${args.title}" to your ${args.is_scheduled_today ? "today's tasks" : "backlog"}`,
+          title: 'Error sending message',
+          description: error.message || 'Please try again later',
+          variant: 'destructive'
         });
-
-        // Submit function results back to the thread
-        console.log('Submitting function results back to thread');
-        
-        const { data: resultData, error: resultError } = await supabase.functions.invoke("openai-chat", {
-          body: {
-            threadId,
-            useAssistant: true,
-            functionResults: {
-              runId: functionCall.runId,
-              toolCallId: functionCall.toolCallId
-            }
-          },
-        });
-
-        if (resultError) {
-          console.error("Error submitting function results:", resultError);
-          throw resultError;
-        }
-        
-        console.log('Function results submitted, received response:', resultData);
-        
-        // Add assistant response to the chat
-        if (resultData.messages && resultData.messages.length > 0) {
-          const firstMessage = resultData.messages[0];
-          let messageContent = "";
-          
-          if (firstMessage.content && firstMessage.content.length > 0) {
-            const contentItem = firstMessage.content[0];
-            if (contentItem.type === 'text') {
-              messageContent = contentItem.text.value;
-            } else {
-              messageContent = JSON.stringify(contentItem);
-            }
-          }
-          
-          console.log('Adding assistant response after function call:', messageContent);
-          
-          setMessages(prev => [
-            ...prev, 
-            {
-              role: 'assistant',
-              content: [messageContent]
-            }
-          ]);
-        }
-      } catch (error) {
-        console.error("Error handling function call:", error);
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: ['Sorry, there was an error adding your task. Please try again.']
-          }
-        ]);
+        return;
       }
+      
+      if (data?.response) {
+        // Add assistant response to the list
+        const assistantMessage: Message = {
+          id: Date.now().toString() + '-assistant',
+          role: 'assistant',
+          content: data.response,
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+      } else {
+        console.warn('No response from assistant:', data);
+        toast({
+          title: 'Error',
+          description: 'No response received from the assistant.',
+          variant: 'destructive'
+        });
+      }
+    } catch (err) {
+      console.error('Unexpected error sending message:', err);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred while sending your message.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [input, threadId, isLoading]);
 
   return {
+    messages,
     input,
     setInput,
-    messages,
     isLoading,
     assistantInfo,
     handleSendMessage

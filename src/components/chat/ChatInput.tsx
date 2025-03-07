@@ -17,6 +17,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
   handleSendMessage,
   isLoading 
 }) => {
+  const onSendMessage = () => {
+    if (!isLoading && input.trim()) {
+      handleSendMessage();
+    }
+  };
+
   return (
     <div className="flex space-x-2">
       <Textarea
@@ -28,15 +34,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (!isLoading && input.trim()) {
-              handleSendMessage();
-            }
+            onSendMessage();
           }
         }}
       />
       <Button
         className="px-3"
-        onClick={handleSendMessage}
+        onClick={onSendMessage}
         disabled={isLoading || !input.trim()}
       >
         <Send className="h-4 w-4" />

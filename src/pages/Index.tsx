@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { JournalStreak } from "@/components/JournalStreak";
@@ -15,7 +16,7 @@ import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import ChatBot from "@/components/ChatBot";
+import ChatBot from "@/components/chat/ChatBot";
 
 const Index = () => {
   const { session } = useAuth();

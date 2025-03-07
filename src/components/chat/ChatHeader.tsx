@@ -19,11 +19,11 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ assistantInfo }) => {
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1 text-xs text-muted-foreground cursor-help">
                 <Info className="h-3 w-3" />
-                {assistantInfo.model}
+                {assistantInfo.model || "Loading model..."}
               </div>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Model: {assistantInfo.model}</p>
+              <p>Model: {assistantInfo.model || "Unknown"}</p>
               {assistantInfo.assistantId && (
                 <p>Assistant ID: {assistantInfo.assistantId}</p>
               )}
