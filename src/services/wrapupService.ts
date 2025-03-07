@@ -1,5 +1,19 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { Task } from '@/types/task';
+
+export interface Task {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  priority: number;
+  is_completed: boolean;
+  is_scheduled_today: boolean;
+  energy_level?: string;
+  created_at: string;
+  updated_at: string;
+  completion_date?: string;
+}
 
 export const getTasks = async (userId: string): Promise<Task[]> => {
   try {
@@ -44,7 +58,7 @@ export const getScheduledTasksForToday = async (userId: string): Promise<Task[]>
   }
 };
 
-export const addTask = async (task: Omit<Task, 'id' | 'created_at'>): Promise<Task | null> => {
+export const addTask = async (task: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task | null> => {
   try {
     const { data, error } = await supabase
       .from('tasks')

@@ -1,46 +1,41 @@
 
-import { useState } from "react";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { generateDailyWrapup, downloadWrapupAsJson } from "@/services/wrapupService";
+import { wrapupDay } from "@/services/wrapupService";
 
 interface WrapUpDayButtonProps {
-  userId: string | undefined;
+  userId?: string;
 }
 
-export const WrapUpDayButton = ({ userId }: WrapUpDayButtonProps) => {
+export const WrapUpDayButton: React.FC<WrapUpDayButtonProps> = ({ userId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleWrapUpDay = async () => {
+  const handleWrapUp = async () => {
     if (!userId) {
       toast({
-        title: "Error",
+        title: "Not logged in",
         description: "You need to be logged in to wrap up your day.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
 
     setIsLoading(true);
     try {
-      // Generate daily wrap-up data
-      const wrapupData = await generateDailyWrapup(userId);
-      
-      // Download the data as JSON
-      downloadWrapupAsJson(wrapupData);
-      
+      await wrapupDay(userId);
       toast({
-        title: "Day Wrapped Up!",
-        description: "Your daily summary has been downloaded as a JSON file.",
+        title: "Day wrapped up successfully!",
+        description: "Your daily summary has been generated and is ready for download.",
       });
     } catch (error) {
-      console.error("Error generating daily wrap-up:", error);
+      console.error("Error wrapping up day:", error);
       toast({
         title: "Error",
-        description: "Failed to generate daily wrap-up.",
-        variant: "destructive",
+        description: "Failed to wrap up your day. Please try again later.",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
@@ -49,21 +44,17 @@ export const WrapUpDayButton = ({ userId }: WrapUpDayButtonProps) => {
 
   return (
     <Button 
-      onClick={handleWrapUpDay} 
+      onClick={handleWrapUp} 
       disabled={isLoading || !userId}
-      variant="gamification"
       className="w-full"
     >
       {isLoading ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating...
+          Processing...
         </>
       ) : (
-        <>
-          <FileDown className="mr-2 h-4 w-4" />
-          Wrap Up My Day
-        </>
+        "Wrap Up My Day"
       )}
     </Button>
   );
