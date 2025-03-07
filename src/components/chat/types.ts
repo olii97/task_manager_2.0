@@ -22,3 +22,13 @@ export interface FunctionCallResult {
   name: string;
   arguments: any;
 }
+
+// New types for chatService
+export interface ChatThreadResponse {
+  threadId?: string;
+  model?: string;
+  assistantId?: string;
+  response?: string;
+  messages?: ChatMessage[];
+  functionCall?: FunctionCallResult;
+}
