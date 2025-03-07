@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { StravaConnectForm } from "@/components/StravaConnectForm";
@@ -169,7 +170,8 @@ const Strava = () => {
   };
 
   const handleSelectActivity = (activity: StravaActivity) => {
-    setSelectedActivity(toSavedStravaActivity(activity));
+    // Convert StravaActivity to SavedStravaActivity to prevent type errors
+    setSelectedActivity(toSavedStravaActivity(activity, 'saved' in activity ? (activity as any).saved : false));
     setSearchParams({ activityId: activity.id.toString() });
   };
 

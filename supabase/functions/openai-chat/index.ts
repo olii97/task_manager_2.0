@@ -44,10 +44,6 @@ const functions = [
   }
 ];
 
-// The new assistant ID
-const ASSISTANT_ID = "asst_pEWgtxgc3knBhA0LXs0pgZYQ";
-const DEFAULT_MODEL = "gpt-4o-mini";
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -105,8 +101,8 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              assistantId: ASSISTANT_ID,
-              model: DEFAULT_MODEL
+              assistantId: "asst_2LtO43entDi3setFlbgvsoM5",
+              model: "gpt-4o-mini"
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
@@ -166,7 +162,7 @@ serve(async (req) => {
       let run;
       try {
         run = await openai.beta.threads.runs.create(threadId, {
-          assistant_id: ASSISTANT_ID,
+          assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
           tools: [{ type: "function", function: functions[0] }]
         })
       } catch (error) {
@@ -223,8 +219,8 @@ serve(async (req) => {
               arguments: JSON.parse(toolCalls[0].function.arguments)
             },
             assistantInfo: {
-              model: DEFAULT_MODEL,
-              assistantId: ASSISTANT_ID
+              model: "gpt-4o-mini",
+              assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -262,8 +258,8 @@ serve(async (req) => {
         JSON.stringify({ 
           response: latestResponse,
           assistantInfo: {
-            model: DEFAULT_MODEL,
-            assistantId: ASSISTANT_ID
+            model: "gpt-4o-mini",
+            assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
           } 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -274,7 +270,7 @@ serve(async (req) => {
       try {
         const messages = reqBody.messages || [];
         const completion = await openai.chat.completions.create({
-          model: DEFAULT_MODEL,
+          model: "gpt-4o-mini",
           messages: messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content[0]
@@ -288,7 +284,7 @@ serve(async (req) => {
               content: [completion.choices[0].message.content]
             }],
             assistantInfo: {
-              model: DEFAULT_MODEL
+              model: "gpt-4o-mini"
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
