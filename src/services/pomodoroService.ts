@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { PomodoroSession, PomodoroStats } from '@/types/pomodoro';
+import { PomodoroStatus } from '@/types/pomodoro';
 
 export interface CreatePomodoroSessionParams {
   user_id: string;

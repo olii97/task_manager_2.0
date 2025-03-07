@@ -1,146 +1,97 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
 import { Task } from '@/types/tasks';
-import { JournalEntry, mapDatabaseEntryToJournalEntry } from '@/types/journal';
-import { StravaActivity } from '@/types/strava';
+import { JournalEntry } from '@/types/journal';
+import { DailySummary } from '@/types/wrapup';
+import { format } from 'date-fns';
 
-export interface DailySummary {
-  date: string;
-  journalEntries: JournalEntry[];
-  completedTasks: Task[];
-  stravaActivities: StravaActivity[];
-}
-
-export const getDailySummary = async (userId: string, date: Date): Promise<DailySummary | null> => {
+// Modified to directly return the summary data rather than handling download
+export const getDailySummary = async (
+  userId: string,
+  date: Date
+): Promise<DailySummary | null> => {
   try {
-    const dateString = format(date, 'yyyy-MM-dd');
+    const dateStr = format(date, 'yyyy-MM-dd');
     
-    // Get journal entries for the day
-    const { data: journalEntriesData, error: journalError } = await supabase
+    // Fetch journal entry for the day
+    const { data: journalData, error: journalError } = await supabase
       .from('journal_entries')
       .select('*')
       .eq('user_id', userId)
-      .like('date', `${dateString}%`);
-    
-    if (journalError) {
-      console.error('Error fetching journal entries:', journalError);
-      return null;
+      .eq('date', dateStr)
+      .single();
+      
+    if (journalError && journalError.code !== 'PGRST116') {
+      console.error('Error fetching journal entry:', journalError);
     }
     
-    // Get completed tasks for the day
-    const { data: completedTasksData, error: tasksError } = await supabase
+    // Fetch completed tasks for the day
+    const { data: tasksData, error: tasksError } = await supabase
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
       .eq('is_completed', true)
-      .like('completion_date', `${dateString}%`);
-    
+      .gte('completion_date', `${dateStr}T00:00:00`)
+      .lte('completion_date', `${dateStr}T23:59:59`);
+      
     if (tasksError) {
       console.error('Error fetching completed tasks:', tasksError);
-      return null;
     }
     
-    // Get Strava activities for the day
-    const { data: stravaActivitiesData, error: stravaError } = await supabase
+    // Fetch workouts for the day
+    const { data: workoutsData, error: workoutsError } = await supabase
       .from('strava_activities')
       .select('*')
       .eq('user_id', userId)
-      .like('start_date', `${dateString}%`);
-    
-    if (stravaError) {
-      console.error('Error fetching Strava activities:', stravaError);
-      return null;
+      .gte('start_date', `${dateStr}T00:00:00`)
+      .lte('start_date', `${dateStr}T23:59:59`);
+      
+    if (workoutsError) {
+      console.error('Error fetching workouts:', workoutsError);
     }
     
-    // Convert raw database entries to proper typed objects
-    const journalEntries = (journalEntriesData || []).map(entry => mapDatabaseEntryToJournalEntry(entry));
-    
-    const completedTasks = (completedTasksData || []).map(task => ({
-      ...task,
-      priority: task.priority >= 1 && task.priority <= 4 ? (task.priority as 1|2|3|4) : 4
-    }));
-    
-    // Transform Strava activities
-    const stravaActivities = (stravaActivitiesData || []).map(activity => ({
-      id: activity.id,
-      name: activity.name,
-      distance: activity.distance,
-      moving_time: activity.moving_time,
-      elapsed_time: activity.elapsed_time,
-      type: activity.type,
-      sport_type: activity.type,
-      start_date: activity.start_date,
-      start_date_local: activity.start_date,
-      total_elevation_gain: activity.total_elevation_gain || 0,
-      average_speed: activity.average_speed || 0,
-      max_speed: activity.max_speed || 0,
-      timezone: "",
-      utc_offset: 0,
-      saved: true
-    } as StravaActivity));
-    
-    return {
-      date: dateString,
-      journalEntries,
-      completedTasks,
-      stravaActivities
+    // Compile the daily summary
+    const summary: DailySummary = {
+      date: dateStr,
+      journalEntry: journalData ? journalData as unknown as JournalEntry : null,
+      completedTasks: tasksData ? tasksData.map(task => ({
+        ...task,
+        priority: task.priority as 1 | 2 | 3 | 4,
+        energy_level: (task.energy_level === 'high' || task.energy_level === 'low') 
+          ? task.energy_level 
+          : 'high'
+      })) as Task[] : [],
+      workouts: workoutsData || [],
+      stats: {
+        tasksCompleted: tasksData ? tasksData.length : 0,
+        moodScore: journalData ? journalData.mood : null,
+        energyLevel: journalData ? journalData.energy : null,
+        workoutCount: workoutsData ? workoutsData.length : 0,
+        totalWorkoutMinutes: workoutsData 
+          ? workoutsData.reduce((sum, workout) => sum + Math.floor((workout.elapsed_time || 0) / 60), 0)
+          : 0
+      }
     };
-  } catch (error) {
-    console.error('Unexpected error getting daily summary:', error);
-    return null;
-  }
-};
-
-export const saveDailySummary = async (userId: string, summary: {
-  reflection: string,
-  energy: number,
-  mood: number,
-  date: string
-}): Promise<{ success: boolean, error: string | null }> => {
-  try {
-    // Since there's no daily_summaries table yet, we'll save this as a journal entry instead
-    const { error } = await supabase
-      .from('journal_entries')
-      .insert([{
+    
+    // Store the summary in the database if needed
+    // Disabled for now as we don't have a daily_summaries table
+    /*
+    const { error: insertError } = await supabase
+      .from('daily_summaries')
+      .upsert({
         user_id: userId,
-        date: summary.date,
-        reflection: summary.reflection,
-        energy: summary.energy,
-        mood: summary.mood,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }]);
-    
-    if (error) {
-      console.error('Error saving daily summary:', error);
-      return { success: false, error: error.message };
+        date: dateStr,
+        data: summary
+      });
+      
+    if (insertError) {
+      console.error('Error storing daily summary:', insertError);
     }
+    */
     
-    return { success: true, error: null };
+    return summary;
   } catch (error) {
-    console.error('Unexpected error saving daily summary:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
-    };
-  }
-};
-
-export const generateDailySummaryPDF = async (userId: string, date: Date): Promise<{ url: string | null, error: string | null }> => {
-  try {
-    // This would typically call an edge function to generate a PDF
-    // For now, we'll just return a mock response
-    
-    return { 
-      url: `https://example.com/summaries/${userId}/${format(date, 'yyyy-MM-dd')}.pdf`, 
-      error: null 
-    };
-  } catch (error) {
-    console.error('Unexpected error generating daily summary PDF:', error);
-    return { 
-      url: null, 
-      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
-    };
+    console.error('Error generating daily summary:', error);
+    return null;
   }
 };

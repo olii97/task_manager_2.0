@@ -64,15 +64,13 @@ serve(async (req) => {
       );
     }
 
-    // Important: Set the v2 header for all OpenAI API calls
+    // Create OpenAI client with v2 header for ALL requests
     const openai = new OpenAI({
       apiKey: apiKey,
-      baseOptions: {
-        headers: {
-          'OpenAI-Beta': 'assistants=v2' // Set assistants=v2 for v2 API
-        }
+      defaultHeaders: {
+        'OpenAI-Beta': 'assistants=v2' // Use defaultHeaders to apply to all API calls
       }
-    })
+    });
 
     // Log that we're processing a request
     console.log("Processing OpenAI chat request");

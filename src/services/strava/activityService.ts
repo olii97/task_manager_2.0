@@ -1,8 +1,7 @@
-
-import { supabase } from "@/integrations/supabase/client";
-import { StravaActivity, SavedStravaActivity } from "@/types/strava";
-import { StravaActivitiesResult, StravaActivityDetailsResult } from "./types";
-import { getStoredActivityIds } from "./storageService";
+import { supabase } from '@/integrations/supabase/client';
+import { StravaActivity, SavedStravaActivity } from '@/types/strava';
+import { getStravaToken, refreshTokenIfNeeded } from './connectionService';
+import { getStoredActivityIds, saveStravaActivity, getStravaActivities, getStravaActivityById } from './storageService';
 
 /**
  * Fetches activities from Strava API
