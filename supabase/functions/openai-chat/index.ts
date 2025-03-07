@@ -44,6 +44,9 @@ const functions = [
   }
 ];
 
+// The assistant ID to use
+const ASSISTANT_ID = "asst_pEWgtxgc3knBhA0LXs0pgZYQ";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -101,7 +104,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              assistantId: "asst_2LtO43entDi3setFlbgvsoM5",
+              assistantId: ASSISTANT_ID,
               model: "gpt-4o-mini"
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -162,7 +165,7 @@ serve(async (req) => {
       let run;
       try {
         run = await openai.beta.threads.runs.create(threadId, {
-          assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
+          assistant_id: ASSISTANT_ID,
           tools: [{ type: "function", function: functions[0] }]
         })
       } catch (error) {
@@ -220,7 +223,7 @@ serve(async (req) => {
             },
             assistantInfo: {
               model: "gpt-4o-mini",
-              assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
+              assistantId: ASSISTANT_ID
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -259,7 +262,7 @@ serve(async (req) => {
           response: latestResponse,
           assistantInfo: {
             model: "gpt-4o-mini",
-            assistantId: "asst_2LtO43entDi3setFlbgvsoM5"
+            assistantId: ASSISTANT_ID
           } 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

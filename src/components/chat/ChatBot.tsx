@@ -18,12 +18,18 @@ const ChatBot: React.FC = () => {
     messages,
     isLoading,
     assistantInfo,
+    useAssistant,
+    toggleChatMode,
     handleSendMessage
   } = useChatAssistant(userId);
 
   return (
     <Card className="shadow-md border-primary/20">
-      <ChatHeader assistantInfo={assistantInfo} />
+      <ChatHeader 
+        assistantInfo={assistantInfo} 
+        useAssistant={useAssistant}
+        toggleChatMode={toggleChatMode}
+      />
       <CardContent className="space-y-4 p-4">
         <ChatMessages 
           messages={messages} 

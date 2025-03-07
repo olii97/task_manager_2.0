@@ -1,10 +1,10 @@
 
 import React, { useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChatMessage } from './types';
+import { Message } from './types';
 
 interface ChatMessagesProps {
-  messages: ChatMessage[];
+  messages: Message[];
   isLoading: boolean;
   scrollAreaRef: React.RefObject<HTMLDivElement>;
 }
@@ -39,7 +39,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
                 msg.role === 'user' ? 'ml-8 bg-muted/50' : 'mr-8 bg-primary/10'
               } p-3 rounded-lg`}
             >
-              <p className="text-sm whitespace-pre-wrap">{msg.content[0]}</p>
+              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
             </div>
           ))
         )}
