@@ -68,7 +68,7 @@ serve(async (req) => {
       apiKey: apiKey,
       baseOptions: {
         headers: {
-          'OpenAI-Beta': 'assistants=v2' // Add this header for v2 API
+          'OpenAI-Beta': 'assistants=v2' // Set assistants=v2 for v2 API
         }
       }
     })
