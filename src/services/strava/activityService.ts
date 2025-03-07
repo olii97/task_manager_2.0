@@ -1,8 +1,19 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { StravaActivity, SavedStravaActivity } from '@/types/strava';
-import { getStoredActivityIds, saveStravaActivity, getStoredStravaActivities, getStravaActivityById } from './storageService';
-import { StravaActivitiesResult, StravaActivityDetailsResult } from './types';
+import { getStravaToken, refreshTokenIfNeeded } from './connectionService';
+import { getStoredActivityIds, saveStravaActivity, getStravaActivityById } from './storageService';
+
+// Define the result types
+interface StravaActivitiesResult {
+  activities: StravaActivity[];
+  error: string | null;
+}
+
+interface StravaActivityDetailsResult {
+  activity: SavedStravaActivity | null;
+  error: string | null;
+}
 
 /**
  * Fetches activities from Strava API
@@ -75,48 +86,15 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
   try {
     console.log(`Fetching details for activity ${activityId}`);
     
-    const { data: storedActivities } = await supabase
-      .from("strava_activities")
-      .select("*")
-      .eq("id", activityId)
-      .eq("user_id", userId);
+    // First check if we have it stored
+    const storedActivity = await getStravaActivityById(userId, activityId);
     
-    if (storedActivities && storedActivities.length > 0) {
+    if (storedActivity) {
       console.log("Retrieved activity from database");
-      const storedActivity = storedActivities[0];
-      
-      // Map the database record to a SavedStravaActivity
-      const savedActivity: SavedStravaActivity = {
-        id: Number(storedActivity.id),
-        name: storedActivity.name,
-        type: storedActivity.type,
-        sport_type: storedActivity.sport_type || storedActivity.type,
-        distance: storedActivity.distance,
-        moving_time: storedActivity.moving_time,
-        elapsed_time: storedActivity.elapsed_time,
-        total_elevation_gain: storedActivity.total_elevation_gain || 0,
-        start_date: storedActivity.start_date,
-        start_date_local: storedActivity.start_date_local || storedActivity.start_date,
-        timezone: storedActivity.timezone || "",
-        utc_offset: 0,
-        location_city: null,
-        location_state: null,
-        location_country: null,
-        average_speed: storedActivity.average_speed || 0,
-        max_speed: storedActivity.max_speed || 0,
-        average_heartrate: storedActivity.average_heartrate || 0,
-        max_heartrate: storedActivity.max_heartrate || 0,
-        map: {
-          id: "",
-          summary_polyline: "",
-          resource_state: 2,
-        },
-        saved: true
-      };
-      
-      return { activity: savedActivity, error: null };
+      return { activity: storedActivity, error: null };
     }
     
+    // If not stored, fetch from API
     const { data, error } = await supabase.functions.invoke(
       "strava-auth",
       {
@@ -136,13 +114,17 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
     const savedActivities = await getStoredActivityIds(userId);
     const isSaved = savedActivities.includes(activityId);
 
-    return { 
-      activity: {
-        ...data,
-        saved: isSaved
-      } as SavedStravaActivity, 
-      error: null 
+    // Make sure the API response has all required fields
+    const fullActivity: SavedStravaActivity = {
+      ...data,
+      saved: isSaved,
+      sport_type: data.sport_type || data.type,
+      start_date_local: data.start_date_local || data.start_date,
+      timezone: data.timezone || "",
+      utc_offset: data.utc_offset || 0
     };
+
+    return { activity: fullActivity, error: null };
   } catch (error: any) {
     console.error("Error fetching activity details:", error);
     return { 
