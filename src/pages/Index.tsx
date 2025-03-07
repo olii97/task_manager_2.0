@@ -16,6 +16,7 @@ import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import ChatBot from "@/components/ChatBot";
 
 const Index = () => {
   const { session } = useAuth();
@@ -78,8 +79,12 @@ const Index = () => {
         <FeaturedGoal />
       </div>
 
-      {/* Strava Activities */}
-      <div className="mt-6">
+      {/* Chat Bot and Strava Activities */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {/* Chat Bot Assistant */}
+        <ChatBot />
+        
+        {/* Strava Activities */}
         <StravaActivitiesCard 
           activities={stravaActivities || []} 
           isLoading={isStravaLoading} 

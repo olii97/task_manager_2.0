@@ -8,6 +8,42 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Define the function schema for adding tasks
+const functions = [
+  {
+    name: "add_task",
+    description: "Add a task to the user's task list",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "The title of the task",
+        },
+        description: {
+          type: "string", 
+          description: "Optional description of the task",
+        },
+        priority: {
+          type: "integer",
+          description: "Priority level from 1 (highest) to 4 (lowest)",
+          enum: [1, 2, 3, 4]
+        },
+        is_scheduled_today: {
+          type: "boolean",
+          description: "Whether the task should be scheduled for today or just added to the backlog"
+        },
+        energy_level: {
+          type: "string",
+          description: "Energy level required for the task: high or low",
+          enum: ["high", "low"]
+        }
+      },
+      required: ["title"]
+    }
+  }
+];
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -19,7 +55,7 @@ serve(async (req) => {
       apiKey: Deno.env.get('OPENAI_API_KEY')!,
     })
 
-    const { messages, threadId, useAssistant } = await req.json()
+    const { messages, threadId, useAssistant, functionResults } = await req.json()
 
     if (useAssistant) {
       // Assistant mode
@@ -35,6 +71,22 @@ serve(async (req) => {
         )
       }
 
+      // If we have function results from a previous run, submit them
+      if (functionResults) {
+        await openai.beta.threads.runs.submitToolOutputs(
+          threadId,
+          functionResults.runId,
+          {
+            tool_outputs: [
+              {
+                tool_call_id: functionResults.toolCallId,
+                output: JSON.stringify({ success: true, message: "Task added successfully" }),
+              },
+            ],
+          }
+        );
+      }
+
       // Add the message to the thread
       if (messages?.length > 0) {
         const lastMessage = messages[messages.length - 1]
@@ -44,19 +96,39 @@ serve(async (req) => {
         })
       }
 
-      // Run the assistant
+      // Run the assistant with function calling enabled
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: 'asst_2LtO43entDi3setFlbgvsoM5',
+        tools: [{ type: "function", function: functions[0] }]
       })
 
       // Poll for the run completion
       let runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
-      while (runStatus.status !== 'completed') {
+      
+      while (runStatus.status !== 'completed' && runStatus.status !== 'requires_action') {
         if (runStatus.status === 'failed') {
           throw new Error('Assistant run failed')
         }
         await new Promise(resolve => setTimeout(resolve, 1000))
         runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+      }
+
+      // Check if the run requires action (function calling)
+      if (runStatus.status === 'requires_action') {
+        const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
+        
+        // We'll return the function call information to the client
+        return new Response(
+          JSON.stringify({ 
+            functionCall: {
+              runId: run.id,
+              toolCallId: toolCalls[0].id,
+              name: toolCalls[0].function.name,
+              arguments: JSON.parse(toolCalls[0].function.arguments)
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
       // Get the messages
