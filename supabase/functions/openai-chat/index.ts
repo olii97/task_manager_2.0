@@ -66,6 +66,11 @@ serve(async (req) => {
 
     const openai = new OpenAI({
       apiKey: apiKey,
+      baseOptions: {
+        headers: {
+          'OpenAI-Beta': 'assistants=v2' // Add this header for v2 API
+        }
+      }
     })
 
     // Log that we're processing a request
@@ -272,12 +277,18 @@ serve(async (req) => {
       console.log("Using standard chat completion");
       try {
         const messages = reqBody.messages || [];
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: messages.map((msg: any) => ({
+        
+        // If no messages are provided, create a default one
+        const messagesArray = messages.length > 0 ? 
+          messages.map((msg: any) => ({
             role: msg.role,
             content: msg.content[0]
-          }))
+          })) : 
+          [{ role: 'system', content: 'You are a helpful assistant.' }];
+        
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: messagesArray
         })
 
         return new Response(

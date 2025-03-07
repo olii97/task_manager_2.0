@@ -1,373 +1,239 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
-import { PomodoroState, PomodoroStatus, DistractionInput, PomodoroDistraction } from "@/types/pomodoro";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { startPomodoroSession, completePomodoroSession, addPomodoroDistraction, getPomodoroSessionsCompletedToday } from "@/services/pomodoroService";
-import { Task } from "@/types/tasks";
+import {
+  createPomodoroSession,
+  getPomodoroStats,
+} from "@/services/pomodoroService";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  DEFAULT_WORK_DURATION,
+  DEFAULT_BREAK_DURATION,
+  DEFAULT_LONG_BREAK_DURATION,
+  DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
+} from "@/constants";
+import { useSettings } from "@/hooks/useSettings";
+import { markTaskComplete } from "@/services/taskService";
+import { addUserXP } from "@/services/userService";
+import { trackPomodoroEvent } from "@/services/analyticsService";
 
-interface PomodoroContextType {
-  state: PomodoroState;
-  startPomodoro: (task: Task, durationMinutes?: number) => void;
-  pausePomodoro: () => void;
-  resumePomodoro: () => void;
-  stopPomodoro: () => void;
-  completePomodoro: () => void;
-  addDistraction: (distraction: DistractionInput) => void;
-  startBreak: (duration?: number) => void;
-  skipBreak: () => void;
-  isActive: boolean;
+// Define the types for the context
+export interface Task {
+  id: string;
+  title: string;
 }
 
-const initialState: PomodoroState = {
-  status: 'idle',
-  timeRemaining: 0,
-  originalDuration: 25 * 60, // 25 minutes in seconds
-  sessionsCompleted: 0,
-  distractions: [],
-  isBreak: false,
-  breakDuration: 5 * 60, // 5 minutes in seconds
-};
+interface TimerSettings {
+  workDuration: number;
+  breakDuration: number;
+  longBreakDuration: number;
+  sessionsBeforeLongBreak: number;
+}
 
-type PomodoroAction = 
-  | { type: 'START'; payload: { task: Task, durationMinutes?: number, sessionId: string } }
-  | { type: 'TICK'; payload: { currentTime: number } }
-  | { type: 'PAUSE' }
-  | { type: 'RESUME' }
-  | { type: 'STOP' }
-  | { type: 'COMPLETE' }
-  | { type: 'ADD_DISTRACTION'; payload: PomodoroDistraction }
-  | { type: 'START_BREAK'; payload: { duration: number } }
-  | { type: 'SKIP_BREAK' }
-  | { type: 'SET_SESSIONS_COMPLETED'; payload: number };
+interface PomodoroContextProps {
+  timerSettings: TimerSettings;
+  setTimerSettings: (settings: TimerSettings) => void;
+  selectedTask: Task | null;
+  setSelectedTask: (task: Task | null) => void;
+  isTimerRunning: boolean;
+  setIsTimerRunning: (isRunning: boolean) => void;
+  currentSession: number;
+  setCurrentSession: (session: number) => void;
+  completedCount: number;
+  setCompletedCount: (count: number) => void;
+  isLoading: boolean;
+  handleTaskSelected: (task: Task) => void;
+  completePomodoro: () => Promise<any>;
+  autoCompleteTask: boolean;
+  setAutoCompleteTask: (autoComplete: boolean) => void;
+}
 
-const PomodoroContext = createContext<PomodoroContextType | undefined>(undefined);
+// Create the context with a default value
+const PomodoroContext = createContext<PomodoroContextProps>({
+  timerSettings: {
+    workDuration: DEFAULT_WORK_DURATION,
+    breakDuration: DEFAULT_BREAK_DURATION,
+    longBreakDuration: DEFAULT_LONG_BREAK_DURATION,
+    sessionsBeforeLongBreak: DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
+  },
+  setTimerSettings: () => {},
+  selectedTask: null,
+  setSelectedTask: () => {},
+  isTimerRunning: false,
+  setIsTimerRunning: () => {},
+  currentSession: 1,
+  setCurrentSession: () => {},
+  completedCount: 0,
+  setCompletedCount: () => {},
+  isLoading: false,
+  handleTaskSelected: () => {},
+  completePomodoro: () => Promise.resolve(),
+  autoCompleteTask: false,
+  setAutoCompleteTask: () => {},
+});
 
-const saveTimerState = (state: Partial<PomodoroState>) => {
-  try {
-    localStorage.setItem('pomodoroState', JSON.stringify(state));
-  } catch (e) {
-    console.error('Error saving timer state to localStorage:', e);
-  }
-};
+interface PomodoroProviderProps {
+  children: React.ReactNode;
+}
 
-const loadTimerState = (): Partial<PomodoroState> | null => {
-  try {
-    const saved = localStorage.getItem('pomodoroState');
-    return saved ? JSON.parse(saved) : null;
-  } catch (e) {
-    console.error('Error loading timer state from localStorage:', e);
-    return null;
-  }
-};
-
-const clearTimerState = () => {
-  try {
-    localStorage.removeItem('pomodoroState');
-  } catch (e) {
-    console.error('Error clearing timer state from localStorage:', e);
-  }
-};
-
-const pomodoroReducer = (state: PomodoroState, action: PomodoroAction): PomodoroState => {
-  let newState: PomodoroState;
-  
-  switch (action.type) {
-    case 'START':
-      const durationMinutes = action.payload.durationMinutes || 25;
-      const durationSeconds = durationMinutes * 60;
-      newState = {
-        ...state,
-        status: 'running',
-        currentTask: {
-          id: action.payload.task.id,
-          title: action.payload.task.title,
-          priority: action.payload.task.priority || 4,
-          is_completed: action.payload.task.is_completed || false,
-          is_scheduled_today: action.payload.task.is_scheduled_today || false,
-          created_at: action.payload.task.created_at || new Date().toISOString(),
-          updated_at: action.payload.task.updated_at || new Date().toISOString()
-        },
-        timeRemaining: durationSeconds,
-        originalDuration: durationSeconds,
-        sessionId: action.payload.sessionId,
-        distractions: [],
-        isBreak: false,
-        startTimestamp: Date.now(),
-      };
-      saveTimerState(newState);
-      return newState;
-
-    case 'TICK':
-      if (state.status !== 'running' && state.status !== 'break') {
-        return state;
-      }
-      
-      if (state.timeRemaining <= 1) {
-        newState = state.isBreak 
-          ? { ...state, status: 'idle', timeRemaining: 0 }
-          : { ...state, status: 'completed', timeRemaining: 0 };
-        clearTimerState();
-        return newState;
-      }
-      
-      newState = {
-        ...state,
-        timeRemaining: state.timeRemaining - 1,
-      };
-      saveTimerState(newState);
-      return newState;
-
-    case 'PAUSE':
-      newState = {
-        ...state,
-        status: 'paused',
-        pausedTimestamp: Date.now(),
-      };
-      saveTimerState(newState);
-      return newState;
-
-    case 'RESUME':
-      newState = {
-        ...state,
-        status: 'running',
-        startTimestamp: state.startTimestamp ? 
-          // Adjust startTimestamp based on pause duration
-          state.startTimestamp + (Date.now() - (state.pausedTimestamp || Date.now())) 
-          : Date.now(),
-        pausedTimestamp: undefined,
-      };
-      saveTimerState(newState);
-      return newState;
-
-    case 'STOP':
-      clearTimerState();
-      return {
-        ...initialState,
-        sessionsCompleted: state.sessionsCompleted,
-      };
-
-    case 'COMPLETE':
-      clearTimerState();
-      return {
-        ...state,
-        status: 'completed',
-        sessionsCompleted: state.sessionsCompleted + 1,
-      };
-
-    case 'ADD_DISTRACTION':
-      newState = {
-        ...state,
-        distractions: [...state.distractions, action.payload],
-      };
-      saveTimerState(newState);
-      return newState;
-
-    case 'START_BREAK':
-      newState = {
-        ...state,
-        status: 'break',
-        isBreak: true,
-        timeRemaining: action.payload.duration,
-        breakDuration: action.payload.duration,
-        startTimestamp: Date.now(),
-      };
-      saveTimerState(newState);
-      return newState;
-
-    case 'SKIP_BREAK':
-      clearTimerState();
-      return {
-        ...initialState,
-        sessionsCompleted: state.sessionsCompleted,
-      };
-
-    case 'SET_SESSIONS_COMPLETED':
-      return {
-        ...state,
-        sessionsCompleted: action.payload,
-      };
-
-    default:
-      return state;
-  }
-};
-
-export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) => {
   const { session } = useAuth();
-  const userId = session?.user.id;
-  const [state, dispatch] = useReducer(pomodoroReducer, initialState);
-  const [isTimerInitialized, setIsTimerInitialized] = useState(false);
+  const { toast } = useToast();
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [currentSession, setCurrentSession] = useState(1);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [autoCompleteTask, setAutoCompleteTask] = useState(false);
+  const { settings, updateSettings } = useSettings();
+
+  const [timerSettings, setTimerSettings] = useState({
+    workDuration: settings?.work_duration || DEFAULT_WORK_DURATION,
+    breakDuration: settings?.break_duration || DEFAULT_BREAK_DURATION,
+    longBreakDuration: settings?.long_break_duration || DEFAULT_LONG_BREAK_DURATION,
+    sessionsBeforeLongBreak: settings?.sessions_before_long_break || DEFAULT_SESSIONS_BEFORE_LONG_BREAK,
+  });
 
   useEffect(() => {
-    if (!isTimerInitialized) {
-      const savedState = loadTimerState();
-      
-      if (savedState && savedState.status && 
-          (savedState.status === 'running' || savedState.status === 'break' || savedState.status === 'paused')) {
-        
-        if (savedState.startTimestamp && savedState.status === 'running' || savedState.status === 'break') {
-          const elapsedSeconds = Math.floor((Date.now() - savedState.startTimestamp) / 1000);
-          const newTimeRemaining = Math.max(0, (savedState.timeRemaining || 0) - elapsedSeconds);
-          
-          if (newTimeRemaining <= 0) {
-            clearTimerState();
-          } else {
-            dispatch({
-              type: 'START',
-              payload: {
-                task: { 
-                  id: savedState.currentTask?.id || 'unknown', 
-                  title: savedState.currentTask?.title || 'Unknown Task' 
-                },
-                sessionId: savedState.sessionId || 'unknown',
-              }
-            });
-            Object.assign(state, {
-              ...savedState,
-              timeRemaining: newTimeRemaining
-            });
-          }
+    if (settings) {
+      setTimerSettings({
+        workDuration: settings.work_duration,
+        breakDuration: settings.break_duration,
+        longBreakDuration: settings.long_break_duration,
+        sessionsBeforeLongBreak: settings.sessions_before_long_break,
+      });
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      if (session?.user) {
+        const stats = await getPomodoroStats(session.user.id);
+        if (stats) {
+          setCompletedCount(stats.completed_count);
         }
       }
-      
-      setIsTimerInitialized(true);
-    }
-  }, [isTimerInitialized]);
-
-  useEffect(() => {
-    if (userId) {
-      getPomodoroSessionsCompletedToday(userId).then(count => {
-        dispatch({ type: 'SET_SESSIONS_COMPLETED', payload: count });
-      });
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if ((state.status === 'running' || state.status === 'break') && isTimerInitialized) {
-      const intervalId = setInterval(() => {
-        dispatch({ type: 'TICK', payload: { currentTime: Date.now() } });
-      }, 1000);
-      
-      return () => clearInterval(intervalId);
-    }
-  }, [state.status, isTimerInitialized]);
-
-  useEffect(() => {
-    if (state.status === 'completed' && state.currentTask && state.sessionId) {
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(e => console.log('Error playing sound:', e));
-      
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]);
-      }
-      
-      completePomodoroSession(state.sessionId, state.currentTask.title);
-    }
-  }, [state.status, state.currentTask, state.sessionId]);
-
-  useEffect(() => {
-    const originalTitle = document.title;
-    
-    if (state.status === 'running' || state.status === 'break') {
-      const minutes = Math.floor(state.timeRemaining / 60);
-      const seconds = state.timeRemaining % 60;
-      const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      
-      if (state.isBreak) {
-        document.title = `☕ ${timeString} - Break`;
-      } else {
-        document.title = `⏳ ${timeString} - Focus`;
-      }
-    } else {
-      document.title = originalTitle;
-    }
-    
-    return () => {
-      document.title = originalTitle;
     };
-  }, [state.timeRemaining, state.status, state.isBreak]);
 
-  const startPomodoro = async (task: Task, durationMinutes?: number) => {
-    if (!userId) return;
-    
-    const session = await startPomodoroSession(
-      userId,
-      task.id,
-      durationMinutes || 25
-    );
-    
-    if (session) {
-      dispatch({
-        type: 'START',
-        payload: { task, durationMinutes, sessionId: session.id },
+    loadStats();
+  }, [session]);
+
+  useEffect(() => {
+    if (session?.user) {
+      updateSettings({
+        work_duration: timerSettings.workDuration,
+        break_duration: timerSettings.breakDuration,
+        long_break_duration: timerSettings.longBreakDuration,
+        sessions_before_long_break: timerSettings.sessionsBeforeLongBreak,
       });
     }
-  };
+  }, [timerSettings, session, updateSettings]);
 
-  const pausePomodoro = () => {
-    dispatch({ type: 'PAUSE' });
-  };
-
-  const resumePomodoro = () => {
-    dispatch({ type: 'RESUME' });
-  };
-
-  const stopPomodoro = () => {
-    dispatch({ type: 'STOP' });
-  };
-
-  const completePomodoro = () => {
-    if (state.currentTask && state.sessionId) {
-      completePomodoroSession(state.sessionId, state.currentTask.title);
-      dispatch({ type: 'COMPLETE' });
-    }
-  };
-
-  const addDistraction = async (distraction: DistractionInput) => {
-    if (!state.sessionId) return;
+  // Modified function to fix the Task type issue
+  const handleTaskSelected = useCallback((task: Task) => {
+    setSelectedTask({
+      id: task.id,
+      title: task.title
+    });
     
-    const newDistraction = await addPomodoroDistraction(
-      state.sessionId,
-      distraction
-    );
-    
-    if (newDistraction) {
-      dispatch({ type: 'ADD_DISTRACTION', payload: newDistraction });
+    // Track the task selection event
+    if (session?.user) {
+      trackPomodoroEvent({
+        user_id: session.user.id,
+        event_type: 'task_selected',
+        task_id: task.id
+      });
     }
-  };
+  }, [session]);
 
-  const startBreak = (duration?: number) => {
-    const breakDuration = duration || 5 * 60; // Default 5 minutes in seconds
-    dispatch({ type: 'START_BREAK', payload: { duration: breakDuration } });
-  };
+  const startNextSession = useCallback(() => {
+    setCurrentSession((prevSession) => prevSession + 1);
+  }, []);
 
-  const skipBreak = () => {
-    dispatch({ type: 'SKIP_BREAK' });
-  };
+  const resetSession = useCallback(() => {
+    setCurrentSession(1);
+  }, []);
 
-  const value = {
-    state,
-    startPomodoro,
-    pausePomodoro,
-    resumePomodoro,
-    stopPomodoro,
-    completePomodoro,
-    addDistraction,
-    startBreak,
-    skipBreak,
-    isActive: state.status !== 'idle',
-  };
+  // Modified function to fix the Task type issue
+  const completePomodoro = useCallback(async () => {
+    if (!session?.user || !selectedTask) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // Complete the pomodoro session
+      const completedSession = await createPomodoroSession({
+        user_id: session.user.id,
+        duration_minutes: timerSettings.workDuration,
+        task_id: selectedTask.id,
+        completed: true
+      });
+      
+      toast({
+        title: "Pomodoro completed!",
+        description: `You completed a ${timerSettings.workDuration} minute pomodoro session.`,
+      });
+      
+      // Update stats
+      setCompletedCount(prev => prev + 1);
+      
+      // Add XP for completing a pomodoro
+      addUserXP(session.user.id, 5, 'Completed a pomodoro session');
+      
+      // Optionally mark task as completed
+      if (autoCompleteTask) {
+        await markTaskComplete(selectedTask.id);
+        toast({
+          title: "Task marked as complete",
+          description: `"${selectedTask.title}" has been marked as complete.`,
+        });
+      }
+      
+      // Reset for next session
+      setSelectedTask(null);
+      
+      return completedSession;
+    } catch (error) {
+      console.error('Error completing pomodoro:', error);
+      toast({
+        title: "Error",
+        description: "Could not save your pomodoro session.",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session, selectedTask, timerSettings.workDuration, autoCompleteTask]);
 
   return (
-    <PomodoroContext.Provider value={value}>
+    <PomodoroContext.Provider
+      value={{
+        timerSettings,
+        setTimerSettings,
+        selectedTask,
+        setSelectedTask,
+        isTimerRunning,
+        setIsTimerRunning,
+        currentSession,
+        setCurrentSession,
+        completedCount,
+        setCompletedCount,
+        isLoading,
+        handleTaskSelected,
+        completePomodoro,
+        autoCompleteTask,
+        setAutoCompleteTask,
+      }}
+    >
       {children}
     </PomodoroContext.Provider>
   );
 };
 
-export const usePomodoro = () => {
-  const context = useContext(PomodoroContext);
-  if (context === undefined) {
-    throw new Error('usePomodoro must be used within a PomodoroProvider');
-  }
-  return context;
-};
+export const usePomodoro = () => useContext(PomodoroContext);

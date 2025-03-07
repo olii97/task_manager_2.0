@@ -1,331 +1,146 @@
-
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/components/AuthProvider";
-import { StravaConnectForm } from "@/components/StravaConnectForm";
-import { StravaActivityList } from "@/components/StravaActivityList";
-import { StravaActivityDetails } from "@/components/StravaActivityDetails";
-import { StravaErrorDisplay } from "@/components/StravaErrorDisplay";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  isConnectedToStrava, 
-  getStravaActivities, 
-  disconnectFromStrava, 
-  connectToStrava,
-  getStravaActivityDetails,
-  saveActivityToDatabase,
-  deleteActivityFromDatabase
-} from "@/services/strava";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useSearchParams } from "react-router-dom";
-import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { checkStravaConnection, connectToStrava } from "@/services/strava";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { StravaActivity } from "@/types/strava";
+import { ActivityDetails } from "@/components/strava/ActivityDetails";
+import { useStravaActivities } from "@/hooks/useStravaActivities";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const Strava = () => {
-  const { session } = useAuth();
-  const userId = session?.user.id;
-  const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activityId = searchParams.get('activityId');
-  const [error, setError] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [selectedActivity, setSelectedActivity] = useState<SavedStravaActivity | null>(null);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+const Strava: React.FC = () => {
+  const { session, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showActivityDetails, setShowActivityDetails] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<StravaActivity | null>(null);
+  const { stravaActivities, isLoading: activitiesLoading } = useStravaActivities(session?.user.id);
 
   useEffect(() => {
-    document.title = "Strava | Daily Driver";
-  }, []);
-
-  const { data: isConnected, isLoading: isLoadingConnection } = useQuery({
-    queryKey: ["strava-connected", userId],
-    queryFn: () => isConnectedToStrava(userId!),
-    enabled: !!userId,
-  });
-
-  const { 
-    data: activities, 
-    isLoading: isLoadingActivities,
-    refetch: refetchActivities
-  } = useQuery({
-    queryKey: ["strava-activities", userId],
-    queryFn: async () => {
-      try {
-        return await getStravaActivities(userId!);
-      } catch (err: any) {
-        setError(err.message || "Failed to load Strava activities");
-        throw err;
+    const checkConnection = async () => {
+      if (session?.user) {
+        setLoading(true);
+        const { isConnected, error } = await checkStravaConnection(session.user.id);
+        if (error) {
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          });
+        }
+        setIsConnected(isConnected);
+        setLoading(false);
+      } else {
+        setIsConnected(false);
       }
-    },
-    enabled: !!userId && !!isConnected,
-  });
+    };
 
-  const { 
-    data: activityDetails,
-    isLoading: isLoadingDetails
-  } = useQuery({
-    queryKey: ["strava-activity-details", userId, activityId],
-    queryFn: async () => {
-      if (!userId || !activityId) return null;
-      const { activity, error } = await getStravaActivityDetails(userId, Number(activityId));
-      if (error) {
-        toast.error(`Failed to load activity details: ${error}`);
-        return null;
-      }
-      return activity;
-    },
-    enabled: !!userId && !!activityId && !!isConnected,
-  });
+    checkConnection();
+  }, [session, toast]);
 
-  const saveActivityMutation = useMutation({
-    mutationFn: async (activity: StravaActivity) => {
-      if (!userId) throw new Error("User not authenticated");
-      return await saveActivityToDatabase(activity);
-    },
-    onSuccess: () => {
-      toast.success("Activity saved to your account");
-      queryClient.invalidateQueries({ queryKey: ["strava-activity-details", userId, activityId] });
-      queryClient.invalidateQueries({ queryKey: ["strava-activities", userId] });
-      setShowSaveDialog(false);
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to save activity: ${error.message}`);
-      setShowSaveDialog(false);
+  const handleConnect = async () => {
+    if (!session?.user) {
+      toast({
+        title: "Not authenticated",
+        description: "Please sign in to connect to Strava.",
+        variant: "destructive",
+      });
+      return;
     }
-  });
 
-  const removeActivityMutation = useMutation({
-    mutationFn: async (activityId: number) => {
-      if (!userId) throw new Error("User not authenticated");
-      return await deleteActivityFromDatabase(userId, activityId);
-    },
-    onSuccess: () => {
-      toast.success("Activity removed from your account");
-      queryClient.invalidateQueries({ queryKey: ["strava-activity-details", userId, activityId] });
-      queryClient.invalidateQueries({ queryKey: ["strava-activities", userId] });
-      setShowRemoveDialog(false);
-    },
-    onError: (error: any) => {
-      toast.error(`Failed to remove activity: ${error.message}`);
-      setShowRemoveDialog(false);
-    }
-  });
-
-  useEffect(() => {
-    if (activityDetails) {
-      setSelectedActivity(activityDetails);
-    } else if (activityId && activities) {
-      const found = activities.find(a => a.id === Number(activityId));
-      if (found) {
-        setSelectedActivity(found);
-      }
-    }
-  }, [activityId, activityDetails, activities]);
-
-  const handleConnectStrava = async () => {
-    if (!session) return;
-    
-    setIsConnecting(true);
+    setLoading(true);
     try {
       const { url, error } = await connectToStrava(session.access_token);
-      
       if (error) {
-        setError(error);
-        return;
-      }
-      
-      if (url) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        });
+      } else if (url) {
         window.location.href = url;
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to connect to Strava");
     } finally {
-      setIsConnecting(false);
+      setLoading(false);
     }
   };
 
-  const handleDisconnect = async () => {
-    if (!userId) return;
-    
-    try {
-      const { success, error } = await disconnectFromStrava(userId);
-      
-      if (error) {
-        toast.error(`Failed to disconnect: ${error}`);
-        return;
-      }
-      
-      if (success) {
-        toast.success("Successfully disconnected from Strava");
-        window.location.reload();
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to disconnect from Strava");
+  const handleActivityClick = (activity: StravaActivity) => {
+    console.log("Activity clicked:", activity);
+    if (activity.id) {
+      setSelectedActivity({
+        ...activity,
+        saved: false // Ensure the saved property is set
+      });
+      setShowActivityDetails(true);
     }
   };
 
-  const handleRefresh = () => {
-    refetchActivities();
-    setError(null);
-  };
-
-  const handleSelectActivity = (activity: StravaActivity) => {
-    // Convert StravaActivity to SavedStravaActivity to prevent type errors
-    setSelectedActivity(toSavedStravaActivity(activity, 'saved' in activity ? (activity as any).saved : false));
-    setSearchParams({ activityId: activity.id.toString() });
-  };
-
-  const handleBackToList = () => {
+  const handleCloseDetails = () => {
+    setShowActivityDetails(false);
     setSelectedActivity(null);
-    setSearchParams({});
   };
 
-  const handleSaveActivity = () => {
-    if (selectedActivity) {
-      setShowSaveDialog(true);
-    }
-  };
-
-  const handleRemoveActivity = () => {
-    if (selectedActivity) {
-      setShowRemoveDialog(true);
-    }
-  };
-
-  const confirmSaveActivity = () => {
-    if (selectedActivity) {
-      saveActivityMutation.mutate(selectedActivity);
-    }
-  };
-
-  const confirmRemoveActivity = () => {
-    if (selectedActivity) {
-      removeActivityMutation.mutate(selectedActivity.id);
-    }
-  };
-
-  if (selectedActivity) {
-    return (
-      <div className="container py-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-blue-700 mb-2">Activity Details</h1>
-        </div>
-        
-        {isLoadingDetails ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="h-24 mt-6 animate-pulse bg-gray-200 rounded-md"></CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <>
-            <StravaActivityDetails 
-              activity={selectedActivity} 
-              onBack={handleBackToList}
-              onSave={selectedActivity.saved ? handleRemoveActivity : handleSaveActivity}
-              isSaved={selectedActivity.saved}
-            />
-
-            <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Save Activity</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Do you want to save this activity to your account? This will store a copy of this activity in your database.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={confirmSaveActivity}>Save</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove Saved Activity</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Do you want to remove this activity from your saved activities? This will not delete the activity from Strava.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={confirmRemoveActivity}>Remove</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </>
-        )}
-      </div>
-    );
+  if (authLoading) {
+    return <p>Loading authentication...</p>;
   }
 
   return (
-    <div className="container py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-blue-700 mb-2">Strava Integration</h1>
-        <p className="text-muted-foreground">
-          Connect with Strava to track your activities and fitness progress.
-        </p>
-      </div>
+    <div className="container mx-auto py-10">
+      <Card className="max-w-2xl mx-auto shadow-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Strava Integration</CardTitle>
+          <CardDescription>
+            {isConnected === true
+              ? "You are connected to Strava."
+              : "Connect to Strava to sync your activities."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          {loading ? (
+            <p>Checking connection...</p>
+          ) : isConnected === true ? (
+            <>
+              <h2 className="text-xl font-semibold mb-4">Recent Activities</h2>
+              {activitiesLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : stravaActivities && stravaActivities.length > 0 ? (
+                <ul className="space-y-2">
+                  {stravaActivities.map((activity) => (
+                    <li
+                      key={activity.id}
+                      className="cursor-pointer hover:bg-gray-100 p-2 rounded-md"
+                      onClick={() => handleActivityClick(activity)}
+                    >
+                      {activity.name} ({activity.type})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No recent activities found.</p>
+              )}
+            </>
+          ) : (
+            <Button onClick={handleConnect} disabled={loading}>
+              Connect to Strava
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-      {error && (
-        <StravaErrorDisplay 
-          error={error} 
-          onRetry={handleRefresh} 
-          onDisconnect={handleDisconnect} 
-          isLoading={isLoadingActivities} 
+      {showActivityDetails && selectedActivity && (
+        <ActivityDetails
+          activity={selectedActivity}
+          isOpen={showActivityDetails}
+          onClose={handleCloseDetails}
         />
       )}
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Connection Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingConnection ? (
-                <div className="h-12 bg-muted animate-pulse rounded-md"></div>
-              ) : (
-                <StravaConnectForm 
-                  isConnected={!!isConnected} 
-                  isConnecting={isConnecting}
-                  onConnect={handleConnectStrava}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activities</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!isConnected && !isLoadingConnection ? (
-                <p className="text-muted-foreground">
-                  Connect your Strava account to see your activities here.
-                </p>
-              ) : (
-                <StravaActivityList 
-                  activities={(activities || []).map(activity => 
-                    toSavedStravaActivity(activity, 'saved' in activity ? (activity as any).saved : false)
-                  )} 
-                  isLoading={isLoadingActivities}
-                  onRefresh={handleRefresh}
-                  onDisconnect={handleDisconnect}
-                  onSelectActivity={handleSelectActivity}
-                />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
     </div>
   );
 };
