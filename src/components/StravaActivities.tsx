@@ -7,11 +7,12 @@ import { StravaConnectForm } from "./StravaConnectForm";
 import { StravaActivityList } from "./StravaActivityList";
 import { StravaErrorDisplay } from "./StravaErrorDisplay";
 import { 
-  checkStravaConnection, 
-  connectToStrava, 
+  isConnectedToStrava, 
+  getStravaActivities, 
   disconnectFromStrava, 
-  fetchStravaActivities 
-} from "@/services/stravaService";
+  connectToStrava,
+  fetchStravaActivities
+} from "@/services/strava";
 
 export function StravaActivities() {
   const [activities, setActivities] = useState<SavedStravaActivity[]>([]);
@@ -34,7 +35,7 @@ export function StravaActivities() {
       setIsLoading(true);
       setError(null);
       
-      const result = await checkStravaConnection(session.user.id);
+      const result = await isConnectedToStrava(session.user.id);
       setIsConnected(result.isConnected);
       
       if (result.isConnected) {
@@ -52,7 +53,7 @@ export function StravaActivities() {
       setIsLoading(true);
       setError(null);
       
-      const result = await fetchStravaActivities(session.user.id);
+      const result = await getStravaActivities(session.user.id);
       
       if (result.error) {
         setError("Failed to fetch Strava activities. Please try reconnecting your account.");

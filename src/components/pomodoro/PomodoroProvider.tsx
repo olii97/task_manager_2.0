@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
 import { PomodoroState, PomodoroStatus, DistractionInput, PomodoroDistraction } from "@/types/pomodoro";
 import { useAuth } from "@/components/AuthProvider";
@@ -42,7 +41,6 @@ type PomodoroAction =
 
 const PomodoroContext = createContext<PomodoroContextType | undefined>(undefined);
 
-// Helper functions for persistence
 const saveTimerState = (state: Partial<PomodoroState>) => {
   try {
     localStorage.setItem('pomodoroState', JSON.stringify(state));
@@ -82,6 +80,11 @@ const pomodoroReducer = (state: PomodoroState, action: PomodoroAction): Pomodoro
         currentTask: {
           id: action.payload.task.id,
           title: action.payload.task.title,
+          priority: action.payload.task.priority || 4,
+          is_completed: action.payload.task.is_completed || false,
+          is_scheduled_today: action.payload.task.is_scheduled_today || false,
+          created_at: action.payload.task.created_at || new Date().toISOString(),
+          updated_at: action.payload.task.updated_at || new Date().toISOString()
         },
         timeRemaining: durationSeconds,
         originalDuration: durationSeconds,
@@ -194,7 +197,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [state, dispatch] = useReducer(pomodoroReducer, initialState);
   const [isTimerInitialized, setIsTimerInitialized] = useState(false);
 
-  // Load timer state from localStorage on mount
   useEffect(() => {
     if (!isTimerInitialized) {
       const savedState = loadTimerState();
@@ -202,16 +204,13 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (savedState && savedState.status && 
           (savedState.status === 'running' || savedState.status === 'break' || savedState.status === 'paused')) {
         
-        // Calculate correct timeRemaining based on elapsed time
         if (savedState.startTimestamp && savedState.status === 'running' || savedState.status === 'break') {
           const elapsedSeconds = Math.floor((Date.now() - savedState.startTimestamp) / 1000);
           const newTimeRemaining = Math.max(0, (savedState.timeRemaining || 0) - elapsedSeconds);
           
           if (newTimeRemaining <= 0) {
-            // Timer has expired while away, clean up
             clearTimerState();
           } else {
-            // Restore the state with corrected time
             dispatch({
               type: 'START',
               payload: {
@@ -222,7 +221,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 sessionId: savedState.sessionId || 'unknown',
               }
             });
-            // Manually update the state to match saved values
             Object.assign(state, {
               ...savedState,
               timeRemaining: newTimeRemaining
@@ -235,7 +233,6 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [isTimerInitialized]);
 
-  // Load sessions completed today on mount
   useEffect(() => {
     if (userId) {
       getPomodoroSessionsCompletedToday(userId).then(count => {
@@ -244,11 +241,9 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [userId]);
 
-  // Handle timer ticks - using interval + timestamp-based tracking
   useEffect(() => {
     if ((state.status === 'running' || state.status === 'break') && isTimerInitialized) {
       const intervalId = setInterval(() => {
-        // Use timestamp-based approach for accurate timing
         dispatch({ type: 'TICK', payload: { currentTime: Date.now() } });
       }, 1000);
       
@@ -256,24 +251,19 @@ export const PomodoroProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [state.status, isTimerInitialized]);
 
-  // Handle automatic completion and notifications
   useEffect(() => {
     if (state.status === 'completed' && state.currentTask && state.sessionId) {
-      // Play a sound to notify the user
       const audio = new Audio('/notification.mp3');
       audio.play().catch(e => console.log('Error playing sound:', e));
       
-      // Vibrate if the device supports it
       if (navigator.vibrate) {
         navigator.vibrate([200, 100, 200]);
       }
       
-      // Mark the session as completed in the database
       completePomodoroSession(state.sessionId, state.currentTask.title);
     }
   }, [state.status, state.currentTask, state.sessionId]);
 
-  // Update document title
   useEffect(() => {
     const originalTitle = document.title;
     

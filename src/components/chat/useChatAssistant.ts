@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Message, AssistantInfo } from './types';
@@ -11,14 +10,12 @@ export const useChatAssistant = (userId?: string) => {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [assistantInfo, setAssistantInfo] = useState<AssistantInfo | null>(null);
 
-  // Initialize chat thread
   useEffect(() => {
     if (userId) {
       initializeChatThread();
     }
   }, [userId]);
 
-  // Initialize the chat thread and get assistant info
   const initializeChatThread = async () => {
     try {
       setIsLoading(true);
@@ -51,7 +48,6 @@ export const useChatAssistant = (userId?: string) => {
         console.log('Assistant info:', data);
         setThreadId(data.threadId);
         
-        // Add welcome message
         const welcomeMessage: Message = {
           id: 'welcome',
           role: 'assistant',
@@ -78,14 +74,12 @@ export const useChatAssistant = (userId?: string) => {
     }
   };
 
-  // Send message to assistant
   const handleSendMessage = useCallback(async () => {
     if (!input.trim() || !threadId || isLoading) return;
     
     try {
       setIsLoading(true);
       
-      // Add user message to the list
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
@@ -98,7 +92,6 @@ export const useChatAssistant = (userId?: string) => {
       
       console.log('Sending message to thread:', threadId);
       
-      // Send message to OpenAI
       const { data, error } = await supabase.functions.invoke('openai-chat', {
         body: {
           threadId,
@@ -118,7 +111,6 @@ export const useChatAssistant = (userId?: string) => {
       }
       
       if (data?.response) {
-        // Add assistant response to the list
         const assistantMessage: Message = {
           id: Date.now().toString() + '-assistant',
           role: 'assistant',

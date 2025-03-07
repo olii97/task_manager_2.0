@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { StravaActivitiesResult, StravaActivityDetailsResult, StravaActionResult } from "./types";
@@ -106,7 +105,7 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
         average_heartrate: storedActivity.average_heartrate || 0,
         max_heartrate: storedActivity.max_heartrate || 0,
         map: {
-          id: storedActivity.map_data ? JSON.parse(storedActivity.map_data).id : "",
+          id: storedActivity.map_data ? JSON.parse(String(storedActivity.map_data)).id : "",
           summary_polyline: storedActivity.summary_polyline || "",
           resource_state: 2,
         },
@@ -125,12 +124,12 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
         display_hide_heartrate_zone: false,
         saved: true,
         // Parse JSON fields from the database
-        laps: storedActivity.laps ? JSON.parse(storedActivity.laps) : undefined,
-        splits_metric: storedActivity.splits_metric ? JSON.parse(storedActivity.splits_metric) : undefined,
-        splits_standard: storedActivity.splits_standard ? JSON.parse(storedActivity.splits_standard) : undefined,
-        segment_efforts: storedActivity.segment_efforts ? JSON.parse(storedActivity.segment_efforts) : undefined,
-        start_latlng: storedActivity.start_latlng ? JSON.parse(storedActivity.start_latlng) : undefined,
-        end_latlng: storedActivity.end_latlng ? JSON.parse(storedActivity.end_latlng) : undefined,
+        laps: storedActivity.laps ? JSON.parse(String(storedActivity.laps)) : undefined,
+        splits_metric: storedActivity.splits_metric ? JSON.parse(String(storedActivity.splits_metric)) : undefined,
+        splits_standard: storedActivity.splits_standard ? JSON.parse(String(storedActivity.splits_standard)) : undefined,
+        segment_efforts: storedActivity.segment_efforts ? JSON.parse(String(storedActivity.segment_efforts)) : undefined,
+        start_latlng: storedActivity.start_latlng ? JSON.parse(String(storedActivity.start_latlng)) : undefined,
+        end_latlng: storedActivity.end_latlng ? JSON.parse(String(storedActivity.end_latlng)) : undefined,
         calories: storedActivity.calories,
         device_name: storedActivity.device_name,
         pr_count: storedActivity.pr_count,
