@@ -64,6 +64,7 @@ serve(async (req) => {
       );
     }
 
+    // Important: Set the v2 header for all OpenAI API calls
     const openai = new OpenAI({
       apiKey: apiKey,
       baseOptions: {
@@ -101,8 +102,8 @@ serve(async (req) => {
     if (useAssistant) {
       // Assistant mode
       if (!threadId) {
-        // Create a new thread
-        console.log("Creating a new thread");
+        // Create a new thread with v2 API
+        console.log("Creating a new thread with assistants=v2");
         try {
           const thread = await openai.beta.threads.create();
           console.log("Thread created successfully:", thread.id);
