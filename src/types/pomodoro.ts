@@ -1,4 +1,3 @@
-
 export interface PomodoroSession {
   id: string;
   user_id: string;
@@ -46,4 +45,10 @@ export interface PomodoroState {
 
 export interface DistractionInput {
   description: string;
+}
+
+export interface PomodoroStats {
+  completed_count: number;
+  total_minutes: number;
+  streak_days: number;
 }

@@ -13,9 +13,8 @@ export const saveStravaActivity = async (
   try {
     // Extract relevant data from the activity
     const activityData = {
-      id: activity.id.toString(),
+      id: activity.id,
       user_id: userId,
-      activity_id: activity.id.toString(),
       name: activity.name,
       distance: activity.distance,
       moving_time: activity.moving_time,
@@ -49,9 +48,9 @@ export const saveStravaActivity = async (
 };
 
 /**
- * Retrieves Strava activities for a user
+ * Retrieves Strava activities for a user from the database
  */
-export const getStravaActivities = async (userId: string): Promise<SavedStravaActivity[]> => {
+export const getStoredStravaActivities = async (userId: string): Promise<SavedStravaActivity[]> => {
   try {
     const { data, error } = await supabase
       .from('strava_activities')
@@ -64,7 +63,18 @@ export const getStravaActivities = async (userId: string): Promise<SavedStravaAc
       return [];
     }
 
-    return data || [];
+    return (data || []).map(activity => ({
+      ...activity,
+      id: Number(activity.id),
+      saved: true,
+      total_elevation_gain: 0,
+      utc_offset: 0,
+      map: {
+        id: "",
+        summary_polyline: "",
+        resource_state: 2
+      }
+    } as SavedStravaActivity));
   } catch (error) {
     console.error('Unexpected error fetching Strava activities:', error);
     return [];
@@ -76,14 +86,14 @@ export const getStravaActivities = async (userId: string): Promise<SavedStravaAc
  */
 export const getStravaActivityById = async (
   userId: string,
-  activityId: string
+  activityId: string | number
 ): Promise<SavedStravaActivity | null> => {
   try {
     const { data, error } = await supabase
       .from('strava_activities')
       .select('*')
       .eq('user_id', userId)
-      .eq('activity_id', activityId)
+      .eq('id', activityId)
       .single();
 
     if (error) {
@@ -91,7 +101,20 @@ export const getStravaActivityById = async (
       return null;
     }
 
-    return data;
+    if (!data) return null;
+
+    return {
+      ...data,
+      id: Number(data.id),
+      saved: true,
+      total_elevation_gain: 0,
+      utc_offset: 0,
+      map: {
+        id: "",
+        summary_polyline: "",
+        resource_state: 2
+      }
+    } as SavedStravaActivity;
   } catch (error) {
     console.error('Unexpected error fetching Strava activity:', error);
     return null;
@@ -105,7 +128,7 @@ export const getStoredActivityIds = async (userId: string): Promise<number[]> =>
   try {
     const { data, error } = await supabase
       .from('strava_activities')
-      .select('activity_id')
+      .select('id')
       .eq('user_id', userId);
 
     if (error) {
@@ -114,7 +137,7 @@ export const getStoredActivityIds = async (userId: string): Promise<number[]> =>
     }
 
     // Convert string IDs to numbers
-    return (data || []).map(item => parseInt(item.activity_id, 10));
+    return (data || []).map(item => Number(item.id));
   } catch (error) {
     console.error('Unexpected error fetching stored activity IDs:', error);
     return [];

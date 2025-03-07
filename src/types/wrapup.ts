@@ -1,17 +1,24 @@
 
-export interface DailyWrapup {
+import { Task } from './tasks';
+import { JournalEntry } from './journal';
+import { SavedStravaActivity } from './strava';
+
+export interface DailySummary {
   date: string;
-  journal_entry: string | null;
-  strava_activities: StravaActivitySummary[] | null;
-  todo_list: {
-    planned: string[];
-    completed: string[];
+  journalEntry: JournalEntry | null;
+  completedTasks: Task[];
+  workouts: SavedStravaActivity[];
+  stats: {
+    tasksCompleted: number;
+    moodScore: number | null;
+    energyLevel: number | null;
+    workoutCount: number;
+    totalWorkoutMinutes: number;
   };
 }
 
-export interface StravaActivitySummary {
-  activity_type: string;
-  distance_km: number;
-  duration: string;
-  pace: string;
+export interface DailySummaryDownloadResult {
+  success: boolean;
+  error: string | null;
+  data?: DailySummary;
 }

@@ -1,13 +1,24 @@
 
-// Re-export all Strava services
-export * from './connectionService';
-export * from './activityService';
-export * from './storageService';
+// Export types
 export * from './types';
 
-// Export explicit functions to match imports in components
-import { saveStravaActivity } from './storageService';
-export { saveStravaActivity };
+// Export connection functions
+export * from './connectionService';
+
+// Export from activityService
+export { 
+  fetchStravaActivities,
+  getStravaActivities,
+  getStravaActivityDetails
+} from './activityService';
+
+// Export from storageService
+export {
+  saveStravaActivity,
+  getStravaActivityById,
+  getStoredActivityIds,
+  getStoredStravaActivities
+} from './storageService';
 
 // Placeholder function to maintain compatibility
 export const updateStravaEdgeFunction = async () => {

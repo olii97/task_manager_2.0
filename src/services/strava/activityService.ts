@@ -1,7 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { StravaActivity, SavedStravaActivity } from '@/types/strava';
-import { getStravaToken, refreshTokenIfNeeded } from './connectionService';
-import { getStoredActivityIds, saveStravaActivity, getStravaActivities, getStravaActivityById } from './storageService';
+import { getStoredActivityIds, saveStravaActivity, getStoredStravaActivities, getStravaActivityById } from './storageService';
+import { StravaActivitiesResult, StravaActivityDetailsResult } from './types';
 
 /**
  * Fetches activities from Strava API
@@ -86,17 +87,17 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       
       // Map the database record to a SavedStravaActivity
       const savedActivity: SavedStravaActivity = {
-        id: storedActivity.id,
+        id: Number(storedActivity.id),
         name: storedActivity.name,
         type: storedActivity.type,
-        sport_type: storedActivity.type,
+        sport_type: storedActivity.sport_type || storedActivity.type,
         distance: storedActivity.distance,
         moving_time: storedActivity.moving_time,
         elapsed_time: storedActivity.elapsed_time,
         total_elevation_gain: storedActivity.total_elevation_gain || 0,
         start_date: storedActivity.start_date,
-        start_date_local: storedActivity.start_date || "",
-        timezone: "",
+        start_date_local: storedActivity.start_date_local || storedActivity.start_date,
+        timezone: storedActivity.timezone || "",
         utc_offset: 0,
         location_city: null,
         location_state: null,
@@ -106,8 +107,8 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
         average_heartrate: storedActivity.average_heartrate || 0,
         max_heartrate: storedActivity.max_heartrate || 0,
         map: {
-          id: storedActivity.map_data ? JSON.parse(String(storedActivity.map_data)).id : "",
-          summary_polyline: storedActivity.summary_polyline || "",
+          id: "",
+          summary_polyline: "",
           resource_state: 2,
         },
         saved: true
