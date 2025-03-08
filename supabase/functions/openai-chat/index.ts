@@ -8,44 +8,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Define the function schema for adding tasks
-const functions = [
+// Define the v2 tools configuration
+const tools = [
   {
-    name: "add_task",
-    description: "Add a task to the user's task list",
-    parameters: {
-      type: "object",
-      properties: {
-        title: {
-          type: "string",
-          description: "The title of the task",
+    type: "function",
+    function: {
+      name: "add_task",
+      description: "Add a task to the user's task list",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "The title of the task",
+          },
+          description: {
+            type: "string", 
+            description: "Optional description of the task",
+          },
+          priority: {
+            type: "integer",
+            description: "Priority level from 1 (highest) to 4 (lowest)",
+            enum: [1, 2, 3, 4]
+          },
+          is_scheduled_today: {
+            type: "boolean",
+            description: "Whether the task should be scheduled for today or just added to the backlog"
+          },
+          energy_level: {
+            type: "string",
+            description: "Energy level required for the task: high or low",
+            enum: ["high", "low"]
+          }
         },
-        description: {
-          type: "string", 
-          description: "Optional description of the task",
-        },
-        priority: {
-          type: "integer",
-          description: "Priority level from 1 (highest) to 4 (lowest)",
-          enum: [1, 2, 3, 4]
-        },
-        is_scheduled_today: {
-          type: "boolean",
-          description: "Whether the task should be scheduled for today or just added to the backlog"
-        },
-        energy_level: {
-          type: "string",
-          description: "Energy level required for the task: high or low",
-          enum: ["high", "low"]
-        }
-      },
-      required: ["title"]
+        required: ["title"]
+      }
     }
+  },
+  {
+    type: "retrieval" // Enable file search capabilities
   }
 ];
 
-// The assistant ID to use
-const ASSISTANT_ID = "asst_pEWgtxgc3knBhA0LXs0pgZYQ";
+// Assistant configuration
+const assistantConfig = {
+  name: "Task Management Assistant",
+  instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively.",
+  model: "gpt-4-turbo-preview",
+  tools: tools,
+  file_ids: [], // Add relevant file IDs here
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -100,16 +112,42 @@ serve(async (req) => {
     if (useAssistant) {
       // Assistant mode
       if (!threadId) {
-        // Create a new thread with v2 API
-        console.log("Creating a new thread with assistants=v2");
+        // Create or retrieve assistant and thread
+        console.log("Initializing assistant and thread");
         try {
+          // Create or update assistant
+          let assistant;
+          try {
+            // Try to retrieve existing assistant
+            const assistants = await openai.beta.assistants.list({ limit: 1 });
+            assistant = assistants.data[0];
+          
+            if (!assistant) {
+              // Create new assistant if none exists
+              assistant = await openai.beta.assistants.create(assistantConfig);
+              console.log("Created new assistant:", assistant.id);
+            } else {
+              // Update existing assistant
+              assistant = await openai.beta.assistants.update(
+                assistant.id,
+                assistantConfig
+              );
+              console.log("Updated existing assistant:", assistant.id);
+            }
+          } catch (error) {
+            console.error("Error managing assistant:", error);
+            throw new Error(`Assistant management failed: ${error.message}`);
+          }
+
+          // Create new thread
           const thread = await openai.beta.threads.create();
           console.log("Thread created successfully:", thread.id);
+        
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              assistantId: ASSISTANT_ID,
-              model: "gpt-4o-mini"
+              assistantId: assistant.id,
+              model: assistantConfig.model
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
@@ -164,14 +202,25 @@ serve(async (req) => {
         }
       }
 
-      // Run the assistant with function calling enabled
+      // Run the assistant with v2 configuration
       console.log("Running assistant for thread:", threadId);
       let run;
       try {
+        const assistants = await openai.beta.assistants.list({ limit: 1 });
+        const assistant = assistants.data[0];
+        
+        if (!assistant) {
+          throw new Error("No assistant found");
+        }
+        
         run = await openai.beta.threads.runs.create(threadId, {
-          assistant_id: ASSISTANT_ID,
-          tools: [{ type: "function", function: functions[0] }]
-        })
+          assistant_id: assistant.id,
+          tools: tools,
+          metadata: {
+            conversation_id: threadId,
+            timestamp: new Date().toISOString()
+          }
+        });
       } catch (error) {
         console.error("Error running assistant:", error);
         return new Response(
