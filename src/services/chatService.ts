@@ -152,19 +152,52 @@ export const sendChatMessage = async (
       
       console.log('Sending message to thread:', threadId);
       
-      const { data, error } = await supabase.functions.invoke('openai-chat', {
+      // Initial message submission
+      const { data: initialData, error: initialError } = await supabase.functions.invoke('openai-chat', {
         body: {
           threadId,
           message: input,
           useAssistant: true
         }
       });
+
+      if (initialError) throw initialError;
+      if (!initialData?.runId) throw new Error('No run ID received');
+
+      // Poll for completion
+      let runStatus: RunStatus | null = null;
+      while (!runStatus || ['queued', 'in_progress'].includes(runStatus.status)) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const { data, error } = await supabase.functions.invoke('openai-chat', {
+          body: {
+            threadId,
+            runId: initialData.runId,
+            checkStatus: true
+          }
+        });
+        
+        if (error) throw error;
+        runStatus = data as RunStatus;
+      }
+
+      if (runStatus.status === 'failed') {
+        throw new Error('Assistant run failed');
+      }
+
+      const { data, error } = await supabase.functions.invoke('openai-chat', {
+        body: {
+          threadId,
+          runId: initialData.runId,
+          getMessages: true
+        }
+      });
       
-      if (error) {
-        console.error('Error sending message:', error);
+      if (error || !data) {
+        console.error('Error retrieving assistant response:', error);
         toast({
-          title: 'Error sending message',
-          description: error.message || 'Please try again later',
+          title: 'Error retrieving response',
+          description: error?.message || 'Assistant response retrieval failed',
           variant: 'destructive'
         });
         return null;

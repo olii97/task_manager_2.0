@@ -31,4 +31,12 @@ export interface ChatThreadResponse {
   response?: string;
   messages?: ChatMessage[];
   functionCall?: FunctionCallResult;
+  runId?: string;
+  status?: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+}
+
+export interface RunStatus {
+  id: string;
+  status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  response?: string;
 }
