@@ -8,54 +8,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Define the v2 tools configuration
-const tools = [
-  {
-    type: "function",
-    function: {
-      name: "add_task",
-      description: "Add a task to the user's task list",
-      parameters: {
-        type: "object",
-        properties: {
-          title: {
-            type: "string",
-            description: "The title of the task",
-          },
-          description: {
-            type: "string", 
-            description: "Optional description of the task",
-          },
-          priority: {
-            type: "integer",
-            description: "Priority level from 1 (highest) to 4 (lowest)",
-            enum: [1, 2, 3, 4]
-          },
-          is_scheduled_today: {
-            type: "boolean",
-            description: "Whether the task should be scheduled for today or just added to the backlog"
-          },
-          energy_level: {
-            type: "string",
-            description: "Energy level required for the task: high or low",
-            enum: ["high", "low"]
-          }
+// Define the v2 tool resources configuration
+const tool_resources = {
+  functions: [{
+    name: "add_task",
+    description: "Add a task to the user's task list",
+    parameters: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "The title of the task",
         },
-        required: ["title"]
-      }
+        description: {
+          type: "string", 
+          description: "Optional description of the task",
+        },
+        priority: {
+          type: "integer",
+          description: "Priority level from 1 (highest) to 4 (lowest)",
+          enum: [1, 2, 3, 4]
+        },
+        is_scheduled_today: {
+          type: "boolean",
+          description: "Whether the task should be scheduled for today or just added to the backlog"
+        },
+        energy_level: {
+          type: "string",
+          description: "Energy level required for the task: high or low",
+          enum: ["high", "low"]
+        }
+      },
+      required: ["title"]
     }
-  },
-  {
-    type: "retrieval" // Enable file search capabilities
+  }],
+  file_search: {
+    enabled: true
   }
-];
+};
 
-// Assistant configuration
+// Assistant configuration with v2 tool resources
 const assistantConfig = {
   name: "Task Management Assistant",
   instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively.",
   model: "gpt-4-turbo-preview",
-  tools: tools,
+  tool_resources: tool_resources,
   file_ids: [], // Add relevant file IDs here
 };
 
@@ -118,22 +115,9 @@ serve(async (req) => {
           // Create or update assistant
           let assistant;
           try {
-            // Try to retrieve existing assistant
-            const assistants = await openai.beta.assistants.list({ limit: 1 });
-            assistant = assistants.data[0];
-          
-            if (!assistant) {
-              // Create new assistant if none exists
-              assistant = await openai.beta.assistants.create(assistantConfig);
-              console.log("Created new assistant:", assistant.id);
-            } else {
-              // Update existing assistant
-              assistant = await openai.beta.assistants.update(
-                assistant.id,
-                assistantConfig
-              );
-              console.log("Updated existing assistant:", assistant.id);
-            }
+            // Create a new assistant for each session
+            const assistant = await openai.beta.assistants.create(assistantConfig);
+            console.log("Created new assistant:", assistant.id);
           } catch (error) {
             console.error("Error managing assistant:", error);
             throw new Error(`Assistant management failed: ${error.message}`);
