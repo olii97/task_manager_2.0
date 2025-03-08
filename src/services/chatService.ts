@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Message, AssistantInfo } from '@/components/chat/types';
 import { toast } from '@/components/ui/use-toast';
@@ -9,15 +8,20 @@ interface InitializeChatResponse {
   welcomeMessage: Message;
 }
 
+interface RunStatus {
+  status: string;
+  last_error?: any;
+}
+
 /**
  * Initializes a chat thread with OpenAI
  */
 export const initializeChat = async (useAssistant: boolean): Promise<InitializeChatResponse> => {
   try {
-    console.log('Initializing chat thread...');
+    console.log('Initializing chat thread with useAssistant:', useAssistant);
     
     const { data, error } = await supabase.functions.invoke('openai-chat', {
-      body: { useAssistant }
+      body: { useAssistant: useAssistant === true }
     });
 
     if (error) {
@@ -135,7 +139,8 @@ export const sendChatMessage = async (
   input: string, 
   threadId: string | null, 
   useAssistant: boolean, 
-  messages: Message[]
+  messages: Message[],
+  assistantInfo?: AssistantInfo | null
 ): Promise<Message | null> => {
   try {
     if (useAssistant) {
@@ -150,14 +155,15 @@ export const sendChatMessage = async (
         return null;
       }
       
-      console.log('Sending message to thread:', threadId);
+      console.log('Sending message to thread:', threadId, 'with assistant:', assistantInfo?.assistantId);
       
       // Initial message submission
       const { data: initialData, error: initialError } = await supabase.functions.invoke('openai-chat', {
         body: {
           threadId,
           message: input,
-          useAssistant: true
+          useAssistant: true,
+          assistantId: assistantInfo?.assistantId
         }
       });
 

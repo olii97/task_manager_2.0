@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Message, AssistantInfo } from './types';
 import { initializeChat, sendChatMessage } from '@/services/chatService';
@@ -56,7 +55,7 @@ export const useChatAssistant = (userId?: string) => {
       setMessages(prev => [...prev, userMessage]);
       setInput('');
       
-      const assistantMessage = await sendChatMessage(input, threadId, useAssistant, messages);
+      const assistantMessage = await sendChatMessage(input, threadId, useAssistant, messages, assistantInfo);
       
       if (assistantMessage) {
         setMessages(prev => [...prev, assistantMessage]);
@@ -67,7 +66,7 @@ export const useChatAssistant = (userId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [input, threadId, isLoading, useAssistant, messages]);
+  }, [input, threadId, isLoading, useAssistant, messages, assistantInfo]);
 
   return {
     messages,

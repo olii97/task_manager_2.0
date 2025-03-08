@@ -1,7 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
-import OpenAI from "https://deno.land/x/openai@v4.24.0/mod.ts"
+import OpenAI from "https://deno.land/x/openai@v4.26.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,40 +9,8 @@ const corsHeaders = {
 
 // Define the v2 tool resources configuration
 const tool_resources = {
-  functions: [{
-    name: "add_task",
-    description: "Add a task to the user's task list",
-    parameters: {
-      type: "object",
-      properties: {
-        title: {
-          type: "string",
-          description: "The title of the task",
-        },
-        description: {
-          type: "string", 
-          description: "Optional description of the task",
-        },
-        priority: {
-          type: "integer",
-          description: "Priority level from 1 (highest) to 4 (lowest)",
-          enum: [1, 2, 3, 4]
-        },
-        is_scheduled_today: {
-          type: "boolean",
-          description: "Whether the task should be scheduled for today or just added to the backlog"
-        },
-        energy_level: {
-          type: "string",
-          description: "Energy level required for the task: high or low",
-          enum: ["high", "low"]
-        }
-      },
-      required: ["title"]
-    }
-  }],
   file_search: {
-    enabled: true
+    vector_store_ids: [] // Empty array instead of 'enabled: true'
   }
 };
 
@@ -51,10 +18,47 @@ const tool_resources = {
 const assistantConfig = {
   name: "Task Management Assistant",
   instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively.",
-  model: "gpt-4-turbo-preview",
-  tool_resources: tool_resources,
-  file_ids: [], // Add relevant file IDs here
+  model: "gpt-4o-mini",
+  tools: [
+    { type: "function", function: {
+      name: "add_task",
+      description: "Add a task to the user's task list",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "The title of the task",
+          },
+          description: {
+            type: "string", 
+            description: "Optional description of the task",
+          },
+          priority: {
+            type: "integer",
+            description: "Priority level from 1 (highest) to 4 (lowest)",
+            enum: [1, 2, 3, 4]
+          },
+          is_scheduled_today: {
+            type: "boolean",
+            description: "Whether the task should be scheduled for today or just added to the backlog"
+          },
+          energy_level: {
+            type: "string",
+            description: "Energy level required for the task: high or low",
+            enum: ["high", "low"]
+          }
+        },
+        required: ["title"]
+      }
+    }},
+    { type: "file_search" }
+  ],
+  tool_resources: tool_resources
 };
+
+// We'll create a new assistant instead of using a fixed ID
+// const ASSISTANT_ID = "asst_pEWgtxgc3knBhA0LXs0pgZYQ";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -78,7 +82,15 @@ serve(async (req) => {
       apiKey: apiKey,
       defaultHeaders: {
         'OpenAI-Beta': 'assistants=v2' // Use defaultHeaders to apply to all API calls
+      },
+      defaultQuery: {
+        'assistants_version': 'v2' // Add this as well to ensure v2 is used
       }
+    });
+
+    console.log("OpenAI client created with headers:", {
+      'OpenAI-Beta': 'assistants=v2',
+      'assistants_version': 'v2'
     });
 
     // Log that we're processing a request
@@ -97,40 +109,143 @@ serve(async (req) => {
       );
     }
 
-    const { message, threadId, useAssistant, functionResults } = reqBody;
+    const { message, threadId, useAssistant, functionResults, assistantId } = reqBody;
 
     console.log("Request parameters:", { 
       hasMessage: !!message, 
       threadId, 
-      useAssistant, 
-      hasFunctionResults: !!functionResults 
+      useAssistant: !!useAssistant,
+      assistantId,
+      hasFunctionResults: !!functionResults,
+      checkStatus: !!reqBody.checkStatus,
+      getMessages: !!reqBody.getMessages,
+      runId: reqBody.runId
     });
 
-    if (useAssistant) {
+    // Variable to store the assistant reference
+    let createdAssistant;
+    let assistantIdToUse;
+
+    if (useAssistant === true) {
+      console.log("Entering assistant mode");
+
+      // Check if we need to check the status of a run
+      if (reqBody.checkStatus && threadId && reqBody.runId) {
+        console.log("Checking status of run:", reqBody.runId);
+        try {
+          const runStatus = await openai.beta.threads.runs.retrieve(threadId, reqBody.runId, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          console.log("Run status:", runStatus.status);
+          return new Response(
+            JSON.stringify({ status: runStatus.status }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          console.error("Error checking run status:", error);
+          return new Response(
+            JSON.stringify({ error: `Error checking run status: ${error.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // Check if we need to get messages
+      if (reqBody.getMessages && threadId && reqBody.runId) {
+        console.log("Getting messages for thread:", threadId);
+        try {
+          const messageList = await openai.beta.threads.messages.list(threadId, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          // Get the latest assistant message
+          const assistantMessages = messageList.data.filter(msg => msg.role === 'assistant');
+          let latestResponse = "No response from assistant.";
+          
+          if (assistantMessages.length > 0) {
+            const latestMessage = assistantMessages[0];
+            if (latestMessage.content && latestMessage.content.length > 0) {
+              const textContent = latestMessage.content.find(content => content.type === 'text');
+              if (textContent && 'text' in textContent && textContent.text.value) {
+                latestResponse = textContent.text.value;
+              }
+            }
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              response: latestResponse,
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: assistantId
+              } 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          console.error("Error getting messages:", error);
+          return new Response(
+            JSON.stringify({ error: `Error getting messages: ${error.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
       // Assistant mode
       if (!threadId) {
         // Create or retrieve assistant and thread
         console.log("Initializing assistant and thread");
         try {
           // Create or update assistant
-          let assistant;
           try {
             // Create a new assistant for each session
-            const assistant = await openai.beta.assistants.create(assistantConfig);
-            console.log("Created new assistant:", assistant.id);
+            console.log("Creating new assistant with config:", assistantConfig);
+            createdAssistant = await openai.beta.assistants.create(assistantConfig, {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
+            });
+            console.log("Created new assistant:", createdAssistant.id);
           } catch (error) {
             console.error("Error managing assistant:", error);
-            throw new Error(`Assistant management failed: ${error.message}`);
+            // Check if it's a version error and provide more details
+            if (error.message && error.message.includes('v1 Assistants API has been deprecated')) {
+              console.error("API version error. Headers used:", openai.defaultHeaders);
+              // Try with explicit headers
+              try {
+                console.log("Retrying with explicit v2 header");
+                createdAssistant = await openai.beta.assistants.create(assistantConfig, {
+                  headers: {
+                    'OpenAI-Beta': 'assistants=v2'
+                  }
+                });
+                console.log("Successfully created assistant with explicit header:", createdAssistant.id);
+              } catch (retryError) {
+                console.error("Retry also failed:", retryError);
+                throw new Error(`Assistant management failed after retry: ${retryError.message}`);
+              }
+            } else {
+              throw new Error(`Assistant management failed: ${error.message}`);
+            }
           }
 
           // Create new thread
-          const thread = await openai.beta.threads.create();
+          const thread = await openai.beta.threads.create({}, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
           console.log("Thread created successfully:", thread.id);
         
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              assistantId: assistant.id,
+              assistantId: createdAssistant.id,
               model: assistantConfig.model
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -176,6 +291,10 @@ serve(async (req) => {
           await openai.beta.threads.messages.create(threadId, {
             role: 'user',
             content: message,
+          }, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
           })
         } catch (error) {
           console.error("Error adding message to thread:", error);
@@ -190,21 +309,39 @@ serve(async (req) => {
       console.log("Running assistant for thread:", threadId);
       let run;
       try {
-        const assistants = await openai.beta.assistants.list({ limit: 1 });
-        const assistant = assistants.data[0];
+        // Use the assistant ID from the request or the created assistant
+        assistantIdToUse = assistantId || createdAssistant?.id;
+        console.log("Using assistant ID:", assistantIdToUse);
         
-        if (!assistant) {
-          throw new Error("No assistant found");
+        if (!assistantIdToUse) {
+          throw new Error("No assistant ID available");
         }
         
         run = await openai.beta.threads.runs.create(threadId, {
-          assistant_id: assistant.id,
-          tools: tools,
+          assistant_id: assistantIdToUse,
+          tools: [], // No need for tools here as they're defined in the assistant
           metadata: {
             conversation_id: threadId,
             timestamp: new Date().toISOString()
           }
+        }, {
+          headers: {
+            'OpenAI-Beta': 'assistants=v2'
+          }
         });
+
+        // Return the run ID immediately after creating the run
+        console.log("Run created successfully:", run.id);
+        return new Response(
+          JSON.stringify({ 
+            runId: run.id,
+            assistantInfo: {
+              model: "gpt-4o-mini",
+              assistantId: assistantIdToUse
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       } catch (error) {
         console.error("Error running assistant:", error);
         return new Response(
@@ -217,7 +354,11 @@ serve(async (req) => {
       console.log("Polling for run completion:", run.id);
       let runStatus;
       try {
-        runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+        runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id, {
+          headers: {
+            'OpenAI-Beta': 'assistants=v2'
+          }
+        })
         
         let attempts = 0;
         const maxAttempts = 30; // Prevent infinite looping
@@ -229,7 +370,11 @@ serve(async (req) => {
           }
           // Wait for a second before checking again
           await new Promise(resolve => setTimeout(resolve, 1000))
-          runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id)
+          runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          })
           attempts++;
         }
         
@@ -260,7 +405,7 @@ serve(async (req) => {
             },
             assistantInfo: {
               model: "gpt-4o-mini",
-              assistantId: ASSISTANT_ID
+              assistantId: assistantIdToUse
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -271,7 +416,11 @@ serve(async (req) => {
       console.log("Getting messages for thread:", threadId);
       let messageList;
       try {
-        messageList = await openai.beta.threads.messages.list(threadId)
+        messageList = await openai.beta.threads.messages.list(threadId, {
+          headers: {
+            'OpenAI-Beta': 'assistants=v2'
+          }
+        })
       } catch (error) {
         console.error("Error listing messages:", error);
         return new Response(
@@ -299,14 +448,14 @@ serve(async (req) => {
           response: latestResponse,
           assistantInfo: {
             model: "gpt-4o-mini",
-            assistantId: ASSISTANT_ID
+            assistantId: assistantIdToUse
           } 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } else {
       // Standard ChatGPT mode
-      console.log("Using standard chat completion");
+      console.log("Using standard chat completion, useAssistant value:", useAssistant);
       try {
         const messages = reqBody.messages || [];
         
@@ -331,7 +480,8 @@ serve(async (req) => {
             }],
             assistantInfo: {
               model: "gpt-4o-mini"
-            }
+            },
+            response: "STANDARD MODE: " + completion.choices[0].message.content
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
