@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Message, AssistantInfo } from '@/components/chat/types';
 import { toast } from '@/components/ui/use-toast';
+import { getActiveChatSession, createChatSession, updateChatSession } from './chatSessionService';
 
 interface InitializeChatResponse {
   threadId?: string | null;
@@ -16,9 +17,60 @@ interface RunStatus {
 /**
  * Initializes a chat thread with OpenAI
  */
-export const initializeChat = async (useAssistant: boolean): Promise<InitializeChatResponse> => {
+export const initializeChat = async (useAssistant: boolean, userId?: string): Promise<InitializeChatResponse> => {
   try {
     console.log('Initializing chat thread with useAssistant:', useAssistant);
+    
+    // If we have a userId, check for an existing chat session
+    if (userId && useAssistant) {
+      const existingSession = await getActiveChatSession(userId);
+      
+      if (existingSession) {
+        console.log('Found existing chat session:', existingSession);
+        
+        // Call the Supabase function with the existing thread ID and reuseThread flag
+        const { data, error } = await supabase.functions.invoke('openai-chat', {
+          body: { 
+            useAssistant: true,
+            threadId: existingSession.thread_id,
+            // Always use the fixed assistant ID defined in the Supabase function
+            // instead of the one stored in the database
+            reuseThread: true
+          }
+        });
+
+        if (error) {
+          console.error('Error reusing chat thread:', error);
+          // Fall back to regular initialization below
+        } else if (data) {
+          console.log('Successfully reused thread:', data);
+          
+          // Update the session with the correct assistant ID if it's different
+          if (existingSession.assistant_id !== data.assistantId) {
+            console.log('Updating session with new assistant ID:', data.assistantId);
+            await updateChatSession(existingSession.id, {
+              assistant_id: data.assistantId,
+              assistant_model: data.model || 'gpt-4o-mini'
+            });
+          }
+          
+          return {
+            threadId: existingSession.thread_id,
+            assistantInfo: {
+              model: data.model || 'gpt-4o-mini',
+              assistantId: data.assistantId,
+              name: existingSession.assistant_name
+            },
+            welcomeMessage: {
+              id: 'welcome',
+              role: 'assistant',
+              content: "Welcome back! I'm here to continue our conversation. How can I help you today?",
+              timestamp: new Date().toISOString()
+            }
+          };
+        }
+      }
+    }
     
     const { data, error } = await supabase.functions.invoke('openai-chat', {
       body: { useAssistant: useAssistant === true }
@@ -79,11 +131,23 @@ export const initializeChat = async (useAssistant: boolean): Promise<InitializeC
         assistantId: data.assistantId
       });
       
+      // If we have a userId, store the chat session
+      if (userId && data.threadId && data.assistantId) {
+        const assistantInfo = {
+          model: data.model || 'gpt-4o-mini',
+          assistantId: data.assistantId,
+          name: 'AI Assistant'
+        };
+        
+        await createChatSession(userId, data.assistantId, data.threadId, assistantInfo);
+      }
+      
       return {
         threadId: data.threadId,
         assistantInfo: {
           model: data.model || 'gpt-4o-mini',
-          assistantId: data.assistantId
+          assistantId: data.assistantId,
+          name: 'AI Assistant'
         },
         welcomeMessage: {
           id: 'welcome',
@@ -143,7 +207,18 @@ export const sendChatMessage = async (
   assistantInfo?: AssistantInfo | null
 ): Promise<Message | null> => {
   try {
-    if (useAssistant) {
+    // If we have a thread ID, always use assistant mode
+    const shouldUseAssistant = threadId ? true : useAssistant;
+    
+    console.log('Sending message with parameters:', {
+      input: input.substring(0, 20) + (input.length > 20 ? '...' : ''),
+      threadId,
+      useAssistant: shouldUseAssistant,
+      hasAssistantInfo: !!assistantInfo,
+      assistantId: assistantInfo?.assistantId
+    });
+    
+    if (shouldUseAssistant) {
       // Assistant mode (requires thread ID)
       if (!threadId) {
         console.error('No thread ID available');
@@ -162,8 +237,9 @@ export const sendChatMessage = async (
         body: {
           threadId,
           message: input,
-          useAssistant: true,
-          assistantId: assistantInfo?.assistantId
+          useAssistant: true, // Always set to true
+          // Let the server use the fixed assistant ID
+          reuseThread: true
         }
       });
 
@@ -179,7 +255,8 @@ export const sendChatMessage = async (
           body: {
             threadId,
             runId: initialData.runId,
-            checkStatus: true
+            checkStatus: true,
+            useAssistant: true // Always set to true
           }
         });
         
@@ -195,7 +272,8 @@ export const sendChatMessage = async (
         body: {
           threadId,
           runId: initialData.runId,
-          getMessages: true
+          getMessages: true,
+          useAssistant: true // Always set to true
         }
       });
       

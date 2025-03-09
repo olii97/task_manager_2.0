@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
@@ -20,17 +19,19 @@ const ChatBot: React.FC = () => {
     assistantInfo,
     useAssistant,
     toggleChatMode,
-    handleSendMessage
+    handleSendMessage,
+    threadId
   } = useChatAssistant(userId);
 
   return (
-    <Card className="shadow-md border-primary/20">
+    <Card className="shadow-lg border-stone-300 bg-white max-w-3xl mx-auto">
       <ChatHeader 
         assistantInfo={assistantInfo} 
         useAssistant={useAssistant}
         toggleChatMode={toggleChatMode}
+        threadId={threadId}
       />
-      <CardContent className="space-y-4 p-4">
+      <CardContent className="space-y-4 p-4 bg-stone-50">
         <ChatMessages 
           messages={messages} 
           isLoading={isLoading} 

@@ -1,4 +1,3 @@
-
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string[];
@@ -14,6 +13,7 @@ export interface Message {
 export interface AssistantInfo {
   model: string;
   assistantId?: string | null;
+  name?: string;
 }
 
 export interface FunctionCallResult {

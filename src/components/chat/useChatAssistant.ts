@@ -26,7 +26,7 @@ export const useChatAssistant = (userId?: string) => {
     try {
       setIsLoading(true);
       
-      const result = await initializeChat(useAssistant);
+      const result = await initializeChat(useAssistant, userId);
       
       setThreadId(result.threadId || null);
       setAssistantInfo(result.assistantInfo);
@@ -76,6 +76,7 @@ export const useChatAssistant = (userId?: string) => {
     assistantInfo,
     useAssistant,
     toggleChatMode,
-    handleSendMessage
+    handleSendMessage,
+    threadId
   };
 };

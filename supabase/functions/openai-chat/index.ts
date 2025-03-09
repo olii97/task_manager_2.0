@@ -57,8 +57,8 @@ const assistantConfig = {
   tool_resources: tool_resources
 };
 
-// We'll create a new assistant instead of using a fixed ID
-// const ASSISTANT_ID = "asst_pEWgtxgc3knBhA0LXs0pgZYQ";
+// Fixed assistant ID to use for all users
+const FIXED_ASSISTANT_ID = "asst_DOAXZQD6pbB5wS27NxnOAOi9";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -119,15 +119,76 @@ serve(async (req) => {
       hasFunctionResults: !!functionResults,
       checkStatus: !!reqBody.checkStatus,
       getMessages: !!reqBody.getMessages,
-      runId: reqBody.runId
+      runId: reqBody.runId,
+      reuseThread: !!reqBody.reuseThread
     });
 
-    // Variable to store the assistant reference
-    let createdAssistant;
-    let assistantIdToUse;
+    // Always use the fixed assistant ID
+    const assistantIdToUse = FIXED_ASSISTANT_ID;
+    console.log("Using fixed assistant ID:", assistantIdToUse);
 
     if (useAssistant === true) {
-      console.log("Entering assistant mode");
+      console.log("Entering assistant mode with fixed assistant ID:", FIXED_ASSISTANT_ID);
+
+      // Check if we want to reuse a thread and the thread exists
+      if (threadId && reqBody.reuseThread) {
+        console.log("Reusing existing thread:", threadId);
+        try {
+          // Validate that the thread exists by retrieving its messages
+          const messages = await openai.beta.threads.messages.list(threadId, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          console.log("Successfully validated existing thread, message count:", messages.data.length);
+          
+          // If we have a message, add it to the thread
+          if (message) {
+            await openai.beta.threads.messages.create(threadId, {
+              role: 'user',
+              content: message,
+            }, {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
+            });
+            console.log("Added message to existing thread");
+          }
+          
+          // Run the assistant on the existing thread - always use the fixed assistant ID
+          console.log("Using fixed assistant ID:", assistantIdToUse);
+          const run = await openai.beta.threads.runs.create(threadId, {
+            assistant_id: assistantIdToUse,
+            tools: [], // No need for tools here as they're defined in the assistant
+            metadata: {
+              conversation_id: threadId,
+              timestamp: new Date().toISOString()
+            }
+          }, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          console.log("Run created successfully for existing thread:", run.id);
+          return new Response(
+            JSON.stringify({ 
+              runId: run.id,
+              threadId: threadId,
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: FIXED_ASSISTANT_ID
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          console.error("Error reusing thread:", error);
+          // If the thread doesn't exist or there's an error, we'll create a new one below
+          console.log("Will create a new thread instead");
+        }
+      }
 
       // Check if we need to check the status of a run
       if (reqBody.checkStatus && threadId && reqBody.runId) {
@@ -182,7 +243,7 @@ serve(async (req) => {
               response: latestResponse,
               assistantInfo: {
                 model: "gpt-4o-mini",
-                assistantId: assistantId
+                assistantId: FIXED_ASSISTANT_ID
               } 
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -202,15 +263,28 @@ serve(async (req) => {
         console.log("Initializing assistant and thread");
         try {
           // Create or update assistant
+          let assistant;
           try {
-            // Create a new assistant for each session
-            console.log("Creating new assistant with config:", assistantConfig);
-            createdAssistant = await openai.beta.assistants.create(assistantConfig, {
-              headers: {
-                'OpenAI-Beta': 'assistants=v2'
-              }
-            });
-            console.log("Created new assistant:", createdAssistant.id);
+            // First, try to retrieve the fixed assistant
+            console.log("Trying to retrieve fixed assistant:", FIXED_ASSISTANT_ID);
+            try {
+              assistant = await openai.beta.assistants.retrieve(FIXED_ASSISTANT_ID, {
+                headers: {
+                  'OpenAI-Beta': 'assistants=v2'
+                }
+              });
+              console.log("Successfully retrieved fixed assistant:", assistant.id);
+            } catch (retrieveError) {
+              console.log("Fixed assistant not found, creating a new one");
+              // Create a new assistant if the fixed one doesn't exist
+              assistant = await openai.beta.assistants.create(assistantConfig, {
+                headers: {
+                  'OpenAI-Beta': 'assistants=v2'
+                }
+              });
+              console.log("Created new assistant:", assistant.id);
+              console.log("IMPORTANT: Save this assistant ID for future use:", assistant.id);
+            }
           } catch (error) {
             console.error("Error managing assistant:", error);
             // Check if it's a version error and provide more details
@@ -219,12 +293,23 @@ serve(async (req) => {
               // Try with explicit headers
               try {
                 console.log("Retrying with explicit v2 header");
-                createdAssistant = await openai.beta.assistants.create(assistantConfig, {
-                  headers: {
-                    'OpenAI-Beta': 'assistants=v2'
-                  }
-                });
-                console.log("Successfully created assistant with explicit header:", createdAssistant.id);
+                try {
+                  assistant = await openai.beta.assistants.retrieve("asst_DOAXZQD6pbB5wS27NxnOAOi9", {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log("Successfully retrieved fixed assistant with explicit header:", assistant.id);
+                } catch (retrieveError) {
+                  // Create a new assistant if the fixed one doesn't exist
+                  assistant = await openai.beta.assistants.create(assistantConfig, {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log("Created new assistant with explicit header:", assistant.id);
+                  console.log("IMPORTANT: Save this assistant ID for future use:", assistant.id);
+                }
               } catch (retryError) {
                 console.error("Retry also failed:", retryError);
                 throw new Error(`Assistant management failed after retry: ${retryError.message}`);
@@ -245,7 +330,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              assistantId: createdAssistant.id,
+              assistantId: FIXED_ASSISTANT_ID,
               model: assistantConfig.model
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -309,9 +394,8 @@ serve(async (req) => {
       console.log("Running assistant for thread:", threadId);
       let run;
       try {
-        // Use the assistant ID from the request or the created assistant
-        assistantIdToUse = assistantId || createdAssistant?.id;
-        console.log("Using assistant ID:", assistantIdToUse);
+        // Use the fixed assistant ID instead of the one from the request
+        console.log("Using fixed assistant ID:", assistantIdToUse);
         
         if (!assistantIdToUse) {
           throw new Error("No assistant ID available");

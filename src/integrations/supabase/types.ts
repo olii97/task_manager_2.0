@@ -6,9 +6,53 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
+      chat_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          assistant_id: string
+          thread_id: string
+          created_at: string
+          updated_at: string
+          is_active: boolean
+          assistant_name: string | null
+          assistant_model: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          assistant_id: string
+          thread_id: string
+          created_at?: string
+          updated_at?: string
+          is_active?: boolean
+          assistant_name?: string | null
+          assistant_model?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          assistant_id?: string
+          thread_id?: string
+          created_at?: string
+          updated_at?: string
+          is_active?: boolean
+          assistant_name?: string | null
+          assistant_model?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       journal_entries: {
         Row: {
           challenges: string | null
