@@ -42,6 +42,7 @@ export interface PomodoroState {
   breakDuration: number;
   startTimestamp?: number; // Timestamp when the timer started
   pausedTimestamp?: number; // Timestamp when the timer was paused
+  lastTickTime?: number; // For more accurate timing
 }
 
 export interface DistractionInput {

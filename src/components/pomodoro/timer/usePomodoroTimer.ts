@@ -1,18 +1,7 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePomodoro } from '../PomodoroProvider';
-
-export interface PomodoroState {
-  status: 'idle' | 'running' | 'paused' | 'completed';
-  timeRemaining: number;
-  originalDuration: number;
-  isBreak: boolean;
-  sessionsCompleted: number;
-  currentTask?: {
-    id: string;
-    title: string;
-  };
-}
+import { PomodoroState } from '@/types/pomodoro';
 
 export const usePomodoroTimer = () => {
   const {
@@ -31,6 +20,8 @@ export const usePomodoroTimer = () => {
     isBreak: false,
     sessionsCompleted: completedCount,
     currentTask: selectedTask,
+    distractions: [],
+    breakDuration: timerSettings.breakDuration,
   });
 
   const [originalPageTitle, setOriginalPageTitle] = useState('');
@@ -39,20 +30,16 @@ export const usePomodoroTimer = () => {
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   
   // Use refs for values that should not trigger re-renders
-  const isTimerRunningRef = useRef(isTimerRunning);
-  const statusRef = useRef(state.status);
+  const stateRef = useRef(state);
   const timerSettingsRef = useRef(timerSettings);
-  const timeRemainingRef = useRef(state.timeRemaining);
-  const isBreakRef = useRef(state.isBreak);
-  const intervalRef = useRef<number | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const isRunningRef = useRef(isTimerRunning);
 
   // Update refs when values change
   useEffect(() => {
-    isTimerRunningRef.current = isTimerRunning;
-    timeRemainingRef.current = state.timeRemaining;
-    isBreakRef.current = state.isBreak;
-    statusRef.current = state.status;
-  }, [isTimerRunning, state.timeRemaining, state.isBreak, state.status]);
+    stateRef.current = state;
+    isRunningRef.current = isTimerRunning;
+  }, [state, isTimerRunning]);
 
   useEffect(() => {
     timerSettingsRef.current = timerSettings;
@@ -64,8 +51,9 @@ export const usePomodoroTimer = () => {
       setOriginalPageTitle(document.title);
     }
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
       document.title = originalPageTitle;
     };
@@ -74,67 +62,102 @@ export const usePomodoroTimer = () => {
   // Clean up on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
     };
   }, []);
 
+  // More accurate timer using requestAnimationFrame instead of setInterval
+  const startTimerAnimation = useCallback(() => {
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+
+    let lastTickTime = Date.now();
+    
+    const timerLoop = () => {
+      // Calculate elapsed time since last tick
+      const now = Date.now();
+      const elapsed = now - lastTickTime;
+      
+      // Only update if more than 1000ms have passed
+      if (elapsed >= 1000) {
+        const newState = { ...stateRef.current };
+        
+        // Number of seconds to decrement (handles case where browser throttles in background)
+        const decrementAmount = Math.floor(elapsed / 1000);
+        
+        if (newState.timeRemaining <= decrementAmount) {
+          // Timer completed
+          newState.timeRemaining = 0;
+          
+          if (!newState.isBreak) {
+            // Work timer completed
+            newState.status = 'completed';
+            setState(newState);
+            completePomodoro();
+          } else {
+            // Break timer completed
+            newState.isBreak = false;
+            newState.status = 'idle';
+            newState.timeRemaining = timerSettingsRef.current.workDuration * 60;
+            newState.originalDuration = timerSettingsRef.current.workDuration * 60;
+            setState(newState);
+            setIsTimerRunning(false);
+          }
+          return;
+        } else {
+          // Decrement timer by calculated amount
+          newState.timeRemaining -= decrementAmount;
+          lastTickTime = now - (elapsed % 1000); // Keep remainder for accurate timing
+          setState(newState);
+        }
+      }
+      
+      // Continue the loop only if timer is still running
+      if (isRunningRef.current && stateRef.current.status === 'running') {
+        rafIdRef.current = requestAnimationFrame(timerLoop);
+      }
+    };
+    
+    rafIdRef.current = requestAnimationFrame(timerLoop);
+  }, [completePomodoro, setIsTimerRunning]);
+
   // Initialize timer and handle countdown
   useEffect(() => {
     if (isTimerRunning && state.status === 'running') {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+      // Set or update the start timestamp when the timer starts running
+      if (!state.startTimestamp) {
+        setState(prev => ({
+          ...prev,
+          startTimestamp: Date.now(),
+          lastTickTime: Date.now()
+        }));
       }
       
-      intervalRef.current = window.setInterval(() => {
-        setState(prev => {
-          if (prev.timeRemaining <= 1) {
-            // Timer completed
-            if (intervalRef.current) {
-              clearInterval(intervalRef.current);
-              intervalRef.current = null;
-            }
-            
-            // Mark as completed if it was a work session
-            if (!prev.isBreak) {
-              completePomodoro();
-              return {
-                ...prev,
-                status: 'completed',
-                timeRemaining: 0
-              };
-            } else {
-              // Break completed
-              return {
-                ...prev,
-                status: 'idle',
-                isBreak: false,
-                timeRemaining: timerSettingsRef.current.workDuration * 60,
-                originalDuration: timerSettingsRef.current.workDuration * 60
-              };
-            }
-          } else {
-            // Continue countdown
-            return {
-              ...prev,
-              timeRemaining: prev.timeRemaining - 1
-            };
-          }
-        });
-      }, 1000);
-    } else if (intervalRef.current && !isTimerRunning) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+      startTimerAnimation();
+    } else if (rafIdRef.current && !isTimerRunning) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+      
+      // Store the pause timestamp
+      if (state.status === 'paused') {
+        setState(prev => ({
+          ...prev,
+          pausedTimestamp: Date.now()
+        }));
+      }
     }
     
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
     };
-  }, [isTimerRunning, state.status, completePomodoro]);
+  }, [isTimerRunning, state.status, state.startTimestamp, startTimerAnimation]);
 
   // Update state when selected task changes
   useEffect(() => {
@@ -212,7 +235,8 @@ export const usePomodoroTimer = () => {
     setIsTimerRunning(false);
     setState(prev => ({
       ...prev,
-      status: 'paused'
+      status: 'paused',
+      pausedTimestamp: Date.now()
     }));
   };
 
@@ -220,7 +244,8 @@ export const usePomodoroTimer = () => {
     setIsTimerRunning(true);
     setState(prev => ({
       ...prev,
-      status: 'running'
+      status: 'running',
+      pausedTimestamp: undefined
     }));
   };
 
@@ -230,7 +255,9 @@ export const usePomodoroTimer = () => {
       ...prev,
       status: 'idle',
       timeRemaining: timerSettings.workDuration * 60,
-      originalDuration: timerSettings.workDuration * 60
+      originalDuration: timerSettings.workDuration * 60,
+      startTimestamp: undefined,
+      pausedTimestamp: undefined
     }));
   };
 
@@ -245,7 +272,9 @@ export const usePomodoroTimer = () => {
       isBreak: true,
       timeRemaining: timerSettings.breakDuration * 60,
       originalDuration: timerSettings.breakDuration * 60,
-      status: 'running'
+      status: 'running',
+      startTimestamp: Date.now(),
+      pausedTimestamp: undefined
     }));
     setIsTimerRunning(true);
   };
@@ -256,7 +285,9 @@ export const usePomodoroTimer = () => {
       isBreak: false,
       timeRemaining: timerSettings.workDuration * 60,
       originalDuration: timerSettings.workDuration * 60,
-      status: 'idle'
+      status: 'idle',
+      startTimestamp: undefined,
+      pausedTimestamp: undefined
     }));
     setIsTimerRunning(false);
     setShowCompletionDialog(false);
