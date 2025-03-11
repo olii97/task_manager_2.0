@@ -1,12 +1,17 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { PomodoroSession, PomodoroStats } from '@/types/pomodoro';
+import { PomodoroSession, PomodoroStats, PomodoroDistraction } from '@/types/pomodoro';
 
 export interface CreatePomodoroSessionParams {
   user_id: string;
   duration_minutes: number;
   task_id?: string;
   completed: boolean;
+}
+
+export interface LogPomodoroDistractionParams {
+  session_id: string;
+  description: string;
 }
 
 export const createPomodoroSession = async (params: CreatePomodoroSessionParams): Promise<{ session: PomodoroSession | null, error: string | null }> => {
@@ -18,6 +23,7 @@ export const createPomodoroSession = async (params: CreatePomodoroSessionParams)
         duration_minutes: params.duration_minutes,
         task_id: params.task_id,
         completed: params.completed,
+        start_time: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }])
@@ -39,9 +45,59 @@ export const createPomodoroSession = async (params: CreatePomodoroSessionParams)
   }
 };
 
-// For backward compatibility
-export const completePomodoroSession = async (params: CreatePomodoroSessionParams): Promise<{ session: PomodoroSession | null, error: string | null }> => {
-  return createPomodoroSession(params);
+export const completePomodoroSession = async (sessionId: string): Promise<{ success: boolean, error: string | null }> => {
+  try {
+    const endTime = new Date().toISOString();
+    
+    const { error } = await supabase
+      .from('pomodoro_sessions')
+      .update({
+        completed: true,
+        end_time: endTime,
+        updated_at: endTime
+      })
+      .eq('id', sessionId);
+
+    if (error) {
+      console.error('Error completing pomodoro session:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Unexpected error completing pomodoro session:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+    };
+  }
+};
+
+export const logPomodoroDistraction = async (params: LogPomodoroDistractionParams): Promise<{ distraction: PomodoroDistraction | null, error: string | null }> => {
+  try {
+    const { data, error } = await supabase
+      .from('pomodoro_distractions')
+      .insert([{
+        session_id: params.session_id,
+        description: params.description,
+        created_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error logging pomodoro distraction:', error);
+      return { distraction: null, error: error.message };
+    }
+
+    return { distraction: data, error: null };
+  } catch (error) {
+    console.error('Unexpected error logging pomodoro distraction:', error);
+    return { 
+      distraction: null, 
+      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+    };
+  }
 };
 
 export const getPomodoroStats = async (userId: string): Promise<PomodoroStats | null> => {
@@ -99,6 +155,26 @@ export const getPomodoroSessions = async (userId: string): Promise<PomodoroSessi
     return data || [];
   } catch (error) {
     console.error('Unexpected error fetching pomodoro sessions:', error);
+    return [];
+  }
+};
+
+export const getPomodoroDistractions = async (sessionId: string): Promise<PomodoroDistraction[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('pomodoro_distractions')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching pomodoro distractions:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Unexpected error fetching pomodoro distractions:', error);
     return [];
   }
 };

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +19,7 @@ import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
+import { TabBarTimer } from "./components/pomodoro/TabBarTimer";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +53,7 @@ const App = () => (
             <QuarterEndReminder />
             <PomodoroBlurOverlay />
             <PomodoroTimer />
+            <TabBarTimer />
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route
