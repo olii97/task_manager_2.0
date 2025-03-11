@@ -22,14 +22,16 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
   onStop,
   onLogDistraction,
 }) => {
+  const buttonColor = isBreak ? "meditation-primary" : "pomodoro-primary";
+  
   return (
     <div className="mt-4 flex flex-col gap-3">
-      <div className="flex gap-2 justify-center">
+      <div className="flex gap-3 justify-center">
         {status === "running" ? (
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 rounded-full border-pomodoro-primary text-pomodoro-primary hover:bg-pomodoro-primary/10"
+            className={`h-12 w-12 rounded-full border-2 border-${buttonColor} text-${buttonColor} hover:bg-${buttonColor}/10 transition-all duration-200 shadow-md`}
             onClick={onPause}
           >
             <Pause className="h-5 w-5" />
@@ -38,7 +40,7 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 rounded-full border-pomodoro-primary text-pomodoro-primary hover:bg-pomodoro-primary/10"
+            className={`h-12 w-12 rounded-full border-2 border-${buttonColor} text-${buttonColor} hover:bg-${buttonColor}/10 transition-all duration-200 shadow-md`}
             onClick={onResume}
           >
             <Play className="h-5 w-5" />
@@ -49,7 +51,7 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 rounded-full border-destructive text-destructive hover:bg-destructive/10"
+            className="h-12 w-12 rounded-full border-2 border-destructive text-destructive hover:bg-destructive/10 transition-all duration-200 shadow-md"
             onClick={onStop}
           >
             <StopCircle className="h-5 w-5" />
@@ -61,7 +63,7 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="text-xs text-destructive hover:bg-destructive/5 mt-2"
+          className="text-xs font-medium bg-destructive/5 text-destructive hover:bg-destructive/10 mt-2 rounded-full px-4 py-1 transition-all duration-200"
           onClick={onLogDistraction}
         >
           <AlertTriangle className="h-3 w-3 mr-1" />
