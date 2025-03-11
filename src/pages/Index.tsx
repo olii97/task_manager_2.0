@@ -55,6 +55,11 @@ const Index = () => {
     }
   }, [userId, refreshTodayEntry]);
 
+  // Function to open the task form - this matches the expected signature for onAddTask
+  const openTaskForm = () => {
+    setTaskFormOpen(true);
+  };
+
   return (
     <div className="container py-6">
       {/* Weekly Intentions at the top */}
@@ -119,12 +124,12 @@ const Index = () => {
         title={editingTask ? "Edit Task" : "Add New Task"}
       />
 
-      {/* Task Planner Dialog - Add onAddTask prop */}
+      {/* Task Planner Dialog - Using openTaskForm for onAddTask which matches the expected signature */}
       <TaskPlanner
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
-        onAddTask={handleAddTask}
+        onAddTask={openTaskForm}
       />
     </div>
   );

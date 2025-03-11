@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Task, priorityEmojis } from "@/types/tasks";
 import { 
@@ -23,10 +22,11 @@ interface TaskPlannerProps {
   open: boolean;
   onClose: () => void;
   tasks: Task[];
-  onAddTask: () => void;
+  onAddTask: () => void; // Changed to match what Index.tsx provides
 }
 
 export function TaskPlanner({ open, onClose, tasks, onAddTask }: TaskPlannerProps) {
+  
   const [selectedHighEnergyTasks, setSelectedHighEnergyTasks] = useState<string[]>([]);
   const [selectedLowEnergyTasks, setSelectedLowEnergyTasks] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("high");
