@@ -55,21 +55,20 @@ const Index = () => {
     }
   }, [userId, refreshTodayEntry]);
 
-  // Function to open the task form - this matches the expected signature for onAddTask
-  const openTaskForm = () => {
-    setTaskFormOpen(true);
-  };
-
   return (
     <div className="container py-6">
-      {/* Top row with Featured Goal and Weekly Intentions */}
+      {/* Top row with Featured Goal and Weekly Intentions - made shorter */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <FeaturedGoal />
-        <WeeklyIntentionsCard />
+        <div className="h-[200px] overflow-auto">
+          <FeaturedGoal />
+        </div>
+        <div className="h-[200px] overflow-auto">
+          <WeeklyIntentionsCard />
+        </div>
       </div>
       
-      {/* Main content area */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Main content area - tasks and journal side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Today's Tasks */}
         <TodaysTasks 
           onEditTask={handleEditTask} 
@@ -82,13 +81,15 @@ const Index = () => {
           isLoading={isJournalLoading}
           refreshTodayEntry={refreshTodayEntry}
         />
+      </div>
 
-        {/* Featured Goal */}
+      {/* Chat Bot below tasks and journal */}
+      <div className="mb-6">
         <ChatBot />
       </div>
 
       {/* Bottom row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Strava Activities */}
         <StravaActivitiesCard 
           activities={stravaActivities || []} 
@@ -121,12 +122,12 @@ const Index = () => {
         title={editingTask ? "Edit Task" : "Add New Task"}
       />
 
-      {/* Task Planner Dialog - Using openTaskForm for onAddTask which matches the expected signature */}
+      {/* Task Planner Dialog */}
       <TaskPlanner
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
-        onAddTask={openTaskForm}
+        onAddTask={() => setTaskFormOpen(true)}
       />
     </div>
   );

@@ -104,8 +104,12 @@ const IntentionsEdit = () => {
         description: "There was a problem saving your intentions. Please try again.",
         variant: "destructive",
       });
-      setIsSubmitting(false);  // Make sure to reset submitting state on error
+      setIsSubmitting(false);
     },
+    onSettled: () => {
+      // Ensure submitting state is reset whether success or error
+      setIsSubmitting(false);
+    }
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,7 +122,7 @@ const IntentionsEdit = () => {
     try {
       await updateMutation.mutateAsync();
     } catch (error) {
-      // Error will be handled in the onError callback of the mutation
+      // Error is handled in the onError callback
       console.error("Submit error:", error);
     }
   };
