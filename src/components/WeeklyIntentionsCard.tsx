@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
 import { getCurrentWeekIntentions, createWeeklyIntention } from "@/services/intentionService";
 import { WeeklyIntention } from "@/types/intentions";
-import { ClipboardList, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { ClipboardList, ArrowUpRight, CheckCircle2, Pencil } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 export const WeeklyIntentionsCard = () => {
@@ -154,8 +154,16 @@ export const WeeklyIntentionsCard = () => {
             )}
             
             <div className="flex justify-end">
-              <Button asChild variant="outline" size="sm" className="hover:bg-teal-100 dark:hover:bg-teal-900">
-                <Link to={`/intentions/edit/${weeklyIntentions.id}`}>Edit Intentions</Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="hover:bg-teal-100 dark:hover:bg-teal-900 gap-1"
+                onClick={() => {
+                  window.location.href = `/intentions/edit/${weeklyIntentions.id}`;
+                }}
+              >
+                <Pencil className="h-3 w-3" />
+                Edit Intentions
               </Button>
             </div>
           </div>
