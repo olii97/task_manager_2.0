@@ -9,9 +9,11 @@ import { useAuth } from "@/components/AuthProvider";
 import { getCurrentWeekIntentions, createWeeklyIntention } from "@/services/intentionService";
 import { WeeklyIntention } from "@/types/intentions";
 import { ClipboardList, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export const WeeklyIntentionsCard = () => {
   const { session } = useAuth();
+  const { toast } = useToast();
   const userId = session?.user.id;
 
   const { 
@@ -38,9 +40,18 @@ export const WeeklyIntentionsCard = () => {
     
     try {
       await createWeeklyIntention(userId, {});
+      toast({
+        title: "Intentions created",
+        description: "New weekly intentions have been created. You can now set your intentions for the week."
+      });
       refetch();
     } catch (error) {
       console.error("Error creating empty intentions:", error);
+      toast({
+        title: "Error creating intentions",
+        description: "There was a problem creating your weekly intentions. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 

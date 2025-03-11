@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -103,17 +104,22 @@ const IntentionsEdit = () => {
         description: "There was a problem saving your intentions. Please try again.",
         variant: "destructive",
       });
+      setIsSubmitting(false);  // Make sure to reset submitting state on error
     },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return; // Prevent multiple submissions
+    
     setIsSubmitting(true);
     
     try {
       await updateMutation.mutateAsync();
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      // Error will be handled in the onError callback of the mutation
+      console.error("Submit error:", error);
     }
   };
 
