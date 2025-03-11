@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Message, AssistantInfo } from './types';
 import { initializeChat, sendChatMessage } from '@/services/chatService';
 
-export const useChatAssistant = (userId?: string) => {
+export const useChatAssistant = (userId?: string, autoInitialize: boolean = true) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -11,10 +12,10 @@ export const useChatAssistant = (userId?: string) => {
   const [useAssistant, setUseAssistant] = useState<boolean>(true);
 
   useEffect(() => {
-    if (userId) {
+    if (userId && autoInitialize) {
       initializeChatThread();
     }
-  }, [userId, useAssistant]);
+  }, [userId, useAssistant, autoInitialize]);
 
   const toggleChatMode = useCallback(() => {
     setUseAssistant(prev => !prev);
@@ -77,6 +78,7 @@ export const useChatAssistant = (userId?: string) => {
     useAssistant,
     toggleChatMode,
     handleSendMessage,
-    threadId
+    threadId,
+    initializeChatThread
   };
 };

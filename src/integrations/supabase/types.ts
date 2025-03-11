@@ -6,52 +6,44 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       chat_sessions: {
         Row: {
-          id: string
-          user_id: string
           assistant_id: string
-          thread_id: string
-          created_at: string
-          updated_at: string
-          is_active: boolean
-          assistant_name: string | null
           assistant_model: string | null
+          assistant_name: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          thread_id: string
+          updated_at: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
           assistant_id: string
-          thread_id: string
-          created_at?: string
-          updated_at?: string
-          is_active?: boolean
-          assistant_name?: string | null
           assistant_model?: string | null
+          assistant_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          thread_id: string
+          updated_at?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
           assistant_id?: string
-          thread_id?: string
-          created_at?: string
-          updated_at?: string
-          is_active?: boolean
-          assistant_name?: string | null
           assistant_model?: string | null
+          assistant_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          thread_id?: string
+          updated_at?: string | null
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "chat_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       journal_entries: {
         Row: {

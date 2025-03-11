@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { PomodoroSession, PomodoroStats } from '@/types/pomodoro';
 import { PomodoroStatus } from '@/types/pomodoro';
@@ -9,7 +10,7 @@ export interface CreatePomodoroSessionParams {
   completed: boolean;
 }
 
-export const completePomodoroSession = async (params: CreatePomodoroSessionParams): Promise<{ session: PomodoroSession | null, error: string | null }> => {
+export const createPomodoroSession = async (params: CreatePomodoroSessionParams): Promise<{ session: PomodoroSession | null, error: string | null }> => {
   try {
     const { data, error } = await supabase
       .from('pomodoro_sessions')
@@ -39,8 +40,8 @@ export const completePomodoroSession = async (params: CreatePomodoroSessionParam
   }
 };
 
-// Alias for compatibility with existing code
-export const createPomodoroSession = completePomodoroSession;
+// For backward compatibility
+export const completePomodoroSession = createPomodoroSession;
 
 export const getPomodoroStats = async (userId: string): Promise<PomodoroStats | null> => {
   try {

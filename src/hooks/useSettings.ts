@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -18,6 +19,8 @@ export const useSettings = () => {
   const { session } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialFetchDone = useRef(false);
+  const settingsInitialized = useRef(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -44,6 +47,7 @@ export const useSettings = () => {
             created_at: data.created_at,
             updated_at: data.updated_at
           });
+          settingsInitialized.current = true;
         } else {
           // Set default settings
           setSettings({
@@ -52,11 +56,13 @@ export const useSettings = () => {
             long_break_duration: DEFAULT_LONG_BREAK_DURATION,
             sessions_before_long_break: DEFAULT_SESSIONS_BEFORE_LONG_BREAK
           });
+          settingsInitialized.current = true;
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
       } finally {
         setLoading(false);
+        initialFetchDone.current = true;
       }
     };
 
@@ -67,16 +73,19 @@ export const useSettings = () => {
     if (!session?.user?.id || !settings) return;
 
     try {
-      // Since profiles table doesn't have these columns yet, we'll simply update local state
-      // and keep the UI working until the database is updated
+      // Only show toast on user-initiated changes, not during initial setup
+      const shouldShowToast = initialFetchDone.current && settingsInitialized.current;
       
       // Update local state
       setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
       
-      toast({
-        title: 'Settings updated',
-        description: 'Your preferences have been saved in your local session',
-      });
+      // Only show toast for user-initiated changes
+      if (shouldShowToast) {
+        toast({
+          title: 'Settings updated',
+          description: 'Your preferences have been saved in your local session',
+        });
+      }
     } catch (error) {
       console.error('Error updating settings:', error);
       toast({
