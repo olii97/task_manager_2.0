@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
 import { getCurrentWeekIntentions, createWeeklyIntention } from "@/services/intentionService";
 import { getCurrentWeekStart } from "@/types/intentions";
@@ -15,10 +15,10 @@ const IntentionsEdit = () => {
   const currentWeekStart = getCurrentWeekStart();
 
   // Fetch current intentions if editing
-  const { data: intentions, isLoading, isError } = useQuery({
+  const { data: intentions, isLoading, isError, error } = useQuery({
     queryKey: ["intention", id || "current", userId],
     queryFn: async () => {
-      if (!userId) return null;
+      if (!userId) throw new Error("User ID required");
       
       // If we have an ID, we're editing a specific intention
       if (id) {
@@ -48,6 +48,7 @@ const IntentionsEdit = () => {
   }
 
   if (isError || !intentions) {
+    console.error("Error loading intentions:", error);
     return <IntentionsErrorState />;
   }
 

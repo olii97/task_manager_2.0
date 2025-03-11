@@ -32,17 +32,9 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
 
   // Handle form submission
   const updateMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (updatedData: Partial<WeeklyIntention>) => {
       if (!intentions?.id) throw new Error("No intention ID found");
-      
-      return await updateWeeklyIntention(intentions.id, {
-        intention_1: intention1.trim() || null,
-        intention_2: intention2.trim() || null,
-        intention_3: intention3.trim() || null,
-        reflection_1: reflection1.trim() || null,
-        reflection_2: reflection2.trim() || null,
-        reflection_3: reflection3.trim() || null,
-      });
+      return await updateWeeklyIntention(intentions.id, updatedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["intention"] });
@@ -63,7 +55,6 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
         description: "There was a problem saving your intentions. Please try again.",
         variant: "destructive",
       });
-      setIsSubmitting(false);
     },
     onSettled: () => {
       // Ensure submitting state is reset whether success or error
@@ -71,19 +62,27 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
     }
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (isSubmitting) return; // Prevent multiple submissions
     
     setIsSubmitting(true);
     
-    try {
-      await updateMutation.mutateAsync();
-    } catch (error) {
-      // Error is handled in the onError callback
-      console.error("Submit error:", error);
-    }
+    const updatedData = {
+      intention_1: intention1.trim() || null,
+      intention_2: intention2.trim() || null,
+      intention_3: intention3.trim() || null,
+      reflection_1: reflection1.trim() || null,
+      reflection_2: reflection2.trim() || null,
+      reflection_3: reflection3.trim() || null,
+    };
+    
+    updateMutation.mutate(updatedData);
+  };
+
+  const handleCancel = () => {
+    navigate("/intentions");
   };
 
   const weekStartDate = new Date(intentions.week_start);
@@ -178,7 +177,7 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
         <Button 
           type="button" 
           variant="outline" 
-          onClick={() => navigate("/intentions")}
+          onClick={handleCancel}
           disabled={isSubmitting}
         >
           Cancel
