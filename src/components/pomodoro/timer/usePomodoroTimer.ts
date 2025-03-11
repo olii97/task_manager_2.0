@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePomodoro } from '../PomodoroProvider';
 
 export interface PomodoroState {
@@ -37,13 +37,33 @@ export const usePomodoroTimer = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showDistractionDialog, setShowDistractionDialog] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  
+  // Use refs to prevent infinite update cycles
+  const isTimerRunningRef = useRef(isTimerRunning);
+  const statusRef = useRef(state.status);
+  const timerSettingsRef = useRef(timerSettings);
+  const timeRemainingRef = useRef(state.timeRemaining);
+  const isBreakRef = useRef(state.isBreak);
 
-  // Initialize timer and handle page title
+  // Update refs when props change
   useEffect(() => {
-    // Store the original page title on mount
+    isTimerRunningRef.current = isTimerRunning;
+    statusRef.current = state.status;
+    timerSettingsRef.current = timerSettings;
+    timeRemainingRef.current = state.timeRemaining;
+    isBreakRef.current = state.isBreak;
+  }, [isTimerRunning, state.status, timerSettings, state.timeRemaining, state.isBreak]);
+
+  // Store original page title
+  useEffect(() => {
     setOriginalPageTitle(document.title);
-    
-    // Set up the countdown timer
+    return () => {
+      document.title = originalPageTitle;
+    };
+  }, []);
+
+  // Initialize timer and handle countdown
+  useEffect(() => {
     let interval: number | null = null;
     
     if (isTimerRunning && state.status === 'running') {
@@ -86,10 +106,8 @@ export const usePomodoroTimer = () => {
       if (interval) {
         clearInterval(interval);
       }
-      // Restore original title on unmount
-      document.title = originalPageTitle;
     };
-  }, [isTimerRunning, state.status, completePomodoro, timerSettings.workDuration, originalPageTitle]);
+  }, [isTimerRunning, state.status, completePomodoro, timerSettings.workDuration]);
 
   // Update browser tab title with timer
   useEffect(() => {
@@ -107,24 +125,34 @@ export const usePomodoroTimer = () => {
     };
   }, [state.timeRemaining, state.isBreak, state.status, isTimerRunning, originalPageTitle]);
 
-  // Update state when timer settings change
+  // Update state when settings or selected task changes
   useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      timeRemaining: timerSettings.workDuration * 60,
-      originalDuration: timerSettings.workDuration * 60,
-      currentTask: selectedTask
-    }));
-  }, [timerSettings, selectedTask]);
+    // Only update if not currently running to avoid interrupting active sessions
+    if (state.status !== 'running') {
+      setState(prev => ({
+        ...prev,
+        timeRemaining: timerSettings.workDuration * 60,
+        originalDuration: timerSettings.workDuration * 60,
+        currentTask: selectedTask
+      }));
+    }
+  }, [timerSettings, selectedTask, state.status]);
 
-  // Update status based on isTimerRunning
+  // Update status and sessions count when isTimerRunning changes
   useEffect(() => {
-    setState(prev => ({
-      ...prev,
-      status: isTimerRunning ? 'running' : 'idle',
-      sessionsCompleted: completedCount
-    }));
-  }, [isTimerRunning, completedCount]);
+    if (isTimerRunning !== (state.status === 'running')) {
+      setState(prev => ({
+        ...prev,
+        status: isTimerRunning ? 'running' : prev.status === 'running' ? 'paused' : 'idle',
+        sessionsCompleted: completedCount
+      }));
+    } else if (completedCount !== state.sessionsCompleted) {
+      setState(prev => ({
+        ...prev,
+        sessionsCompleted: completedCount
+      }));
+    }
+  }, [isTimerRunning, completedCount, state.status, state.sessionsCompleted]);
 
   // Show completion dialog when pomodoro is completed
   useEffect(() => {
