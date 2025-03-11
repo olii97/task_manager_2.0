@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +21,7 @@ export const useSettings = () => {
   const initialFetchDone = useRef(false);
   const settingsInitialized = useRef(false);
   const userInitiatedUpdate = useRef(false);
+  const lastUpdateTime = useRef(0);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -72,6 +72,14 @@ export const useSettings = () => {
 
   const updateSettings = async (updatedSettings: Partial<UserSettings>) => {
     if (!session?.user?.id || !settings) return;
+
+    // Add throttling - only update once every 500ms
+    const now = Date.now();
+    if (now - lastUpdateTime.current < 500) {
+      console.debug('Throttling settings update');
+      return;
+    }
+    lastUpdateTime.current = now;
 
     try {
       // Update local state without showing toast for automatic updates

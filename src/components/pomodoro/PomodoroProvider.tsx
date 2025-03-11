@@ -125,14 +125,26 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
 
   // Use a separate effect for updating settings to avoid unnecessary triggers
   const userSettingsRef = useRef(false);
+  const timerSettingsRef = useRef(timerSettings);
   useEffect(() => {
     // Skip first render
     if (!userSettingsRef.current && settings) {
       userSettingsRef.current = true;
+      timerSettingsRef.current = timerSettings;
       return;
     }
 
-    if (session?.user && userSettingsRef.current) {
+    // Only update if there was an actual change to the timer settings
+    // and if it was initiated by a user action rather than scrolling/rerendering
+    if (session?.user && userSettingsRef.current &&
+        (timerSettingsRef.current.workDuration !== timerSettings.workDuration ||
+         timerSettingsRef.current.breakDuration !== timerSettings.breakDuration ||
+         timerSettingsRef.current.longBreakDuration !== timerSettings.longBreakDuration ||
+         timerSettingsRef.current.sessionsBeforeLongBreak !== timerSettings.sessionsBeforeLongBreak)) {
+      
+      // Store the current settings to compare with later
+      timerSettingsRef.current = timerSettings;
+      
       // Use userUpdateSettings only when a user explicitly changes settings
       // This avoids showing toasts during initial load or auto-updates
       userUpdateSettings({
