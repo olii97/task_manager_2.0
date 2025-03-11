@@ -1,10 +1,12 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, StopCircle, PlusCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Play, Pause, StopCircle, AlertTriangle } from "lucide-react";
+import { PomodoroStatus } from "@/types/pomodoro";
 
 interface PomodoroControlsProps {
-  status: 'idle' | 'running' | 'paused' | 'completed';
+  status: PomodoroStatus;
   isBreak: boolean;
   onPause: () => void;
   onResume: () => void;
@@ -21,48 +23,51 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
   onLogDistraction,
 }) => {
   return (
-    <>
-      <div className="flex justify-center space-x-3 mb-4">
-        {status === 'running' ? (
-          <Button 
-            onClick={onPause} 
-            variant="outline" 
-            size="sm"
-            className="w-28"
+    <div className="mt-4 flex flex-col gap-3">
+      <div className="flex gap-2 justify-center">
+        {status === "running" ? (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-full border-pomodoro-primary text-pomodoro-primary hover:bg-pomodoro-primary/10"
+            onClick={onPause}
           >
-            <Pause className="mr-1 h-4 w-4" /> Pause
+            <Pause className="h-5 w-5" />
           </Button>
-        ) : status === 'paused' ? (
-          <Button 
-            onClick={onResume} 
-            variant="outline" 
-            size="sm"
-            className="w-28"
+        ) : status === "paused" || status === "break" ? (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-full border-pomodoro-primary text-pomodoro-primary hover:bg-pomodoro-primary/10"
+            onClick={onResume}
           >
-            <Play className="mr-1 h-4 w-4" /> Resume
+            <Play className="h-5 w-5" />
           </Button>
         ) : null}
-        
-        <Button 
-          onClick={onStop} 
-          variant="ghost" 
-          size="sm"
-          className="text-red-500 hover:text-red-700 hover:bg-red-50/20"
-        >
-          <StopCircle className="mr-1 h-4 w-4" /> Stop
-        </Button>
+
+        {status !== "idle" && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 rounded-full border-destructive text-destructive hover:bg-destructive/10"
+            onClick={onStop}
+          >
+            <StopCircle className="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
-      {!isBreak && status !== 'completed' && (
-        <Button 
-          onClick={onLogDistraction}
-          variant="outline" 
+      {!isBreak && status === "running" && (
+        <Button
+          variant="ghost"
           size="sm"
-          className="w-full text-xs"
+          className="text-xs text-destructive hover:bg-destructive/5 mt-2"
+          onClick={onLogDistraction}
         >
-          <PlusCircle className="mr-1 h-3 w-3" /> Log Distraction
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Log Distraction
         </Button>
       )}
-    </>
+    </div>
   );
 };

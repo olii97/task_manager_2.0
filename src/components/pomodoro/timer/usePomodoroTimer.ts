@@ -1,7 +1,6 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePomodoro } from '../PomodoroProvider';
-import { PomodoroState } from '@/types/pomodoro';
+import { PomodoroState, PomodoroStatus } from '@/types/pomodoro';
 
 export const usePomodoroTimer = () => {
   const {
@@ -101,7 +100,7 @@ export const usePomodoroTimer = () => {
           } else {
             // Break timer completed
             newState.isBreak = false;
-            newState.status = 'idle';
+            newState.status = 'idle' as PomodoroStatus;
             newState.timeRemaining = timerSettingsRef.current.workDuration * 60;
             newState.originalDuration = timerSettingsRef.current.workDuration * 60;
             setState(newState);
@@ -272,7 +271,7 @@ export const usePomodoroTimer = () => {
       isBreak: true,
       timeRemaining: timerSettings.breakDuration * 60,
       originalDuration: timerSettings.breakDuration * 60,
-      status: 'running',
+      status: 'running' as PomodoroStatus,
       startTimestamp: Date.now(),
       pausedTimestamp: undefined
     }));
