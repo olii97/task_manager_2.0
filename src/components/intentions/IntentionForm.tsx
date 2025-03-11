@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { updateWeeklyIntention } from "@/services/intentionService";
 import { WeeklyIntention } from "@/types/intentions";
 import { format } from "date-fns";
@@ -37,6 +37,7 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
       return await updateWeeklyIntention(intentions.id, updatedData);
     },
     onSuccess: () => {
+      console.log("Intentions successfully updated");
       queryClient.invalidateQueries({ queryKey: ["intention"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-intentions"] });
       queryClient.invalidateQueries({ queryKey: ["all-intentions"] });
@@ -46,7 +47,8 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
         description: "Your weekly intentions have been saved successfully.",
       });
       
-      navigate("/intentions");
+      // Navigate after toast is shown
+      setTimeout(() => navigate("/intentions"), 300);
     },
     onError: (error) => {
       console.error("Error updating intentions:", error);
@@ -55,19 +57,21 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
         description: "There was a problem saving your intentions. Please try again.",
         variant: "destructive",
       });
-    },
-    onSettled: () => {
-      // Ensure submitting state is reset whether success or error
       setIsSubmitting(false);
     }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted");
     
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) {
+      console.log("Already submitting, ignoring");
+      return;
+    }
     
     setIsSubmitting(true);
+    console.log("Setting isSubmitting to true");
     
     const updatedData = {
       intention_1: intention1.trim() || null,
@@ -78,10 +82,12 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
       reflection_3: reflection3.trim() || null,
     };
     
+    console.log("Calling updateMutation.mutate with data:", updatedData);
     updateMutation.mutate(updatedData);
   };
 
   const handleCancel = () => {
+    console.log("Cancel clicked, navigating to /intentions");
     navigate("/intentions");
   };
 
@@ -182,7 +188,14 @@ export const IntentionForm = ({ intentions, isCurrentWeek }: IntentionFormProps)
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          onClick={(e) => {
+            console.log("Save button clicked");
+            handleSubmit(e);
+          }}
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving
