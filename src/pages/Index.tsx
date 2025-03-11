@@ -62,11 +62,13 @@ const Index = () => {
 
   return (
     <div className="container py-6">
-      {/* Weekly Intentions at the top */}
-      <div className="mb-6">
+      {/* Top row with Featured Goal and Weekly Intentions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <FeaturedGoal />
         <WeeklyIntentionsCard />
       </div>
       
+      {/* Main content area */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Today's Tasks */}
         <TodaysTasks 
@@ -82,23 +84,18 @@ const Index = () => {
         />
 
         {/* Featured Goal */}
-        <FeaturedGoal />
+        <ChatBot />
       </div>
 
-      {/* Chat Bot and Strava Activities */}
+      {/* Bottom row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Chat Bot Assistant */}
-        <ChatBot />
-        
         {/* Strava Activities */}
         <StravaActivitiesCard 
           activities={stravaActivities || []} 
           isLoading={isStravaLoading} 
         />
-      </div>
-      
-      {/* Wrap Up Day Button */}
-      <div className="mt-6">
+        
+        {/* Wrap Up Day Section */}
         <Card>
           <CardHeader>
             <CardTitle>Daily Summary</CardTitle>

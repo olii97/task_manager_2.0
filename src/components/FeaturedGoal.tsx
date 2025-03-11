@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getFeaturedGoal } from "@/services/goalService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { goalCategoryLabels } from "@/types/goals";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Target, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -16,9 +16,12 @@ export const FeaturedGoal = () => {
 
   if (isLoading) {
     return (
-      <Card className="border-2 border-dashed border-primary/40 animate-pulse">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-lg">Featured Goal</CardTitle>
+      <Card className="border-2 border-dashed border-primary/40 animate-pulse h-full">
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-yellow-500" />
+            <span>Featured Goal</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-12 bg-muted rounded-md"></div>
@@ -29,9 +32,12 @@ export const FeaturedGoal = () => {
 
   if (!goal) {
     return (
-      <Card className="border-2 border-dashed border-primary/40">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-lg">Featured Goal</CardTitle>
+      <Card className="border-2 border-dashed border-primary/40 h-full">
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target className="h-4 w-4 text-primary" />
+            <span>Featured Goal</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">You haven't set any goals for this quarter yet.</p>
@@ -44,8 +50,8 @@ export const FeaturedGoal = () => {
   }
 
   return (
-    <Card className="border-2 border-blue-500/40 transition-all hover:border-blue-500/60">
-      <CardHeader className="space-y-1">
+    <Card className="bg-gradient-to-br from-card to-blue-50 dark:from-card dark:to-blue-950/20 border-blue-200 dark:border-blue-900 shadow-md hover:shadow-lg transition-all h-full">
+      <CardHeader className="space-y-1 pb-2">
         <CardTitle className="text-lg flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-yellow-500" />
           <span>Featured Goal</span>
@@ -53,15 +59,16 @@ export const FeaturedGoal = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div>
-            <span className="text-sm font-medium text-blue-600">
-              {goalCategoryLabels[goal.category]}
-            </span>
+          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+            {goalCategoryLabels[goal.category]}
           </div>
-          <p className="text-base">{goal.description}</p>
+          <p className="text-base font-medium">{goal.description}</p>
           <div className="flex justify-end mt-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/goals">View All Goals</Link>
+            <Button asChild variant="ghost" size="sm" className="gap-1 hover:bg-blue-100 dark:hover:bg-blue-900">
+              <Link to="/goals">
+                View All Goals
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
             </Button>
           </div>
         </div>
