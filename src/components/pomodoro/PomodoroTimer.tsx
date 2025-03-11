@@ -60,6 +60,76 @@ export const PomodoroTimer: React.FC = () => {
   const [showDistractionDialog, setShowDistractionDialog] = useState(false);
   const [distractionText, setDistractionText] = useState("");
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [originalPageTitle, setOriginalPageTitle] = useState("");
+
+  // Initialize timer
+  useEffect(() => {
+    // Store the original page title on mount
+    setOriginalPageTitle(document.title);
+    
+    // Set up the countdown timer
+    let interval: number | null = null;
+    
+    if (isTimerRunning && mockState.status === 'running') {
+      interval = window.setInterval(() => {
+        setMockState(prev => {
+          if (prev.timeRemaining <= 1) {
+            // Timer completed
+            clearInterval(interval!);
+            
+            // Mark as completed if it was a work session
+            if (!prev.isBreak) {
+              completePomodoro();
+              return {
+                ...prev,
+                status: 'completed',
+                timeRemaining: 0
+              };
+            } else {
+              // Break completed
+              return {
+                ...prev,
+                status: 'idle',
+                isBreak: false,
+                timeRemaining: timerSettings.workDuration * 60,
+                originalDuration: timerSettings.workDuration * 60
+              };
+            }
+          } else {
+            // Continue countdown
+            return {
+              ...prev,
+              timeRemaining: prev.timeRemaining - 1
+            };
+          }
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+      // Restore original title on unmount
+      document.title = originalPageTitle;
+    };
+  }, [isTimerRunning, mockState.status, completePomodoro, timerSettings.workDuration]);
+
+  // Update browser tab title with timer
+  useEffect(() => {
+    if (isTimerRunning && mockState.status === 'running') {
+      const formattedTime = formatTime(mockState.timeRemaining);
+      const sessionType = mockState.isBreak ? "Break" : "Focus";
+      document.title = `${formattedTime} | ${sessionType} - Reflect`;
+    } else {
+      // Restore original title when timer is not running
+      document.title = originalPageTitle;
+    }
+    
+    return () => {
+      document.title = originalPageTitle;
+    };
+  }, [mockState.timeRemaining, mockState.isBreak, mockState.status, isTimerRunning, originalPageTitle]);
 
   // Update mock state when timer settings change
   useEffect(() => {

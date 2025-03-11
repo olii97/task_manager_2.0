@@ -72,7 +72,8 @@ const Index = () => {
         {/* Today's Journal Entry */}
         <TodaysJournalCard 
           entry={todayEntry} 
-          isLoading={isJournalLoading} 
+          isLoading={isJournalLoading}
+          refreshTodayEntry={refreshTodayEntry}
         />
 
         {/* Featured Goal */}
