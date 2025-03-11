@@ -1,10 +1,10 @@
-
 import React, {
   createContext,
   useState,
   useEffect,
   useContext,
   useCallback,
+  useRef,
 } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { 
@@ -142,7 +142,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
         sessions_before_long_break: timerSettings.sessionsBeforeLongBreak,
       });
     }
-  }, [timerSettings, session]);
+  }, [timerSettings, session, userUpdateSettings]);
 
   // Modified function to fix the Task type issue
   const handleTaskSelected = useCallback((task: Task) => {

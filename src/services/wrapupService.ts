@@ -2,6 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { DailySummary } from '@/types/wrapup';
 import { format } from 'date-fns';
+import { Task } from '@/types/tasks';
+import { JournalEntry, mapDatabaseEntryToJournalEntry } from '@/types/journal';
 
 export interface PomodoroStats {
   completed_count: number;
@@ -16,6 +18,9 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
   try {
     const dateStr = format(date, 'yyyy-MM-dd');
     
+    // Note: This is a temporary fix - You need to create the daily_summaries table
+    // Comment out this section as the table doesn't exist yet
+    /*
     // Check if we already have a stored summary
     const { data: existingSummary } = await supabase
       .from('daily_summaries')
@@ -27,15 +32,16 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
     if (existingSummary) {
       return existingSummary as DailySummary;
     }
+    */
     
     // Get completed tasks
-    const { data: tasks } = await supabase
+    const { data: tasksData } = await supabase
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
-      .eq('completed', true)
-      .gte('completed_at', `${dateStr}T00:00:00`)
-      .lte('completed_at', `${dateStr}T23:59:59`);
+      .eq('is_completed', true)
+      .gte('completion_date', `${dateStr}T00:00:00`)
+      .lte('completion_date', `${dateStr}T23:59:59`);
       
     // Get journal entry
     const { data: journalEntries } = await supabase
@@ -62,13 +68,32 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
       .lte('start_date', `${dateStr}T23:59:59`);
       
     // Create summary
+    const tasks = tasksData ? tasksData.map(task => {
+      return {
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority as 1 | 2 | 3 | 4,
+        energy_level: task.energy_level as 'high' | 'low' | undefined,
+        is_completed: task.is_completed,
+        is_scheduled_today: task.is_scheduled_today,
+        completion_date: task.completion_date,
+        created_at: task.created_at,
+        updated_at: task.updated_at
+      } as Task;
+    }) : [];
+    
+    const journalEntry = journalEntries?.length 
+      ? mapDatabaseEntryToJournalEntry(journalEntries[0]) 
+      : null;
+
     const summary: DailySummary = {
       id: crypto.randomUUID(),
       user_id: userId,
       date: dateStr,
       tasks_completed: tasks?.length || 0,
       tasks: tasks || [],
-      journal_entry: journalEntries?.length ? journalEntries[0] : null,
+      journal_entry: journalEntry,
       pomodoro_sessions: pomodoroSessions?.length || 0,
       pomodoro_minutes: pomodoroSessions?.reduce((total, session) => total + (session.duration_minutes || 0), 0) || 0,
       strava_activities: stravaActivities?.map(activity => ({
@@ -89,9 +114,12 @@ export const getDailySummary = async (userId: string, date: Date): Promise<Daily
     };
     
     // Save the summary to the database for future reference
+    // Comment out as the table doesn't exist yet
+    /*
     await supabase
       .from('daily_summaries')
       .insert(summary);
+    */
       
     return summary;
   } catch (error) {

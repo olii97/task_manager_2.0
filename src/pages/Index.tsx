@@ -53,7 +53,7 @@ const Index = () => {
     if (userId) {
       refreshTodayEntry();
     }
-  }, [userId]);
+  }, [userId, refreshTodayEntry]);
 
   return (
     <div className="container py-6">
@@ -119,11 +119,12 @@ const Index = () => {
         title={editingTask ? "Edit Task" : "Add New Task"}
       />
 
-      {/* Task Planner Dialog */}
+      {/* Task Planner Dialog - Add onAddTask prop */}
       <TaskPlanner
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
+        onAddTask={handleAddTask}
       />
     </div>
   );

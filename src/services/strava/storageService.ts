@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { StravaActivity, SavedStravaActivity } from '@/types/strava';
+import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from '@/types/strava';
 
 /**
  * Saves a Strava activity to the database
@@ -77,7 +78,34 @@ export const getStravaActivityById = async (userId: string, activityId: number):
       throw error;
     }
 
-    return data as SavedStravaActivity;
+    // Convert the DB result to SavedStravaActivity
+    if (data) {
+      return toSavedStravaActivity({
+        id: data.id,
+        name: data.name,
+        type: data.type,
+        sport_type: data.type,
+        distance: data.distance,
+        moving_time: data.moving_time,
+        elapsed_time: data.elapsed_time,
+        total_elevation_gain: data.total_elevation_gain || 0,
+        start_date: data.start_date,
+        start_date_local: data.start_date,
+        timezone: "",
+        utc_offset: 0,
+        average_speed: data.average_speed || 0,
+        max_speed: data.max_speed || 0,
+        average_heartrate: data.average_heartrate || 0,
+        max_heartrate: data.max_heartrate || 0,
+        map: {
+          id: "",
+          summary_polyline: data.summary_polyline || "",
+          resource_state: 2
+        }
+      }, true);
+    }
+
+    return null;
   } catch (error) {
     console.error("Error fetching activity:", error);
     return null;
@@ -125,7 +153,8 @@ export const getStoredStravaActivities = async (userId: string): Promise<SavedSt
       throw error;
     }
     
-    return data.map((activity: any) => ({
+    // Convert each DB activity to the SavedStravaActivity type
+    return data.map((activity: any) => toSavedStravaActivity({
       id: activity.id,
       name: activity.name,
       type: activity.type,
@@ -133,22 +162,21 @@ export const getStoredStravaActivities = async (userId: string): Promise<SavedSt
       distance: activity.distance,
       moving_time: activity.moving_time,
       elapsed_time: activity.elapsed_time,
-      total_elevation_gain: activity.total_elevation_gain,
+      total_elevation_gain: activity.total_elevation_gain || 0,
       start_date: activity.start_date,
       start_date_local: activity.start_date,
       timezone: "",
       utc_offset: 0,
-      average_speed: activity.average_speed,
-      max_speed: activity.max_speed,
-      average_heartrate: activity.average_heartrate,
-      max_heartrate: activity.max_heartrate,
+      average_speed: activity.average_speed || 0,
+      max_speed: activity.max_speed || 0,
+      average_heartrate: activity.average_heartrate || 0,
+      max_heartrate: activity.max_heartrate || 0,
       map: {
         id: "",
         summary_polyline: activity.summary_polyline || "",
         resource_state: 2
-      },
-      saved: true
-    }));
+      }
+    }, true));
   } catch (error) {
     console.error("Error fetching stored activities:", error);
     return [];
