@@ -8,18 +8,18 @@ import { usePomodoro } from "./PomodoroProvider";
  * This component ensures the title is properly reset when not in a pomodoro session.
  */
 export const TabBarTimer: React.FC = () => {
-  const { state } = usePomodoro();
+  const { isTimerRunning } = usePomodoro();
   
   React.useEffect(() => {
     // Reset the document title when not in a pomodoro session
-    if (state.status === 'idle' && !state.isBreak) {
+    if (!isTimerRunning) {
       document.title = "Launchpad";
     }
     
     return () => {
       document.title = "Launchpad";
     };
-  }, [state.status, state.isBreak]);
+  }, [isTimerRunning]);
   
   return null;
 };
