@@ -74,14 +74,11 @@ export const useSettings = () => {
     if (!session?.user?.id || !settings) return;
 
     try {
-      // Only show toast for explicit user updates
-      const shouldShowToast = userInitiatedUpdate.current;
-      
-      // Update local state
+      // Update local state without showing toast for automatic updates
       setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
       
-      // Only show toast for explicit user updates
-      if (shouldShowToast) {
+      // Only show toast if userInitiatedUpdate.current is true
+      if (userInitiatedUpdate.current) {
         toast({
           title: 'Settings updated',
           description: 'Your preferences have been saved in your local session',
@@ -112,6 +109,6 @@ export const useSettings = () => {
     settings, 
     loading, 
     updateSettings, 
-    userUpdateSettings // Expose new method for explicit user updates
+    userUpdateSettings // Expose method for explicit user updates
   };
 };
