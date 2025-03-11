@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from '@/constants';
 
 export interface UserSettings {
@@ -21,6 +21,7 @@ export const useSettings = () => {
   const [loading, setLoading] = useState(true);
   const initialFetchDone = useRef(false);
   const settingsInitialized = useRef(false);
+  const userInitiatedUpdate = useRef(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -73,28 +74,44 @@ export const useSettings = () => {
     if (!session?.user?.id || !settings) return;
 
     try {
-      // Only show toast on user-initiated changes, not during initial setup
-      const shouldShowToast = initialFetchDone.current && settingsInitialized.current;
+      // Only show toast for explicit user updates
+      const shouldShowToast = userInitiatedUpdate.current;
       
       // Update local state
       setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
       
-      // Only show toast for user-initiated changes
+      // Only show toast for explicit user updates
       if (shouldShowToast) {
         toast({
           title: 'Settings updated',
           description: 'Your preferences have been saved in your local session',
         });
+        // Reset the flag after showing the toast
+        userInitiatedUpdate.current = false;
       }
     } catch (error) {
       console.error('Error updating settings:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update settings',
-        variant: 'destructive'
-      });
+      if (userInitiatedUpdate.current) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update settings',
+          variant: 'destructive'
+        });
+        userInitiatedUpdate.current = false;
+      }
     }
   };
 
-  return { settings, loading, updateSettings };
+  // Method to flag that the next update is user-initiated
+  const userUpdateSettings = (updatedSettings: Partial<UserSettings>) => {
+    userInitiatedUpdate.current = true;
+    updateSettings(updatedSettings);
+  };
+
+  return { 
+    settings, 
+    loading, 
+    updateSettings, 
+    userUpdateSettings // Expose new method for explicit user updates
+  };
 };

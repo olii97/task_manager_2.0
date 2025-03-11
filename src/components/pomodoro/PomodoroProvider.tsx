@@ -12,7 +12,7 @@ import {
   getPomodoroStats,
   completePomodoroSession
 } from "@/services/pomodoroService";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from "@/constants";
 import { useSettings } from "@/hooks/useSettings";
 import { markTaskComplete } from "@/services/taskService";
@@ -90,7 +90,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
   const [completedCount, setCompletedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [autoCompleteTask, setAutoCompleteTask] = useState(false);
-  const { settings, updateSettings } = useSettings();
+  const { settings, userUpdateSettings } = useSettings();
 
   const [timerSettings, setTimerSettings] = useState({
     workDuration: settings?.work_duration || DEFAULT_WORK_DURATION,
@@ -123,16 +123,26 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
     loadStats();
   }, [session]);
 
+  // Use a separate effect for updating settings to avoid unnecessary triggers
+  const userSettingsRef = useRef(false);
   useEffect(() => {
-    if (session?.user) {
-      updateSettings({
+    // Skip first render
+    if (!userSettingsRef.current && settings) {
+      userSettingsRef.current = true;
+      return;
+    }
+
+    if (session?.user && userSettingsRef.current) {
+      // Use userUpdateSettings only when a user explicitly changes settings
+      // This avoids showing toasts during initial load or auto-updates
+      userUpdateSettings({
         work_duration: timerSettings.workDuration,
         break_duration: timerSettings.breakDuration,
         long_break_duration: timerSettings.longBreakDuration,
         sessions_before_long_break: timerSettings.sessionsBeforeLongBreak,
       });
     }
-  }, [timerSettings, session, updateSettings]);
+  }, [timerSettings, session]);
 
   // Modified function to fix the Task type issue
   const handleTaskSelected = useCallback((task: Task) => {

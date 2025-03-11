@@ -38,40 +38,63 @@ export const usePomodoroTimer = () => {
   const [showDistractionDialog, setShowDistractionDialog] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   
-  // Use refs to prevent infinite update cycles
+  // Use refs for values that should not trigger re-renders
   const isTimerRunningRef = useRef(isTimerRunning);
   const statusRef = useRef(state.status);
   const timerSettingsRef = useRef(timerSettings);
   const timeRemainingRef = useRef(state.timeRemaining);
   const isBreakRef = useRef(state.isBreak);
+  const intervalRef = useRef<number | null>(null);
 
-  // Update refs when props change
+  // Update refs when values change
   useEffect(() => {
     isTimerRunningRef.current = isTimerRunning;
-    statusRef.current = state.status;
-    timerSettingsRef.current = timerSettings;
     timeRemainingRef.current = state.timeRemaining;
     isBreakRef.current = state.isBreak;
-  }, [isTimerRunning, state.status, timerSettings, state.timeRemaining, state.isBreak]);
+    statusRef.current = state.status;
+  }, [isTimerRunning, state.timeRemaining, state.isBreak, state.status]);
+
+  useEffect(() => {
+    timerSettingsRef.current = timerSettings;
+  }, [timerSettings]);
 
   // Store original page title
   useEffect(() => {
-    setOriginalPageTitle(document.title);
+    if (!originalPageTitle) {
+      setOriginalPageTitle(document.title);
+    }
     return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
       document.title = originalPageTitle;
+    };
+  }, [originalPageTitle]);
+
+  // Clean up on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, []);
 
   // Initialize timer and handle countdown
   useEffect(() => {
-    let interval: number | null = null;
-    
     if (isTimerRunning && state.status === 'running') {
-      interval = window.setInterval(() => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      intervalRef.current = window.setInterval(() => {
         setState(prev => {
           if (prev.timeRemaining <= 1) {
             // Timer completed
-            clearInterval(interval!);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
             
             // Mark as completed if it was a work session
             if (!prev.isBreak) {
@@ -87,8 +110,8 @@ export const usePomodoroTimer = () => {
                 ...prev,
                 status: 'idle',
                 isBreak: false,
-                timeRemaining: timerSettings.workDuration * 60,
-                originalDuration: timerSettings.workDuration * 60
+                timeRemaining: timerSettingsRef.current.workDuration * 60,
+                originalDuration: timerSettingsRef.current.workDuration * 60
               };
             }
           } else {
@@ -100,14 +123,26 @@ export const usePomodoroTimer = () => {
           }
         });
       }, 1000);
+    } else if (intervalRef.current && !isTimerRunning) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
     
     return () => {
-      if (interval) {
-        clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isTimerRunning, state.status, completePomodoro, timerSettings.workDuration]);
+  }, [isTimerRunning, state.status, completePomodoro]);
+
+  // Update state when selected task changes
+  useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      currentTask: selectedTask
+    }));
+  }, [selectedTask]);
 
   // Update browser tab title with timer
   useEffect(() => {
@@ -117,12 +152,10 @@ export const usePomodoroTimer = () => {
       document.title = `${formattedTime} | ${sessionType} - Reflect`;
     } else {
       // Restore original title when timer is not running
-      document.title = originalPageTitle;
+      if (originalPageTitle) {
+        document.title = originalPageTitle;
+      }
     }
-    
-    return () => {
-      document.title = originalPageTitle;
-    };
   }, [state.timeRemaining, state.isBreak, state.status, isTimerRunning, originalPageTitle]);
 
   // Update state when settings or selected task changes
