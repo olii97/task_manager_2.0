@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { JournalStreak } from "@/components/JournalStreak";
@@ -57,16 +56,6 @@ const Index = () => {
 
   return (
     <div className="container py-6">
-      {/* Top row with Featured Goal and Weekly Intentions - made shorter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="h-[200px] overflow-auto">
-          <FeaturedGoal />
-        </div>
-        <div className="h-[200px] overflow-auto">
-          <WeeklyIntentionsCard />
-        </div>
-      </div>
-      
       {/* Main content area - tasks and journal side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Today's Tasks */}
@@ -81,6 +70,16 @@ const Index = () => {
           isLoading={isJournalLoading}
           refreshTodayEntry={refreshTodayEntry}
         />
+      </div>
+      
+      {/* Featured Goal and Weekly Intentions row - moved below tasks and journal */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="h-[200px] overflow-auto">
+          <FeaturedGoal />
+        </div>
+        <div className="h-[200px] overflow-auto">
+          <WeeklyIntentionsCard />
+        </div>
       </div>
 
       {/* Chat Bot below tasks and journal */}

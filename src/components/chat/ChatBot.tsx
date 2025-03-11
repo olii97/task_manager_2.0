@@ -1,5 +1,4 @@
-
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/components/AuthProvider";
 import ChatHeader from './ChatHeader';
@@ -7,13 +6,21 @@ import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import { useChatAssistant } from './useChatAssistant';
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Beaker, Ear, EarOff } from "lucide-react";
+import ListenerTestPanel from '../testing/ListenerTestPanel';
 
 const ChatBot: React.FC = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isChatInitialized, setIsChatInitialized] = useState(false);
+  const [showTestPanel, setShowTestPanel] = useState(false);
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
+  
+  // Debug log for userId
+  useEffect(() => {
+    console.log('ChatBot - userId from session:', userId);
+  }, [userId]);
   
   const {
     input,
@@ -25,12 +32,26 @@ const ChatBot: React.FC = () => {
     toggleChatMode,
     handleSendMessage,
     threadId,
-    initializeChatThread
+    initializeChatThread,
+    isListenerEnabled,
+    toggleListeners
   } = useChatAssistant(userId, false); // Pass false to prevent auto-initialization
 
   const handleStartChat = async () => {
     await initializeChatThread();
     setIsChatInitialized(true);
+  };
+
+  // Create a wrapper for handleSendMessage to ensure userId is passed
+  const handleSendWithUserId = async () => {
+    console.log('ChatBot - handleSendWithUserId - userId:', userId);
+    // Store the message for the test panel
+    setLastMessage(input);
+    await handleSendMessage();
+  };
+
+  const toggleTestPanel = () => {
+    setShowTestPanel(prev => !prev);
   };
 
   if (!isChatInitialized) {
@@ -41,41 +62,96 @@ const ChatBot: React.FC = () => {
           <p className="text-stone-600 text-center">
             Get help with your tasks, ask questions, or just chat with our AI assistant.
           </p>
-          <Button 
-            onClick={handleStartChat} 
-            className="mt-4 bg-blue-600 hover:bg-blue-700"
-            disabled={isLoading}
-          >
-            <MessageSquare className="mr-2 h-4 w-4" />
-            {isLoading ? "Initializing..." : "Start Chatting"}
-          </Button>
+          <div className="bg-blue-50 p-4 rounded-md w-full">
+            <h4 className="font-medium text-blue-800 mb-2">New Feature: Task Creation</h4>
+            <p className="text-sm text-blue-700">
+              You can now ask the assistant to create tasks for your backlog! Try phrases like:
+            </p>
+            <ul className="text-sm text-blue-700 list-disc list-inside mt-2 space-y-1">
+              <li>Add a new task to update my resume</li>
+              <li>Create a high priority task to finish the project proposal</li>
+              <li>Add "Call John" to my task list for today</li>
+            </ul>
+          </div>
+          <div className="flex space-x-4">
+            <Button 
+              onClick={handleStartChat} 
+              className="mt-4 bg-blue-600 hover:bg-blue-700"
+              disabled={isLoading}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              {isLoading ? "Initializing..." : "Start Chatting"}
+            </Button>
+            <Button 
+              onClick={toggleTestPanel} 
+              variant="outline"
+              className="mt-4 border-amber-500 text-amber-700 hover:bg-amber-50"
+            >
+              <Beaker className="mr-2 h-4 w-4" />
+              {showTestPanel ? "Hide Test Panel" : "Show Test Panel"}
+            </Button>
+            <Button 
+              onClick={toggleListeners} 
+              variant="outline"
+              className={`mt-4 ${isListenerEnabled 
+                ? 'border-green-500 text-green-700 hover:bg-green-50' 
+                : 'border-gray-500 text-gray-700 hover:bg-gray-50'}`}
+            >
+              {isListenerEnabled ? (
+                <Ear className="mr-2 h-4 w-4" />
+              ) : (
+                <EarOff className="mr-2 h-4 w-4" />
+              )}
+              {isListenerEnabled ? "Listeners On" : "Listeners Off"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="shadow-lg border-stone-300 bg-white max-w-3xl mx-auto">
-      <ChatHeader 
-        assistantInfo={assistantInfo} 
-        useAssistant={useAssistant}
-        toggleChatMode={toggleChatMode}
-        threadId={threadId}
-      />
-      <CardContent className="space-y-4 p-4 bg-stone-50">
-        <ChatMessages 
-          messages={messages} 
-          isLoading={isLoading} 
-          scrollAreaRef={scrollAreaRef}
-        />
-        <ChatInput 
-          input={input} 
-          setInput={setInput} 
-          handleSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
-      </CardContent>
-    </Card>
+    <div className="mx-auto max-w-6xl">
+      <div className={`flex ${showTestPanel ? 'space-x-4' : ''}`}>
+        <div className={showTestPanel ? 'w-1/2' : 'w-full'}>
+          <Card className="shadow-lg border-stone-300 bg-white h-full">
+            <ChatHeader 
+              assistantInfo={assistantInfo} 
+              useAssistant={useAssistant}
+              toggleChatMode={toggleChatMode}
+              threadId={threadId}
+              showTestPanel={showTestPanel}
+              toggleTestPanel={toggleTestPanel}
+              isListenerEnabled={isListenerEnabled}
+              toggleListeners={toggleListeners}
+            />
+            <CardContent className="space-y-4 p-4 bg-stone-50">
+              <ChatMessages 
+                messages={messages} 
+                isLoading={isLoading} 
+                scrollAreaRef={scrollAreaRef}
+              />
+              <ChatInput 
+                input={input} 
+                setInput={setInput} 
+                handleSendMessage={handleSendWithUserId}
+                isLoading={isLoading}
+              />
+            </CardContent>
+          </Card>
+        </div>
+        
+        {showTestPanel && (
+          <div className="w-1/2">
+            <ListenerTestPanel 
+              userId={userId} 
+              lastMessage={lastMessage}
+              isListenerEnabled={isListenerEnabled}
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

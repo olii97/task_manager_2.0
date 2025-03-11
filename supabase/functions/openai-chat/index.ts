@@ -17,7 +17,7 @@ const tool_resources = {
 // Assistant configuration with v2 tool resources
 const assistantConfig = {
   name: "Task Management Assistant",
-  instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively.",
+  instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively. When a user asks you to create a task, use the add_task function to add it to their task list. You should detect task creation requests even if the user doesn't explicitly ask to 'add a task'. If users mention something that sounds like a task (e.g., 'I need to buy groceries'), offer to add it as a task.",
   model: "gpt-4o-mini",
   tools: [
     { type: "function", function: {
@@ -59,6 +59,9 @@ const assistantConfig = {
 
 // Fixed assistant ID to use for all users
 const FIXED_ASSISTANT_ID = "asst_DOAXZQD6pbB5wS27NxnOAOi9";
+
+// Add this near the beginning of the file, after the FIXED_ASSISTANT_ID constant
+const DEBUG_TOOL_CALLS = true; // Set to true to enable detailed tool call logging
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -172,6 +175,92 @@ serve(async (req) => {
           });
           
           console.log("Run created successfully for existing thread:", run.id);
+          
+          // Wait for the run to complete or require action
+          console.log("Checking if run requires action...");
+          let runStatus;
+          let attempts = 0;
+          const maxAttempts = 10; // Limit the number of attempts
+          
+          while (attempts < maxAttempts) {
+            runStatus = await openai.beta.threads.runs.retrieve(threadId, run.id, {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
+            });
+            
+            console.log(`Run status (attempt ${attempts+1}/${maxAttempts}):`, runStatus.status);
+            
+            if (runStatus.status === 'requires_action') {
+              // We have a function call - log and return it
+              console.log("========== FUNCTION CALL DETECTED IN REUSED THREAD ==========");
+              console.log("Run requires action (function call)");
+              console.log("Thread ID:", threadId);
+              console.log("Run ID:", run.id);
+              
+              // Log the complete runStatus object to see what OpenAI is returning
+              console.log("COMPLETE RUN STATUS OBJECT:", JSON.stringify(runStatus, null, 2));
+              
+              // Log the required_action property specifically
+              console.log("REQUIRED ACTION DETAILS:", JSON.stringify(runStatus.required_action, null, 2));
+              
+              const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
+              
+              console.log("Tool calls array:", JSON.stringify(toolCalls, null, 2));
+              
+              if (toolCalls.length > 0) {
+                console.log("First tool call ID:", toolCalls[0].id);
+                console.log("Function name:", toolCalls[0].function.name);
+                console.log("Function arguments (raw):", toolCalls[0].function.arguments);
+                
+                try {
+                  // Try to parse the arguments to verify they're valid JSON
+                  const parsedArgs = JSON.parse(toolCalls[0].function.arguments);
+                  console.log("Function arguments (parsed):", JSON.stringify(parsedArgs, null, 2));
+                  
+                  // Create the response object we'll send to the client
+                  const responseObj = { 
+                    runId: run.id,
+                    threadId: threadId,
+                    functionCall: {
+                      runId: run.id,
+                      toolCallId: toolCalls[0].id,
+                      name: toolCalls[0].function.name,
+                      arguments: parsedArgs
+                    },
+                    assistantInfo: {
+                      model: "gpt-4o-mini",
+                      assistantId: assistantIdToUse
+                    }
+                  };
+                  
+                  // Log the exact response we're sending to the client
+                  console.log("RESPONSE BEING SENT TO CLIENT:", JSON.stringify(responseObj, null, 2));
+                  
+                  // We'll return the function call information to the client
+                  return new Response(
+                    JSON.stringify(responseObj),
+                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                  );
+                } catch (parseError) {
+                  console.error("ERROR PARSING FUNCTION ARGUMENTS:", parseError);
+                  console.log("INVALID JSON IN ARGUMENTS:", toolCalls[0].function.arguments);
+                }
+              }
+              
+              console.log("==========================================");
+              break;
+            } else if (runStatus.status === 'completed' || runStatus.status === 'failed' || runStatus.status === 'cancelled') {
+              // Run is done, no function call
+              break;
+            }
+            
+            // Wait a bit before checking again
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            attempts++;
+          }
+          
+          // If we get here, either the run completed without a function call or we timed out
           return new Response(
             JSON.stringify({ 
               runId: run.id,
@@ -201,6 +290,69 @@ serve(async (req) => {
           });
           
           console.log("Run status:", runStatus.status);
+          
+          // If the run requires action, handle the function call
+          if (runStatus.status === 'requires_action') {
+            console.log("========== FUNCTION CALL DETECTED DURING STATUS CHECK ==========");
+            console.log("Run requires action (function call)");
+            console.log("Thread ID:", threadId);
+            console.log("Run ID:", reqBody.runId);
+            
+            // Log the complete runStatus object to see what OpenAI is returning
+            console.log("COMPLETE RUN STATUS OBJECT:", JSON.stringify(runStatus, null, 2));
+            
+            // Log the required_action property specifically
+            console.log("REQUIRED ACTION DETAILS:", JSON.stringify(runStatus.required_action, null, 2));
+            
+            const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
+            
+            console.log("Tool calls array:", JSON.stringify(toolCalls, null, 2));
+            
+            if (toolCalls.length > 0) {
+              console.log("First tool call ID:", toolCalls[0].id);
+              console.log("Function name:", toolCalls[0].function.name);
+              console.log("Function arguments (raw):", toolCalls[0].function.arguments);
+              
+              try {
+                // Try to parse the arguments to verify they're valid JSON
+                const parsedArgs = JSON.parse(toolCalls[0].function.arguments);
+                console.log("Function arguments (parsed):", JSON.stringify(parsedArgs, null, 2));
+                
+                // Create the response object we'll send to the client
+                const responseObj = { 
+                  status: runStatus.status,
+                  runId: reqBody.runId,
+                  threadId: threadId,
+                  functionCall: {
+                    runId: reqBody.runId,
+                    toolCallId: toolCalls[0].id,
+                    name: toolCalls[0].function.name,
+                    arguments: parsedArgs
+                  },
+                  assistantInfo: {
+                    model: "gpt-4o-mini",
+                    assistantId: assistantIdToUse
+                  }
+                };
+                
+                // Log the exact response we're sending to the client
+                console.log("RESPONSE BEING SENT TO CLIENT:", JSON.stringify(responseObj, null, 2));
+                
+                // We'll return the function call information to the client
+                return new Response(
+                  JSON.stringify(responseObj),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              } catch (parseError) {
+                console.error("ERROR PARSING FUNCTION ARGUMENTS:", parseError);
+                console.log("INVALID JSON IN ARGUMENTS:", toolCalls[0].function.arguments);
+              }
+            }
+            
+            console.log("==========================================");
+          }
+          
+          // If no function call, just return the status
           return new Response(
             JSON.stringify({ status: runStatus.status }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -218,6 +370,77 @@ serve(async (req) => {
       if (reqBody.getMessages && threadId && reqBody.runId) {
         console.log("Getting messages for thread:", threadId);
         try {
+          // First, check if the run requires action (function call)
+          console.log("Checking if run requires action before getting messages...");
+          const runStatus = await openai.beta.threads.runs.retrieve(threadId, reqBody.runId, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          console.log("Run status when getting messages:", runStatus.status);
+          
+          // If the run requires action, handle the function call
+          if (runStatus.status === 'requires_action') {
+            console.log("========== FUNCTION CALL DETECTED DURING GET MESSAGES ==========");
+            console.log("Run requires action (function call)");
+            console.log("Thread ID:", threadId);
+            console.log("Run ID:", reqBody.runId);
+            
+            // Log the complete runStatus object to see what OpenAI is returning
+            console.log("COMPLETE RUN STATUS OBJECT:", JSON.stringify(runStatus, null, 2));
+            
+            // Log the required_action property specifically
+            console.log("REQUIRED ACTION DETAILS:", JSON.stringify(runStatus.required_action, null, 2));
+            
+            const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
+            
+            console.log("Tool calls array:", JSON.stringify(toolCalls, null, 2));
+            
+            if (toolCalls.length > 0) {
+              console.log("First tool call ID:", toolCalls[0].id);
+              console.log("Function name:", toolCalls[0].function.name);
+              console.log("Function arguments (raw):", toolCalls[0].function.arguments);
+              
+              try {
+                // Try to parse the arguments to verify they're valid JSON
+                const parsedArgs = JSON.parse(toolCalls[0].function.arguments);
+                console.log("Function arguments (parsed):", JSON.stringify(parsedArgs, null, 2));
+                
+                // Create the response object we'll send to the client
+                const responseObj = { 
+                  runId: reqBody.runId,
+                  threadId: threadId,
+                  functionCall: {
+                    runId: reqBody.runId,
+                    toolCallId: toolCalls[0].id,
+                    name: toolCalls[0].function.name,
+                    arguments: parsedArgs
+                  },
+                  assistantInfo: {
+                    model: "gpt-4o-mini",
+                    assistantId: assistantIdToUse
+                  }
+                };
+                
+                // Log the exact response we're sending to the client
+                console.log("RESPONSE BEING SENT TO CLIENT:", JSON.stringify(responseObj, null, 2));
+                
+                // We'll return the function call information to the client
+                return new Response(
+                  JSON.stringify(responseObj),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              } catch (parseError) {
+                console.error("ERROR PARSING FUNCTION ARGUMENTS:", parseError);
+                console.log("INVALID JSON IN ARGUMENTS:", toolCalls[0].function.arguments);
+              }
+            }
+            
+            console.log("==========================================");
+          }
+          
+          // If no function call, proceed with getting messages
           const messageList = await openai.beta.threads.messages.list(threadId, {
             headers: {
               'OpenAI-Beta': 'assistants=v2'
@@ -274,6 +497,16 @@ serve(async (req) => {
                 }
               });
               console.log("Successfully retrieved fixed assistant:", assistant.id);
+              
+              // Force update the assistant with the current tool configuration
+              console.log("Updating assistant with latest tool configuration");
+              assistant = await openai.beta.assistants.update(FIXED_ASSISTANT_ID, assistantConfig, {
+                headers: {
+                  'OpenAI-Beta': 'assistants=v2'
+                }
+              });
+              console.log("Successfully updated assistant with tools:", assistant.id);
+              console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
             } catch (retrieveError) {
               console.log("Fixed assistant not found, creating a new one");
               // Create a new assistant if the fixed one doesn't exist
@@ -284,6 +517,7 @@ serve(async (req) => {
               });
               console.log("Created new assistant:", assistant.id);
               console.log("IMPORTANT: Save this assistant ID for future use:", assistant.id);
+              console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
             }
           } catch (error) {
             console.error("Error managing assistant:", error);
@@ -300,6 +534,16 @@ serve(async (req) => {
                     }
                   });
                   console.log("Successfully retrieved fixed assistant with explicit header:", assistant.id);
+                  
+                  // Force update the assistant with the current tool configuration
+                  console.log("Updating assistant with latest tool configuration (retry)");
+                  assistant = await openai.beta.assistants.update("asst_DOAXZQD6pbB5wS27NxnOAOi9", assistantConfig, {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log("Successfully updated assistant with tools (retry):", assistant.id);
+                  console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
                 } catch (retrieveError) {
                   // Create a new assistant if the fixed one doesn't exist
                   assistant = await openai.beta.assistants.create(assistantConfig, {
@@ -309,6 +553,7 @@ serve(async (req) => {
                   });
                   console.log("Created new assistant with explicit header:", assistant.id);
                   console.log("IMPORTANT: Save this assistant ID for future use:", assistant.id);
+                  console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
                 }
               } catch (retryError) {
                 console.error("Retry also failed:", retryError);
@@ -346,6 +591,14 @@ serve(async (req) => {
 
       // If we have function results from a previous run, submit them
       if (functionResults) {
+        if (DEBUG_TOOL_CALLS) {
+          console.log("========== FUNCTION RESULTS RECEIVED ==========");
+          console.log("Thread ID:", threadId);
+          console.log("Run ID:", functionResults.runId);
+          console.log("Tool Call ID:", functionResults.toolCallId);
+          console.log("Function results:", JSON.stringify(functionResults.result, null, 2));
+        }
+        
         console.log("Submitting function results for run:", functionResults.runId);
         try {
           await openai.beta.threads.runs.submitToolOutputs(
@@ -355,10 +608,51 @@ serve(async (req) => {
               tool_outputs: [
                 {
                   tool_call_id: functionResults.toolCallId,
-                  output: JSON.stringify({ success: true, message: "Task added successfully" }),
+                  output: JSON.stringify(functionResults.result || { success: true, message: "Task added successfully" }),
                 },
               ],
+            },
+            {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
             }
+          );
+          
+          if (DEBUG_TOOL_CALLS) {
+            console.log("Function results submitted successfully");
+          }
+          
+          // Run the assistant again to process the function results
+          const run = await openai.beta.threads.runs.create(threadId, {
+            assistant_id: assistantIdToUse,
+            tools: [],
+            metadata: {
+              conversation_id: threadId,
+              timestamp: new Date().toISOString()
+            }
+          }, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          if (DEBUG_TOOL_CALLS) {
+            console.log("New run created to process function results:", run.id);
+            console.log("==============================================");
+          }
+          
+          console.log("Function results processed, new run created:", run.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              runId: run.id,
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: assistantIdToUse
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } catch (error) {
           console.error("Error submitting function results:", error);
@@ -373,6 +667,51 @@ serve(async (req) => {
       if (message) {
         console.log("Adding message to thread:", threadId);
         try {
+          // Check if there's an active run on this thread
+          console.log("Checking for active runs on thread before adding message");
+          try {
+            const runs = await openai.beta.threads.runs.list(threadId, {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
+            });
+            
+            // Find any active runs (in_progress, queued, etc.)
+            const activeRuns = runs.data.filter(run => 
+              ['in_progress', 'queued', 'requires_action'].includes(run.status)
+            );
+            
+            if (activeRuns.length > 0) {
+              console.log(`Found ${activeRuns.length} active runs. Cancelling them before adding new message.`);
+              
+              // Cancel each active run
+              for (const activeRun of activeRuns) {
+                console.log(`Cancelling run: ${activeRun.id}`);
+                try {
+                  await openai.beta.threads.runs.cancel(threadId, activeRun.id, {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log(`Successfully cancelled run: ${activeRun.id}`);
+                } catch (cancelError) {
+                  console.error(`Error cancelling run ${activeRun.id}:`, cancelError);
+                  // Continue with other runs even if one fails
+                }
+              }
+              
+              // Wait a moment for the cancellations to take effect
+              console.log("Waiting for cancellations to take effect...");
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+              console.log("No active runs found on thread.");
+            }
+          } catch (listRunsError) {
+            console.error("Error checking for active runs:", listRunsError);
+            // Continue anyway and try to add the message
+          }
+          
+          // Now add the message to the thread
           await openai.beta.threads.messages.create(threadId, {
             role: 'user',
             content: message,
@@ -380,7 +719,8 @@ serve(async (req) => {
             headers: {
               'OpenAI-Beta': 'assistants=v2'
             }
-          })
+          });
+          console.log("Successfully added message to thread");
         } catch (error) {
           console.error("Error adding message to thread:", error);
           return new Response(
@@ -475,25 +815,71 @@ serve(async (req) => {
 
       // Check if the run requires action (function calling)
       if (runStatus.status === 'requires_action') {
+        console.log("========== FUNCTION CALL DETECTED ==========");
         console.log("Run requires action (function call)");
+        console.log("Thread ID:", threadId);
+        console.log("Run ID:", run.id);
+        
+        // Log the complete runStatus object to see what OpenAI is returning
+        console.log("COMPLETE RUN STATUS OBJECT:", JSON.stringify(runStatus, null, 2));
+        
+        // Log the required_action property specifically
+        console.log("REQUIRED ACTION DETAILS:", JSON.stringify(runStatus.required_action, null, 2));
+        
         const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
         
-        // We'll return the function call information to the client
-        return new Response(
-          JSON.stringify({ 
-            functionCall: {
-              runId: run.id,
-              toolCallId: toolCalls[0].id,
-              name: toolCalls[0].function.name,
-              arguments: JSON.parse(toolCalls[0].function.arguments)
-            },
-            assistantInfo: {
-              model: "gpt-4o-mini",
-              assistantId: assistantIdToUse
-            }
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        console.log("Tool calls array:", JSON.stringify(toolCalls, null, 2));
+        
+        if (toolCalls.length > 0) {
+          console.log("First tool call ID:", toolCalls[0].id);
+          console.log("Function name:", toolCalls[0].function.name);
+          console.log("Function arguments (raw):", toolCalls[0].function.arguments);
+          
+          try {
+            // Try to parse the arguments to verify they're valid JSON
+            const parsedArgs = JSON.parse(toolCalls[0].function.arguments);
+            console.log("Function arguments (parsed):", JSON.stringify(parsedArgs, null, 2));
+            
+            // Create the response object we'll send to the client
+            const responseObj = { 
+              functionCall: {
+                runId: run.id,
+                toolCallId: toolCalls[0].id,
+                name: toolCalls[0].function.name,
+                arguments: parsedArgs
+              },
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: assistantIdToUse
+              }
+            };
+            
+            // Log the exact response we're sending to the client
+            console.log("RESPONSE BEING SENT TO CLIENT:", JSON.stringify(responseObj, null, 2));
+            
+            // We'll return the function call information to the client
+            return new Response(
+              JSON.stringify(responseObj),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          } catch (parseError) {
+            console.error("ERROR PARSING FUNCTION ARGUMENTS:", parseError);
+            console.log("INVALID JSON IN ARGUMENTS:", toolCalls[0].function.arguments);
+            
+            // Return an error response
+            return new Response(
+              JSON.stringify({ 
+                error: "Failed to parse function arguments",
+                rawArguments: toolCalls[0].function.arguments
+              }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } else {
+          console.log("NO TOOL CALLS FOUND IN REQUIRED ACTION");
+        }
+        
+        console.log("==========================================");
       }
 
       // Get the messages

@@ -5,9 +5,13 @@ export interface ChatMessage {
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  functionCall?: {
+    name: string;
+    arguments: any;
+  };
 }
 
 export interface AssistantInfo {

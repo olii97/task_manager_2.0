@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Message } from './types';
+import { Badge } from "@/components/ui/badge";
+import { InfoIcon } from "lucide-react";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -31,21 +33,42 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({
             Ask me to add tasks to your backlog or today's schedule.
           </p>
         ) : (
-          messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`${
-                msg.role === 'user' 
-                  ? 'ml-8 bg-stone-200 border border-stone-300 text-stone-800' 
-                  : 'mr-8 bg-amber-50 border border-amber-200 text-stone-800'
-              } p-3 rounded-lg shadow-sm`}
-            >
-              <div className="text-xs font-medium mb-1 text-stone-500">
-                {msg.role === 'user' ? 'You' : 'Assistant'}
+          messages.map((msg, index) => {
+            // Determine message styling based on role
+            let msgStyles = '';
+            let labelText = '';
+            
+            if (msg.role === 'user') {
+              msgStyles = 'ml-8 bg-stone-200 border border-stone-300 text-stone-800';
+              labelText = 'You';
+            } else if (msg.role === 'assistant') {
+              msgStyles = 'mr-8 bg-amber-50 border border-amber-200 text-stone-800';
+              labelText = 'Assistant';
+            } else if (msg.role === 'system') {
+              msgStyles = 'mx-4 bg-blue-50 border border-blue-200 text-blue-800';
+              labelText = 'System';
+            }
+            
+            return (
+              <div
+                key={index}
+                className={`${msgStyles} p-3 rounded-lg shadow-sm`}
+              >
+                <div className="text-xs font-medium mb-1 flex items-center">
+                  {msg.role === 'system' && <InfoIcon className="h-3 w-3 mr-1" />}
+                  <span className={msg.role === 'system' ? 'text-blue-600' : 'text-stone-500'}>
+                    {labelText}
+                  </span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                {msg.functionCall && (
+                  <Badge variant="outline" className="ml-2 bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                    Function: {msg.functionCall.name}
+                  </Badge>
+                )}
               </div>
-              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-            </div>
-          ))
+            );
+          })
         )}
         {isLoading && (
           <div className="mr-8 bg-amber-50 border border-amber-200 p-3 rounded-lg shadow-sm">
