@@ -6,6 +6,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { AppHeader } from "@/components/AppHeader";
 import { MotionConfig } from "framer-motion";
+import IntroScreen from "@/components/intro/IntroScreen";
+import { useIntroScreen } from "@/hooks/useIntroScreen";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
@@ -15,6 +17,7 @@ import Tasks from "./pages/Tasks";
 import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
+import MorningRitual from "./pages/MorningRitual";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
@@ -25,8 +28,9 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
+  const { showIntroScreen, completeIntroScreen, isLoading: introLoading } = useIntroScreen();
 
-  if (loading) {
+  if (loading || introLoading) {
     return <div>Loading...</div>;
   }
 
@@ -36,6 +40,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
+      {showIntroScreen && <IntroScreen onComplete={completeIntroScreen} />}
       <AppHeader />
       {children}
     </>
@@ -117,6 +122,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Tasks />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/morning-ritual"
+                element={
+                  <ProtectedRoute>
+                    <MorningRitual />
                   </ProtectedRoute>
                 }
               />
