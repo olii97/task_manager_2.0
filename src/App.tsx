@@ -6,8 +6,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { AppHeader } from "@/components/AppHeader";
 import { MotionConfig } from "framer-motion";
-import IntroScreen from "@/components/intro/IntroScreen";
-import { useIntroScreen } from "@/hooks/useIntroScreen";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
@@ -27,9 +25,8 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
-  const { showIntroScreen, completeIntroScreen, isLoading: introLoading } = useIntroScreen();
 
-  if (loading || introLoading) {
+  if (loading) {
     return <div>Loading...</div>;
   }
 
@@ -39,7 +36,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
-      {showIntroScreen && <IntroScreen onComplete={completeIntroScreen} />}
       <AppHeader />
       {children}
     </>

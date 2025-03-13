@@ -33,26 +33,6 @@ We've added a side-by-side test panel to visualize how the task listener process
 | "What's the weather like today?"              | Should NOT detect a task               |
 | "Tell me a joke"                              | Should NOT detect a task               |
 
-## Toggling Listeners On/Off
-
-We've added a toggle feature to enable or disable the listener system:
-
-1. **In the Chat Interface**: Look for the ear icon in the header. Click it to toggle listeners on/off.
-2. **Before Starting Chat**: On the initial screen, you'll see a "Listeners On/Off" button.
-3. **Settings Menu**: Click the info icon to access settings where you can toggle listeners.
-
-When listeners are disabled:
-- No token usage will occur for listener processing
-- The test panel will show that listeners are disabled
-- Messages will only be processed by the main assistant
-
-This feature is useful for:
-- Reducing API costs during development
-- Testing the application without listener interference
-- Comparing behavior with and without listeners
-
-Your listener preference is saved in localStorage and will persist between sessions.
-
 ## Understanding the Test Panel
 
 The test panel shows:
@@ -60,7 +40,6 @@ The test panel shows:
 1. The raw message sent to the listener
 2. The JSON response from the task detection model
 3. Whether a task would be created and its details
-4. The current status of the listener system (enabled/disabled)
 
 ## How It Works
 
@@ -81,12 +60,4 @@ The Multi-Agent Listener architecture works as follows:
    - Fast, reliable task creation
    - Natural conversational responses
 
-This approach separates concerns, improves reliability, and provides a better user experience.
-
-## Performance Optimization
-
-To reduce token usage and improve performance:
-
-1. We use the smaller `gpt-3.5-turbo` model for task detection
-2. The listener toggle allows you to disable listeners when not needed
-3. The system is designed to only process clear task creation intents 
+This approach separates concerns, improves reliability, and provides a better user experience. 

@@ -1,38 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { CardHeader, CardTitle } from "@/components/ui/card";
-import { Info, ToggleLeft, ToggleRight, Copy, Beaker, Settings, Bot, User, Ear, EarOff } from "lucide-react";
+import { Info, ToggleLeft, ToggleRight, Copy } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AssistantInfo } from './types';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ChatHeaderProps {
   assistantInfo: AssistantInfo | null;
   useAssistant: boolean;
   toggleChatMode: () => void;
   threadId?: string | null;
-  showTestPanel?: boolean;
-  toggleTestPanel?: () => void;
-  isListenerEnabled?: boolean;
-  toggleListeners?: () => void;
 }
 
 const ChatHeader: React.FC<ChatHeaderProps> = ({ 
   assistantInfo, 
   useAssistant, 
   toggleChatMode,
-  threadId,
-  showTestPanel,
-  toggleTestPanel,
-  isListenerEnabled,
-  toggleListeners
+  threadId
 }) => {
-  const [showInfo, setShowInfo] = useState(false);
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -54,46 +41,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Listener Toggle */}
-          {toggleListeners && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className={`h-8 px-2 text-xs border ${isListenerEnabled 
-                      ? 'border-green-500 text-green-700 hover:bg-green-50' 
-                      : 'border-gray-500 text-gray-700 hover:bg-gray-50'}`}
-                    onClick={toggleListeners}
-                  >
-                    {isListenerEnabled ? (
-                      <Ear className="h-4 w-4 mr-1" />
-                    ) : (
-                      <EarOff className="h-4 w-4 mr-1" />
-                    )}
-                    {isListenerEnabled ? 'Listeners On' : 'Listeners Off'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isListenerEnabled ? "Disable listeners" : "Enable listeners"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-
-          {toggleTestPanel && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-8 px-2 text-xs border-amber-500 text-amber-700 hover:bg-amber-50" 
-              onClick={toggleTestPanel}
-            >
-              <Beaker className="h-4 w-4 mr-1" />
-              {showTestPanel ? 'Hide Test' : 'Show Test'}
-            </Button>
-          )}
-          
           <Button 
             variant="outline" 
             size="sm" 
@@ -125,11 +72,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                   )}
                   {threadId && (
                     <p>Thread ID: <strong className="text-amber-700">{threadId}</strong></p>
-                  )}
-                  {toggleListeners && (
-                    <p>Listeners: <strong className={isListenerEnabled ? "text-green-700" : "text-gray-700"}>
-                      {isListenerEnabled ? "Enabled" : "Disabled"}
-                    </strong></p>
                   )}
                 </TooltipContent>
               </Tooltip>

@@ -6,16 +6,13 @@ import ChatMessages from './ChatMessages';
 import ChatInput from './ChatInput';
 import { useChatAssistant } from './useChatAssistant';
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Beaker, Ear, EarOff } from "lucide-react";
-import ListenerTestPanel from '../testing/ListenerTestPanel';
+import { MessageSquare } from "lucide-react";
 
 const ChatBot: React.FC = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isChatInitialized, setIsChatInitialized] = useState(false);
-  const [showTestPanel, setShowTestPanel] = useState(false);
-  const [lastMessage, setLastMessage] = useState<string | null>(null);
   
   // Debug log for userId
   useEffect(() => {
@@ -32,9 +29,7 @@ const ChatBot: React.FC = () => {
     toggleChatMode,
     handleSendMessage,
     threadId,
-    initializeChatThread,
-    isListenerEnabled,
-    toggleListeners
+    initializeChatThread
   } = useChatAssistant(userId, false); // Pass false to prevent auto-initialization
 
   const handleStartChat = async () => {
@@ -45,13 +40,7 @@ const ChatBot: React.FC = () => {
   // Create a wrapper for handleSendMessage to ensure userId is passed
   const handleSendWithUserId = async () => {
     console.log('ChatBot - handleSendWithUserId - userId:', userId);
-    // Store the message for the test panel
-    setLastMessage(input);
     await handleSendMessage();
-  };
-
-  const toggleTestPanel = () => {
-    setShowTestPanel(prev => !prev);
   };
 
   if (!isChatInitialized) {
@@ -73,85 +62,41 @@ const ChatBot: React.FC = () => {
               <li>Add "Call John" to my task list for today</li>
             </ul>
           </div>
-          <div className="flex space-x-4">
-            <Button 
-              onClick={handleStartChat} 
-              className="mt-4 bg-blue-600 hover:bg-blue-700"
-              disabled={isLoading}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              {isLoading ? "Initializing..." : "Start Chatting"}
-            </Button>
-            <Button 
-              onClick={toggleTestPanel} 
-              variant="outline"
-              className="mt-4 border-amber-500 text-amber-700 hover:bg-amber-50"
-            >
-              <Beaker className="mr-2 h-4 w-4" />
-              {showTestPanel ? "Hide Test Panel" : "Show Test Panel"}
-            </Button>
-            <Button 
-              onClick={toggleListeners} 
-              variant="outline"
-              className={`mt-4 ${isListenerEnabled 
-                ? 'border-green-500 text-green-700 hover:bg-green-50' 
-                : 'border-gray-500 text-gray-700 hover:bg-gray-50'}`}
-            >
-              {isListenerEnabled ? (
-                <Ear className="mr-2 h-4 w-4" />
-              ) : (
-                <EarOff className="mr-2 h-4 w-4" />
-              )}
-              {isListenerEnabled ? "Listeners On" : "Listeners Off"}
-            </Button>
-          </div>
+          <Button 
+            onClick={handleStartChat} 
+            className="mt-4 bg-blue-600 hover:bg-blue-700"
+            disabled={isLoading}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            {isLoading ? "Initializing..." : "Start Chatting"}
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <div className={`flex ${showTestPanel ? 'space-x-4' : ''}`}>
-        <div className={showTestPanel ? 'w-1/2' : 'w-full'}>
-          <Card className="shadow-lg border-stone-300 bg-white h-full">
-            <ChatHeader 
-              assistantInfo={assistantInfo} 
-              useAssistant={useAssistant}
-              toggleChatMode={toggleChatMode}
-              threadId={threadId}
-              showTestPanel={showTestPanel}
-              toggleTestPanel={toggleTestPanel}
-              isListenerEnabled={isListenerEnabled}
-              toggleListeners={toggleListeners}
-            />
-            <CardContent className="space-y-4 p-4 bg-stone-50">
-              <ChatMessages 
-                messages={messages} 
-                isLoading={isLoading} 
-                scrollAreaRef={scrollAreaRef}
-              />
-              <ChatInput 
-                input={input} 
-                setInput={setInput} 
-                handleSendMessage={handleSendWithUserId}
-                isLoading={isLoading}
-              />
-            </CardContent>
-          </Card>
-        </div>
-        
-        {showTestPanel && (
-          <div className="w-1/2">
-            <ListenerTestPanel 
-              userId={userId} 
-              lastMessage={lastMessage}
-              isListenerEnabled={isListenerEnabled}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+    <Card className="shadow-lg border-stone-300 bg-white max-w-3xl mx-auto">
+      <ChatHeader 
+        assistantInfo={assistantInfo} 
+        useAssistant={useAssistant}
+        toggleChatMode={toggleChatMode}
+        threadId={threadId}
+      />
+      <CardContent className="space-y-4 p-4 bg-stone-50">
+        <ChatMessages 
+          messages={messages} 
+          isLoading={isLoading} 
+          scrollAreaRef={scrollAreaRef}
+        />
+        <ChatInput 
+          input={input} 
+          setInput={setInput} 
+          handleSendMessage={handleSendWithUserId}
+          isLoading={isLoading}
+        />
+      </CardContent>
+    </Card>
   );
 };
 

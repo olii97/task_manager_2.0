@@ -266,16 +266,6 @@ export const sendChatMessage = async (
         }
       });
 
-      // Log the complete response from the Supabase function
-      console.log("%c========== COMPLETE RESPONSE FROM SUPABASE FUNCTION ==========", "background: #8a2be2; color: #fff; padding: 4px; border-radius: 4px;");
-      console.log("Full initialData:", JSON.stringify(initialData, null, 2));
-      console.log("Has runId:", !!initialData?.runId);
-      console.log("Has functionCall:", !!initialData?.functionCall);
-      if (initialData?.functionCall) {
-        console.log("functionCall properties:", Object.keys(initialData.functionCall));
-      }
-      console.log("%c==========================================================", "background: #8a2be2; color: #fff; padding: 4px; border-radius: 4px;");
-
       if (initialError) throw initialError;
       if (!initialData?.runId) throw new Error('No run ID received');
 
@@ -284,9 +274,7 @@ export const sendChatMessage = async (
         if (DEBUG_TOOL_CALLS) {
           console.log("%c========== FUNCTION CALL RECEIVED FROM SERVER ==========", "background: #f0ad4e; color: #000; padding: 4px; border-radius: 4px;");
           console.log("Thread ID:", threadId);
-          console.log("Function call details:", JSON.stringify(initialData.functionCall, null, 2));
-          console.log("Function call name:", initialData.functionCall.name);
-          console.log("Function call arguments:", JSON.stringify(initialData.functionCall.arguments, null, 2));
+          console.log("Function call details:", initialData.functionCall);
           console.log("User ID available:", !!userId);
           console.log("User ID value:", userId || 'NOT PROVIDED');
         }

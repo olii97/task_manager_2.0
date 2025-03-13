@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Message, AssistantInfo } from './types';
 import { initializeChat, sendChatMessage } from '@/services/chatService';
-import { useListenerManager } from '@/hooks/useListenerManager';
-import { toast } from '@/components/ui/use-toast';
 
 export const useChatAssistant = (userId?: string, autoInitialize: boolean = true) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -11,14 +9,6 @@ export const useChatAssistant = (userId?: string, autoInitialize: boolean = true
   const [threadId, setThreadId] = useState<string | null>(null);
   const [assistantInfo, setAssistantInfo] = useState<AssistantInfo | null>(null);
   const [useAssistant, setUseAssistant] = useState<boolean>(true);
-  
-  // Initialize the listener manager
-  const { 
-    processMessage, 
-    isInitialized: isListenerInitialized,
-    isEnabled: isListenerEnabled,
-    toggleListeners
-  } = useListenerManager(userId || null);
 
   useEffect(() => {
     if (userId && autoInitialize) {
@@ -72,39 +62,6 @@ export const useChatAssistant = (userId?: string, autoInitialize: boolean = true
       setMessages(prev => [...prev, userMessage]);
       setInput('');
       
-      // Process the message with the listener system first
-      if (isListenerInitialized && isListenerEnabled) {
-        console.log('Processing message with listener system');
-        const listenerResults = await processMessage(input);
-        
-        // Handle any detected actions
-        for (const result of listenerResults) {
-          console.log('Listener result:', result);
-          
-          if (result.actionType === 'task_created') {
-            // Show a toast notification
-            toast({
-              title: 'Task Created',
-              description: result.data.message,
-              variant: 'default'
-            });
-            
-            // Add a system message about the task creation
-            const systemMessage: Message = {
-              id: Date.now().toString() + '-system',
-              role: 'system',
-              content: result.data.message,
-              timestamp: new Date().toISOString()
-            };
-            
-            setMessages(prev => [...prev, systemMessage]);
-          }
-        }
-      } else if (!isListenerEnabled) {
-        console.log('Listeners are disabled. Skipping listener processing.');
-      }
-      
-      // Still send the message to the main assistant for a conversational response
       const assistantMessage = await sendChatMessage(
         input, 
         threadId, 
@@ -123,7 +80,7 @@ export const useChatAssistant = (userId?: string, autoInitialize: boolean = true
     } finally {
       setIsLoading(false);
     }
-  }, [input, threadId, isLoading, useAssistant, messages, assistantInfo, userId, processMessage, isListenerInitialized, isListenerEnabled]);
+  }, [input, threadId, isLoading, useAssistant, messages, assistantInfo, userId]);
 
   return {
     messages,
@@ -135,9 +92,6 @@ export const useChatAssistant = (userId?: string, autoInitialize: boolean = true
     toggleChatMode,
     handleSendMessage,
     threadId,
-    initializeChatThread,
-    // Expose listener controls
-    isListenerEnabled,
-    toggleListeners
+    initializeChatThread
   };
 };
