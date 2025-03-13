@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Task, priorityEmojis } from "@/types/tasks";
 import { 
@@ -13,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { FlaskConical, Zap, Battery } from "lucide-react";
+import { FlaskConical, Zap, Battery, Plus } from "lucide-react";
 import { bulkScheduleTasks } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
@@ -23,9 +22,11 @@ interface TaskPlannerProps {
   open: boolean;
   onClose: () => void;
   tasks: Task[];
+  onAddTask: () => void; // Changed to match what Index.tsx provides
 }
 
-export function TaskPlanner({ open, onClose, tasks }: TaskPlannerProps) {
+export function TaskPlanner({ open, onClose, tasks, onAddTask }: TaskPlannerProps) {
+  
   const [selectedHighEnergyTasks, setSelectedHighEnergyTasks] = useState<string[]>([]);
   const [selectedLowEnergyTasks, setSelectedLowEnergyTasks] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("high");
@@ -142,6 +143,18 @@ export function TaskPlanner({ open, onClose, tasks }: TaskPlannerProps) {
             Select tasks from your backlog to focus on today
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex justify-end mb-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onAddTask}
+            className="flex items-center text-xs"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add Task to Backlog
+          </Button>
+        </div>
 
         <Tabs defaultValue="high" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">

@@ -1,10 +1,10 @@
-
 import React, {
   createContext,
   useState,
   useEffect,
   useContext,
   useCallback,
+  useRef,
 } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { 
@@ -12,7 +12,7 @@ import {
   getPomodoroStats,
   completePomodoroSession
 } from "@/services/pomodoroService";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from "@/constants";
 import { useSettings } from "@/hooks/useSettings";
 import { markTaskComplete } from "@/services/taskService";
@@ -90,7 +90,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
   const [completedCount, setCompletedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [autoCompleteTask, setAutoCompleteTask] = useState(false);
-  const { settings, updateSettings } = useSettings();
+  const { settings, userUpdateSettings } = useSettings();
 
   const [timerSettings, setTimerSettings] = useState({
     workDuration: settings?.work_duration || DEFAULT_WORK_DURATION,
@@ -123,16 +123,38 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
     loadStats();
   }, [session]);
 
+  // Use a separate effect for updating settings to avoid unnecessary triggers
+  const userSettingsRef = useRef(false);
+  const timerSettingsRef = useRef(timerSettings);
   useEffect(() => {
-    if (session?.user) {
-      updateSettings({
+    // Skip first render
+    if (!userSettingsRef.current && settings) {
+      userSettingsRef.current = true;
+      timerSettingsRef.current = timerSettings;
+      return;
+    }
+
+    // Only update if there was an actual change to the timer settings
+    // and if it was initiated by a user action rather than scrolling/rerendering
+    if (session?.user && userSettingsRef.current &&
+        (timerSettingsRef.current.workDuration !== timerSettings.workDuration ||
+         timerSettingsRef.current.breakDuration !== timerSettings.breakDuration ||
+         timerSettingsRef.current.longBreakDuration !== timerSettings.longBreakDuration ||
+         timerSettingsRef.current.sessionsBeforeLongBreak !== timerSettings.sessionsBeforeLongBreak)) {
+      
+      // Store the current settings to compare with later
+      timerSettingsRef.current = timerSettings;
+      
+      // Use userUpdateSettings only when a user explicitly changes settings
+      // This avoids showing toasts during initial load or auto-updates
+      userUpdateSettings({
         work_duration: timerSettings.workDuration,
         break_duration: timerSettings.breakDuration,
         long_break_duration: timerSettings.longBreakDuration,
         sessions_before_long_break: timerSettings.sessionsBeforeLongBreak,
       });
     }
-  }, [timerSettings, session, updateSettings]);
+  }, [timerSettings, session, userUpdateSettings]);
 
   // Modified function to fix the Task type issue
   const handleTaskSelected = useCallback((task: Task) => {

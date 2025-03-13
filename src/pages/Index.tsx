@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
 import { JournalStreak } from "@/components/JournalStreak";
@@ -53,16 +52,12 @@ const Index = () => {
     if (userId) {
       refreshTodayEntry();
     }
-  }, [userId]);
+  }, [userId, refreshTodayEntry]);
 
   return (
     <div className="container py-6">
-      {/* Weekly Intentions at the top */}
-      <div className="mb-6">
-        <WeeklyIntentionsCard />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Main content area - tasks and journal side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Today's Tasks */}
         <TodaysTasks 
           onEditTask={handleEditTask} 
@@ -72,27 +67,35 @@ const Index = () => {
         {/* Today's Journal Entry */}
         <TodaysJournalCard 
           entry={todayEntry} 
-          isLoading={isJournalLoading} 
+          isLoading={isJournalLoading}
+          refreshTodayEntry={refreshTodayEntry}
         />
-
-        {/* Featured Goal */}
-        <FeaturedGoal />
+      </div>
+      
+      {/* Featured Goal and Weekly Intentions row - moved below tasks and journal */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="h-[200px] overflow-auto">
+          <FeaturedGoal />
+        </div>
+        <div className="h-[200px] overflow-auto">
+          <WeeklyIntentionsCard />
+        </div>
       </div>
 
-      {/* Chat Bot and Strava Activities */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Chat Bot Assistant */}
+      {/* Chat Bot below tasks and journal */}
+      <div className="mb-6">
         <ChatBot />
-        
+      </div>
+
+      {/* Bottom row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Strava Activities */}
         <StravaActivitiesCard 
           activities={stravaActivities || []} 
           isLoading={isStravaLoading} 
         />
-      </div>
-      
-      {/* Wrap Up Day Button */}
-      <div className="mt-6">
+        
+        {/* Wrap Up Day Section */}
         <Card>
           <CardHeader>
             <CardTitle>Daily Summary</CardTitle>
@@ -123,6 +126,7 @@ const Index = () => {
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
+        onAddTask={() => setTaskFormOpen(true)}
       />
     </div>
   );

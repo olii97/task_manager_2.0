@@ -3,6 +3,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
+import { Rocket } from "lucide-react";
 
 export const AppHeader = () => {
   const location = useLocation();
@@ -15,51 +16,58 @@ export const AppHeader = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 py-3">
+    <header className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-b border-indigo-700 py-3 shadow-lg">
       <div className="container flex justify-between items-center">
         <div className="flex items-center">
-          <h1 className="text-xl font-bold text-blue-700">Daily Driver</h1>
+          <Rocket className="h-6 w-6 mr-2 text-yellow-300" />
+          <h1 className="text-xl font-bold text-white">Launchpad</h1>
         </div>
         <nav className="flex items-center space-x-2">
           <Button 
             asChild 
-            variant={isActiveRoute("/") ? "default" : "ghost"} 
+            variant={isActiveRoute("/") ? "secondary" : "ghost"} 
             size="sm"
+            className={isActiveRoute("/") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/">Dashboard</Link>
           </Button>
           <Button 
             asChild 
-            variant={isActiveRoute("/journal") ? "default" : "ghost"} 
+            variant={isActiveRoute("/journal") ? "secondary" : "ghost"} 
             size="sm"
+            className={isActiveRoute("/journal") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/journal">Journal</Link>
           </Button>
           <Button 
             asChild 
-            variant={isActiveRoute("/tasks") ? "default" : "ghost"} 
+            variant={isActiveRoute("/tasks") ? "secondary" : "ghost"} 
             size="sm"
+            className={isActiveRoute("/tasks") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/tasks">Tasks</Link>
           </Button>
           <Button 
             asChild 
-            variant={isActiveRoute("/goals") ? "default" : "ghost"} 
+            variant={isActiveRoute("/goals") ? "secondary" : "ghost"} 
             size="sm"
+            className={isActiveRoute("/goals") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/goals">Goals</Link>
           </Button>
           <Button 
             asChild 
-            variant={isActiveRoute("/intentions") ? "default" : "ghost"} 
+            variant={isActiveRoute("/intentions") ? "secondary" : "ghost"} 
             size="sm"
+            className={isActiveRoute("/intentions") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/intentions">Intentions</Link>
           </Button>
           <Button 
             asChild 
-            variant={isActiveRoute("/strava") ? "default" : "ghost"} 
+            variant={isActiveRoute("/strava") ? "secondary" : "ghost"} 
             size="sm"
+            className={isActiveRoute("/strava") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/strava">Strava</Link>
           </Button>

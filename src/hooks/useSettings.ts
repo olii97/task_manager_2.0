@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from '@/constants';
 
 export interface UserSettings {
@@ -18,6 +18,10 @@ export const useSettings = () => {
   const { session } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialFetchDone = useRef(false);
+  const settingsInitialized = useRef(false);
+  const userInitiatedUpdate = useRef(false);
+  const lastUpdateTime = useRef(0);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -44,6 +48,7 @@ export const useSettings = () => {
             created_at: data.created_at,
             updated_at: data.updated_at
           });
+          settingsInitialized.current = true;
         } else {
           // Set default settings
           setSettings({
@@ -52,11 +57,13 @@ export const useSettings = () => {
             long_break_duration: DEFAULT_LONG_BREAK_DURATION,
             sessions_before_long_break: DEFAULT_SESSIONS_BEFORE_LONG_BREAK
           });
+          settingsInitialized.current = true;
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
       } finally {
         setLoading(false);
+        initialFetchDone.current = true;
       }
     };
 
@@ -66,26 +73,50 @@ export const useSettings = () => {
   const updateSettings = async (updatedSettings: Partial<UserSettings>) => {
     if (!session?.user?.id || !settings) return;
 
+    // Add throttling - only update once every 500ms
+    const now = Date.now();
+    if (now - lastUpdateTime.current < 500) {
+      console.debug('Throttling settings update');
+      return;
+    }
+    lastUpdateTime.current = now;
+
     try {
-      // Since profiles table doesn't have these columns yet, we'll simply update local state
-      // and keep the UI working until the database is updated
-      
-      // Update local state
+      // Update local state without showing toast for automatic updates
       setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
       
-      toast({
-        title: 'Settings updated',
-        description: 'Your preferences have been saved in your local session',
-      });
+      // Only show toast if userInitiatedUpdate.current is true
+      if (userInitiatedUpdate.current) {
+        toast({
+          title: 'Settings updated',
+          description: 'Your preferences have been saved in your local session',
+        });
+        // Reset the flag after showing the toast
+        userInitiatedUpdate.current = false;
+      }
     } catch (error) {
       console.error('Error updating settings:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update settings',
-        variant: 'destructive'
-      });
+      if (userInitiatedUpdate.current) {
+        toast({
+          title: 'Error',
+          description: 'Failed to update settings',
+          variant: 'destructive'
+        });
+        userInitiatedUpdate.current = false;
+      }
     }
   };
 
-  return { settings, loading, updateSettings };
+  // Method to flag that the next update is user-initiated
+  const userUpdateSettings = (updatedSettings: Partial<UserSettings>) => {
+    userInitiatedUpdate.current = true;
+    updateSettings(updatedSettings);
+  };
+
+  return { 
+    settings, 
+    loading, 
+    updateSettings, 
+    userUpdateSettings // Expose method for explicit user updates
+  };
 };

@@ -16,6 +16,7 @@ import { TasksHeader } from "@/components/tasks/TasksHeader";
 import { TodaysSections } from "@/components/tasks/TodaysSections";
 import { TaskBacklog } from "@/components/tasks/TaskBacklog";
 import { CompletedTasks } from "@/components/tasks/CompletedTasks";
+import { TaskPlanner } from "@/components/tasks/TaskPlanner"; // Import TaskPlanner
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -24,6 +25,7 @@ const Tasks = () => {
 
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
+  const [plannerOpen, setPlannerOpen] = useState(false); // Add plannerOpen state
 
   // Fetch tasks
   const { data: tasks = [], isLoading } = useQuery({
@@ -123,7 +125,8 @@ const Tasks = () => {
     <div className="container py-6">
       <TasksHeader 
         onAddTask={() => setTaskFormOpen(true)} 
-        onResetSchedule={handleResetSchedule} 
+        onResetSchedule={handleResetSchedule}
+        onPlanTasks={() => setPlannerOpen(true)} // Add onPlanTasks handler
       />
 
       <TodaysSections 
@@ -154,6 +157,19 @@ const Tasks = () => {
         task={editingTask}
         title={editingTask ? "Edit Task" : "Add New Task"}
       />
+
+      {/* Task Planner Dialog */}
+      {plannerOpen && (
+        <TaskPlanner
+          open={plannerOpen}
+          onClose={() => setPlannerOpen(false)}
+          tasks={tasks}
+          onAddTask={() => {
+            setPlannerOpen(false);
+            setTaskFormOpen(true);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string[];
@@ -9,11 +8,16 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  functionCall?: {
+    name: string;
+    arguments: any;
+  };
 }
 
 export interface AssistantInfo {
   model: string;
   assistantId?: string | null;
+  name?: string;
 }
 
 export interface FunctionCallResult {

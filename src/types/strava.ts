@@ -89,10 +89,19 @@ export interface StravaTokens {
   expires_at: number;
 }
 
-// Helper function to convert StravaActivity to SavedStravaActivity
+// Improved helper function to convert StravaActivity to SavedStravaActivity
 export const toSavedStravaActivity = (activity: StravaActivity, isSaved: boolean = false): SavedStravaActivity => {
-  return {
+  // Ensure all required fields are present
+  const savedActivity: SavedStravaActivity = {
     ...activity,
-    saved: isSaved
+    // Required properties for SavedStravaActivity
+    saved: isSaved,
+    // Ensure these required fields have default values if they're missing
+    sport_type: activity.sport_type || activity.type || "unknown",
+    start_date_local: activity.start_date_local || activity.start_date || new Date().toISOString(),
+    timezone: activity.timezone || "",
+    utc_offset: activity.utc_offset || 0
   };
+  
+  return savedActivity;
 };

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Message, AssistantInfo } from './types';
 import { initializeChat, sendChatMessage } from '@/services/chatService';
 
-export const useChatAssistant = (userId?: string) => {
+export const useChatAssistant = (userId?: string, autoInitialize: boolean = true) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -11,10 +11,10 @@ export const useChatAssistant = (userId?: string) => {
   const [useAssistant, setUseAssistant] = useState<boolean>(true);
 
   useEffect(() => {
-    if (userId) {
+    if (userId && autoInitialize) {
       initializeChatThread();
     }
-  }, [userId, useAssistant]);
+  }, [userId, useAssistant, autoInitialize]);
 
   const toggleChatMode = useCallback(() => {
     setUseAssistant(prev => !prev);
@@ -26,7 +26,7 @@ export const useChatAssistant = (userId?: string) => {
     try {
       setIsLoading(true);
       
-      const result = await initializeChat(useAssistant);
+      const result = await initializeChat(useAssistant, userId);
       
       setThreadId(result.threadId || null);
       setAssistantInfo(result.assistantInfo);
@@ -45,6 +45,13 @@ export const useChatAssistant = (userId?: string) => {
     try {
       setIsLoading(true);
       
+      // Debug log for userId
+      console.log('useChatAssistant - handleSendMessage - userId:', userId);
+      
+      // Store the current userId in a local variable to ensure it's captured in the closure
+      const currentUserId = userId;
+      console.log('useChatAssistant - handleSendMessage - currentUserId:', currentUserId);
+      
       const userMessage: Message = {
         id: Date.now().toString(),
         role: 'user',
@@ -55,7 +62,14 @@ export const useChatAssistant = (userId?: string) => {
       setMessages(prev => [...prev, userMessage]);
       setInput('');
       
-      const assistantMessage = await sendChatMessage(input, threadId, useAssistant, messages, assistantInfo);
+      const assistantMessage = await sendChatMessage(
+        input, 
+        threadId, 
+        useAssistant, 
+        messages, 
+        assistantInfo,
+        currentUserId // Use the local variable to ensure it's not lost
+      );
       
       if (assistantMessage) {
         setMessages(prev => [...prev, assistantMessage]);
@@ -66,7 +80,7 @@ export const useChatAssistant = (userId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [input, threadId, isLoading, useAssistant, messages, assistantInfo]);
+  }, [input, threadId, isLoading, useAssistant, messages, assistantInfo, userId]);
 
   return {
     messages,
@@ -76,6 +90,8 @@ export const useChatAssistant = (userId?: string) => {
     assistantInfo,
     useAssistant,
     toggleChatMode,
-    handleSendMessage
+    handleSendMessage,
+    threadId,
+    initializeChatThread
   };
 };

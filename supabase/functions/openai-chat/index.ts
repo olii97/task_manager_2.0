@@ -17,7 +17,7 @@ const tool_resources = {
 // Assistant configuration with v2 tool resources
 const assistantConfig = {
   name: "Task Management Assistant",
-  instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively.",
+  instructions: "You are a helpful task management assistant. Help users organize and manage their tasks effectively. When a user asks you to create a task, use the add_task function to add it to their task list. You should detect task creation requests even if the user doesn't explicitly ask to 'add a task'. If users mention something that sounds like a task (e.g., 'I need to buy groceries'), offer to add it as a task.",
   model: "gpt-4o-mini",
   tools: [
     { type: "function", function: {
@@ -57,8 +57,11 @@ const assistantConfig = {
   tool_resources: tool_resources
 };
 
-// We'll create a new assistant instead of using a fixed ID
-// const ASSISTANT_ID = "asst_pEWgtxgc3knBhA0LXs0pgZYQ";
+// Fixed assistant ID to use for all users
+const FIXED_ASSISTANT_ID = "asst_DOAXZQD6pbB5wS27NxnOAOi9";
+
+// Add this near the beginning of the file, after the FIXED_ASSISTANT_ID constant
+const DEBUG_TOOL_CALLS = true; // Set to true to enable detailed tool call logging
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -119,15 +122,76 @@ serve(async (req) => {
       hasFunctionResults: !!functionResults,
       checkStatus: !!reqBody.checkStatus,
       getMessages: !!reqBody.getMessages,
-      runId: reqBody.runId
+      runId: reqBody.runId,
+      reuseThread: !!reqBody.reuseThread
     });
 
-    // Variable to store the assistant reference
-    let createdAssistant;
-    let assistantIdToUse;
+    // Always use the fixed assistant ID
+    const assistantIdToUse = FIXED_ASSISTANT_ID;
+    console.log("Using fixed assistant ID:", assistantIdToUse);
 
     if (useAssistant === true) {
-      console.log("Entering assistant mode");
+      console.log("Entering assistant mode with fixed assistant ID:", FIXED_ASSISTANT_ID);
+
+      // Check if we want to reuse a thread and the thread exists
+      if (threadId && reqBody.reuseThread) {
+        console.log("Reusing existing thread:", threadId);
+        try {
+          // Validate that the thread exists by retrieving its messages
+          const messages = await openai.beta.threads.messages.list(threadId, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          console.log("Successfully validated existing thread, message count:", messages.data.length);
+          
+          // If we have a message, add it to the thread
+          if (message) {
+            await openai.beta.threads.messages.create(threadId, {
+              role: 'user',
+              content: message,
+            }, {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
+            });
+            console.log("Added message to existing thread");
+          }
+          
+          // Run the assistant on the existing thread - always use the fixed assistant ID
+          console.log("Using fixed assistant ID:", assistantIdToUse);
+          const run = await openai.beta.threads.runs.create(threadId, {
+            assistant_id: assistantIdToUse,
+            tools: [], // No need for tools here as they're defined in the assistant
+            metadata: {
+              conversation_id: threadId,
+              timestamp: new Date().toISOString()
+            }
+          }, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          console.log("Run created successfully for existing thread:", run.id);
+          return new Response(
+            JSON.stringify({ 
+              runId: run.id,
+              threadId: threadId,
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: FIXED_ASSISTANT_ID
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          console.error("Error reusing thread:", error);
+          // If the thread doesn't exist or there's an error, we'll create a new one below
+          console.log("Will create a new thread instead");
+        }
+      }
 
       // Check if we need to check the status of a run
       if (reqBody.checkStatus && threadId && reqBody.runId) {
@@ -182,7 +246,7 @@ serve(async (req) => {
               response: latestResponse,
               assistantInfo: {
                 model: "gpt-4o-mini",
-                assistantId: assistantId
+                assistantId: FIXED_ASSISTANT_ID
               } 
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -202,15 +266,39 @@ serve(async (req) => {
         console.log("Initializing assistant and thread");
         try {
           // Create or update assistant
+          let assistant;
           try {
-            // Create a new assistant for each session
-            console.log("Creating new assistant with config:", assistantConfig);
-            createdAssistant = await openai.beta.assistants.create(assistantConfig, {
-              headers: {
-                'OpenAI-Beta': 'assistants=v2'
-              }
-            });
-            console.log("Created new assistant:", createdAssistant.id);
+            // First, try to retrieve the fixed assistant
+            console.log("Trying to retrieve fixed assistant:", FIXED_ASSISTANT_ID);
+            try {
+              assistant = await openai.beta.assistants.retrieve(FIXED_ASSISTANT_ID, {
+                headers: {
+                  'OpenAI-Beta': 'assistants=v2'
+                }
+              });
+              console.log("Successfully retrieved fixed assistant:", assistant.id);
+              
+              // Force update the assistant with the current tool configuration
+              console.log("Updating assistant with latest tool configuration");
+              assistant = await openai.beta.assistants.update(FIXED_ASSISTANT_ID, assistantConfig, {
+                headers: {
+                  'OpenAI-Beta': 'assistants=v2'
+                }
+              });
+              console.log("Successfully updated assistant with tools:", assistant.id);
+              console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
+            } catch (retrieveError) {
+              console.log("Fixed assistant not found, creating a new one");
+              // Create a new assistant if the fixed one doesn't exist
+              assistant = await openai.beta.assistants.create(assistantConfig, {
+                headers: {
+                  'OpenAI-Beta': 'assistants=v2'
+                }
+              });
+              console.log("Created new assistant:", assistant.id);
+              console.log("IMPORTANT: Save this assistant ID for future use:", assistant.id);
+              console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
+            }
           } catch (error) {
             console.error("Error managing assistant:", error);
             // Check if it's a version error and provide more details
@@ -219,12 +307,34 @@ serve(async (req) => {
               // Try with explicit headers
               try {
                 console.log("Retrying with explicit v2 header");
-                createdAssistant = await openai.beta.assistants.create(assistantConfig, {
-                  headers: {
-                    'OpenAI-Beta': 'assistants=v2'
-                  }
-                });
-                console.log("Successfully created assistant with explicit header:", createdAssistant.id);
+                try {
+                  assistant = await openai.beta.assistants.retrieve("asst_DOAXZQD6pbB5wS27NxnOAOi9", {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log("Successfully retrieved fixed assistant with explicit header:", assistant.id);
+                  
+                  // Force update the assistant with the current tool configuration
+                  console.log("Updating assistant with latest tool configuration (retry)");
+                  assistant = await openai.beta.assistants.update("asst_DOAXZQD6pbB5wS27NxnOAOi9", assistantConfig, {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log("Successfully updated assistant with tools (retry):", assistant.id);
+                  console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
+                } catch (retrieveError) {
+                  // Create a new assistant if the fixed one doesn't exist
+                  assistant = await openai.beta.assistants.create(assistantConfig, {
+                    headers: {
+                      'OpenAI-Beta': 'assistants=v2'
+                    }
+                  });
+                  console.log("Created new assistant with explicit header:", assistant.id);
+                  console.log("IMPORTANT: Save this assistant ID for future use:", assistant.id);
+                  console.log("Tool configuration:", JSON.stringify(assistantConfig.tools));
+                }
               } catch (retryError) {
                 console.error("Retry also failed:", retryError);
                 throw new Error(`Assistant management failed after retry: ${retryError.message}`);
@@ -245,7 +355,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               threadId: thread.id,
-              assistantId: createdAssistant.id,
+              assistantId: FIXED_ASSISTANT_ID,
               model: assistantConfig.model
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -261,6 +371,14 @@ serve(async (req) => {
 
       // If we have function results from a previous run, submit them
       if (functionResults) {
+        if (DEBUG_TOOL_CALLS) {
+          console.log("========== FUNCTION RESULTS RECEIVED ==========");
+          console.log("Thread ID:", threadId);
+          console.log("Run ID:", functionResults.runId);
+          console.log("Tool Call ID:", functionResults.toolCallId);
+          console.log("Function results:", JSON.stringify(functionResults.result, null, 2));
+        }
+        
         console.log("Submitting function results for run:", functionResults.runId);
         try {
           await openai.beta.threads.runs.submitToolOutputs(
@@ -270,10 +388,51 @@ serve(async (req) => {
               tool_outputs: [
                 {
                   tool_call_id: functionResults.toolCallId,
-                  output: JSON.stringify({ success: true, message: "Task added successfully" }),
+                  output: JSON.stringify(functionResults.result || { success: true, message: "Task added successfully" }),
                 },
               ],
+            },
+            {
+              headers: {
+                'OpenAI-Beta': 'assistants=v2'
+              }
             }
+          );
+          
+          if (DEBUG_TOOL_CALLS) {
+            console.log("Function results submitted successfully");
+          }
+          
+          // Run the assistant again to process the function results
+          const run = await openai.beta.threads.runs.create(threadId, {
+            assistant_id: assistantIdToUse,
+            tools: [],
+            metadata: {
+              conversation_id: threadId,
+              timestamp: new Date().toISOString()
+            }
+          }, {
+            headers: {
+              'OpenAI-Beta': 'assistants=v2'
+            }
+          });
+          
+          if (DEBUG_TOOL_CALLS) {
+            console.log("New run created to process function results:", run.id);
+            console.log("==============================================");
+          }
+          
+          console.log("Function results processed, new run created:", run.id);
+          
+          return new Response(
+            JSON.stringify({ 
+              runId: run.id,
+              assistantInfo: {
+                model: "gpt-4o-mini",
+                assistantId: assistantIdToUse
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } catch (error) {
           console.error("Error submitting function results:", error);
@@ -309,9 +468,8 @@ serve(async (req) => {
       console.log("Running assistant for thread:", threadId);
       let run;
       try {
-        // Use the assistant ID from the request or the created assistant
-        assistantIdToUse = assistantId || createdAssistant?.id;
-        console.log("Using assistant ID:", assistantIdToUse);
+        // Use the fixed assistant ID instead of the one from the request
+        console.log("Using fixed assistant ID:", assistantIdToUse);
         
         if (!assistantIdToUse) {
           throw new Error("No assistant ID available");
@@ -391,8 +549,21 @@ serve(async (req) => {
 
       // Check if the run requires action (function calling)
       if (runStatus.status === 'requires_action') {
-        console.log("Run requires action (function call)");
+        if (DEBUG_TOOL_CALLS) {
+          console.log("========== FUNCTION CALL DETECTED ==========");
+          console.log("Run requires action (function call)");
+          console.log("Thread ID:", threadId);
+          console.log("Run ID:", run.id);
+        }
+        
         const toolCalls = runStatus.required_action?.submit_tool_outputs.tool_calls || []
+        
+        if (DEBUG_TOOL_CALLS) {
+          console.log("Tool calls:", JSON.stringify(toolCalls, null, 2));
+          console.log("Function name:", toolCalls[0].function.name);
+          console.log("Function arguments:", toolCalls[0].function.arguments);
+          console.log("==========================================");
+        }
         
         // We'll return the function call information to the client
         return new Response(

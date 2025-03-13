@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +7,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
 import { getCurrentWeekIntentions, createWeeklyIntention } from "@/services/intentionService";
 import { WeeklyIntention } from "@/types/intentions";
+import { ClipboardList, ArrowUpRight, CheckCircle2, Pencil } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export const WeeklyIntentionsCard = () => {
   const { session } = useAuth();
+  const { toast } = useToast();
   const userId = session?.user.id;
 
   const { 
@@ -37,17 +39,29 @@ export const WeeklyIntentionsCard = () => {
     
     try {
       await createWeeklyIntention(userId, {});
+      toast({
+        title: "Intentions created",
+        description: "New weekly intentions have been created. You can now set your intentions for the week."
+      });
       refetch();
     } catch (error) {
       console.error("Error creating empty intentions:", error);
+      toast({
+        title: "Error creating intentions",
+        description: "There was a problem creating your weekly intentions. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Weekly Intentions</CardTitle>
+      <Card className="h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-teal-500" />
+            <span>Weekly Intentions</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-4 w-full" />
@@ -60,9 +74,12 @@ export const WeeklyIntentionsCard = () => {
 
   if (isError) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Weekly Intentions</CardTitle>
+      <Card className="h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-teal-500" />
+            <span>Weekly Intentions</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">Error loading weekly intentions.</p>
@@ -75,63 +92,77 @@ export const WeeklyIntentionsCard = () => {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg">Weekly Intentions</CardTitle>
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/intentions">View All</Link>
+    <Card className="bg-gradient-to-br from-card to-teal-50 dark:from-card dark:to-teal-950/20 border-teal-200 dark:border-teal-900 shadow-md hover:shadow-lg transition-all h-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-1">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <ClipboardList className="h-4 w-4 text-teal-500" />
+          <span>Weekly Intentions</span>
+        </CardTitle>
+        <Button asChild variant="ghost" size="sm" className="gap-1 hover:bg-teal-100 dark:hover:bg-teal-900">
+          <Link to="/intentions">
+            View All
+            <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-1">
         {!weeklyIntentions ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <p className="text-sm text-muted-foreground">You haven't set any intentions for this week.</p>
-            <Button onClick={handleCreateEmptyIntentions}>Set Intentions</Button>
+            <Button onClick={handleCreateEmptyIntentions} className="bg-teal-600 hover:bg-teal-700" size="sm">Set Intentions</Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {weeklyIntentions.intention_1 ? (
-              <div>
-                <p className="text-sm font-medium">1. {weeklyIntentions.intention_1}</p>
-                {weeklyIntentions.reflection_1 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Reflection: {weeklyIntentions.reflection_1}
-                  </p>
-                )}
+              <div className="bg-white dark:bg-gray-800 rounded-md p-2 border border-teal-100 dark:border-teal-900">
+                <p className="text-xs font-medium flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-teal-500 mt-0.5 flex-shrink-0" />
+                  <span>{weeklyIntentions.intention_1}</span>
+                </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No first intention set</p>
+              <div className="bg-white/60 dark:bg-gray-800/60 rounded-md p-2 border border-dashed border-teal-200 dark:border-teal-800">
+                <p className="text-xs text-muted-foreground">No first intention set</p>
+              </div>
             )}
             
             {weeklyIntentions.intention_2 ? (
-              <div>
-                <p className="text-sm font-medium">2. {weeklyIntentions.intention_2}</p>
-                {weeklyIntentions.reflection_2 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Reflection: {weeklyIntentions.reflection_2}
-                  </p>
-                )}
+              <div className="bg-white dark:bg-gray-800 rounded-md p-2 border border-teal-100 dark:border-teal-900">
+                <p className="text-xs font-medium flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-teal-500 mt-0.5 flex-shrink-0" />
+                  <span>{weeklyIntentions.intention_2}</span>
+                </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No second intention set</p>
+              <div className="bg-white/60 dark:bg-gray-800/60 rounded-md p-2 border border-dashed border-teal-200 dark:border-teal-800">
+                <p className="text-xs text-muted-foreground">No second intention set</p>
+              </div>
             )}
             
             {weeklyIntentions.intention_3 ? (
-              <div>
-                <p className="text-sm font-medium">3. {weeklyIntentions.intention_3}</p>
-                {weeklyIntentions.reflection_3 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Reflection: {weeklyIntentions.reflection_3}
-                  </p>
-                )}
+              <div className="bg-white dark:bg-gray-800 rounded-md p-2 border border-teal-100 dark:border-teal-900">
+                <p className="text-xs font-medium flex items-start gap-2">
+                  <CheckCircle2 className="h-3 w-3 text-teal-500 mt-0.5 flex-shrink-0" />
+                  <span>{weeklyIntentions.intention_3}</span>
+                </p>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No third intention set</p>
+              <div className="bg-white/60 dark:bg-gray-800/60 rounded-md p-2 border border-dashed border-teal-200 dark:border-teal-800">
+                <p className="text-xs text-muted-foreground">No third intention set</p>
+              </div>
             )}
             
             <div className="flex justify-end">
-              <Button asChild variant="outline" size="sm">
-                <Link to={`/intentions/edit/${weeklyIntentions.id}`}>Edit Intentions</Link>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="hover:bg-teal-100 dark:hover:bg-teal-900 gap-1"
+                onClick={() => {
+                  window.location.href = `/intentions/edit/${weeklyIntentions.id}`;
+                }}
+              >
+                <Pencil className="h-3 w-3" />
+                Edit Intentions
               </Button>
             </div>
           </div>

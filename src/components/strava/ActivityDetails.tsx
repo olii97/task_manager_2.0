@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -7,7 +8,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { StravaActivity } from "@/types/strava";
+import { StravaActivity, SavedStravaActivity, toSavedStravaActivity } from "@/types/strava";
 import { format } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
@@ -37,13 +38,16 @@ export const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activity, isOp
 
   const startDate = format(new Date(activity.start_date_local), 'PPP p');
 
-  // Fix the saveActivity function to properly handle the return value
+  // Fix saveActivity function to properly handle activity types
   const saveActivity = async () => {
     if (!session?.user || !activity) return;
     
     setSavingActivity(true);
     try {
-      const result = await saveStravaActivity(session.user.id, activity);
+      // Use the toSavedStravaActivity helper to ensure the activity has the 'saved' property
+      const savedActivity = toSavedStravaActivity(activity, false);
+      const result = await saveStravaActivity(session.user.id, savedActivity);
+      
       if (result) {
         toast({
           title: "Success",

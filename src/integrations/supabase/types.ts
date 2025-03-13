@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      chat_sessions: {
+        Row: {
+          assistant_id: string
+          assistant_model: string | null
+          assistant_name: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          thread_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assistant_id: string
+          assistant_model?: string | null
+          assistant_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          thread_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assistant_id?: string
+          assistant_model?: string | null
+          assistant_name?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          thread_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           challenges: string | null
