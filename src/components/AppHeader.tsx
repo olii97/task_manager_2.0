@@ -1,13 +1,14 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
-import { Rocket } from "lucide-react";
+import { Rocket, RefreshCw } from "lucide-react";
+import { useIntroScreen } from "@/hooks/useIntroScreen";
 
 export const AppHeader = () => {
   const location = useLocation();
   const { session } = useAuth();
+  const { resetIntroScreen } = useIntroScreen();
 
   if (!session) return null;
 
@@ -70,6 +71,15 @@ export const AppHeader = () => {
             className={isActiveRoute("/strava") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
           >
             <Link to="/strava">Strava</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white/80 hover:text-white hover:bg-white/10 ml-2"
+            onClick={resetIntroScreen}
+            title="Reset Intro Screen"
+          >
+            <RefreshCw className="h-4 w-4" />
           </Button>
         </nav>
       </div>
