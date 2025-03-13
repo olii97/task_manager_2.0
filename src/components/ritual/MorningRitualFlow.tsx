@@ -56,6 +56,9 @@ export const MorningRitualFlow = () => {
     displayedContent: ''
   });
   
+  // Add a new state variable for raw intentions input
+  const [intentionsRawInput, setIntentionsRawInput] = useState<string>('');
+  
   // References
   const gratitudeRef1 = useRef<HTMLInputElement>(null);
   const gratitudeRef2 = useRef<HTMLInputElement>(null);
@@ -63,7 +66,28 @@ export const MorningRitualFlow = () => {
   const intentionsRef = useRef<HTMLTextAreaElement>(null);
   const journalRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sun animation
+  // AI response display - use typewriter effect
+  useEffect(() => {
+    if (currentStep === 'gratitude-reflection' && !gratitudeResponse.isLoading && gratitudeResponse.content) {
+      setGratitudeResponse(prev => ({ ...prev, displayedContent: '' }));
+      const fadeInTimeout = setTimeout(() => {
+        setGratitudeResponse(prev => ({ ...prev, displayedContent: gratitudeResponse.content }));
+      }, 500); // Delay for fade-in effect
+      return () => clearTimeout(fadeInTimeout);
+    }
+  }, [currentStep, gratitudeResponse.isLoading, gratitudeResponse.content]);
+
+  useEffect(() => {
+    if (currentStep === 'intentions-reflection' && !intentionsResponse.isLoading && intentionsResponse.content) {
+      setIntentionsResponse(prev => ({ ...prev, displayedContent: '' }));
+      const fadeInTimeout = setTimeout(() => {
+        setIntentionsResponse(prev => ({ ...prev, displayedContent: intentionsResponse.content }));
+      }, 500); // Delay for fade-in effect
+      return () => clearTimeout(fadeInTimeout);
+    }
+  }, [currentStep, intentionsResponse.isLoading, intentionsResponse.content]);
+
+  // Further refine sun animation for smoother transition
   useEffect(() => {
     if (currentStep !== 'welcome') {
       const interval = setInterval(() => {
@@ -72,10 +96,9 @@ export const MorningRitualFlow = () => {
             clearInterval(interval);
             return 100;
           }
-          return prev + 0.5;
+          return prev + 0.1; // Even slower increment for smoother transition
         });
-      }, 150);
-      
+      }, 50); // Faster interval for smoother animation
       return () => clearInterval(interval);
     }
   }, [currentStep]);
@@ -86,61 +109,13 @@ export const MorningRitualFlow = () => {
     setIsAllGratitudeFilled(allFilled);
   }, [gratitudeItems]);
 
-  // Text streaming effect for gratitude response
+  // Update the useEffect to initialize intentionsRawInput when intentions change
   useEffect(() => {
-    if (currentStep === 'gratitude-reflection' && !gratitudeResponse.isLoading && gratitudeResponse.content) {
-      // Reset displayed content when new content is received
-      if (gratitudeResponse.displayedContent === '') {
-        setGratitudeResponse(prev => ({ ...prev, displayedContent: '' }));
-        
-        // Start the streaming effect
-        let wordIndex = 0;
-        const words = gratitudeResponse.content.split(' ');
-        
-        const streamInterval = setInterval(() => {
-          if (wordIndex <= words.length - 1) {
-            setGratitudeResponse(prev => ({
-              ...prev,
-              displayedContent: words.slice(0, wordIndex + 1).join(' ')
-            }));
-            wordIndex++;
-          } else {
-            clearInterval(streamInterval);
-          }
-        }, 200); // Adjust speed of word appearance
-        
-        return () => clearInterval(streamInterval);
-      }
+    // Initialize intentionsRawInput from intentions when component loads
+    if (intentionsRawInput === '' && intentions.some(i => i.trim())) {
+      setIntentionsRawInput(intentions.filter(Boolean).join('\n'));
     }
-  }, [currentStep, gratitudeResponse.isLoading, gratitudeResponse.content]);
-
-  // Text streaming effect for intentions response
-  useEffect(() => {
-    if (currentStep === 'intentions-reflection' && !intentionsResponse.isLoading && intentionsResponse.content) {
-      // Reset displayed content when new content is received
-      if (intentionsResponse.displayedContent === '') {
-        setIntentionsResponse(prev => ({ ...prev, displayedContent: '' }));
-        
-        // Start the streaming effect
-        let wordIndex = 0;
-        const words = intentionsResponse.content.split(' ');
-        
-        const streamInterval = setInterval(() => {
-          if (wordIndex <= words.length - 1) {
-            setIntentionsResponse(prev => ({
-              ...prev,
-              displayedContent: words.slice(0, wordIndex + 1).join(' ')
-            }));
-            wordIndex++;
-          } else {
-            clearInterval(streamInterval);
-          }
-        }, 200); // Adjust speed of word appearance
-        
-        return () => clearInterval(streamInterval);
-      }
-    }
-  }, [currentStep, intentionsResponse.isLoading, intentionsResponse.content]);
+  }, [intentions, intentionsRawInput]);
 
   // Handle AI acknowledgments using OpenAI directly
   const getAiAcknowledgment = async (text: string, type: 'gratitude' | 'intention') => {
@@ -245,7 +220,10 @@ export const MorningRitualFlow = () => {
 
   // Handle intentions input changes
   const handleIntentionsChange = (value: string) => {
-    // Split by new lines or commas
+    // Store the raw input value
+    setIntentionsRawInput(value);
+    
+    // Process the input for the intentions array
     const intentionList = value
       .split(/[\n,]+/)
       .map(i => i.trim())
@@ -314,13 +292,13 @@ export const MorningRitualFlow = () => {
       opacity: 1,
       transition: { 
         when: "beforeChildren",
-        staggerChildren: 0.5,
-        duration: 1.2
+        staggerChildren: 0.7, // Slower stagger
+        duration: 1.5 // Longer duration
       }
     },
     exit: {
       opacity: 0,
-      transition: { duration: 0.8 }
+      transition: { duration: 1.0 } // Longer exit duration
     }
   };
 
@@ -574,10 +552,16 @@ export const MorningRitualFlow = () => {
               >
                 <Textarea
                   ref={intentionsRef}
-                  value={intentions.filter(Boolean).join('\n')}
+                  value={intentionsRawInput}
                   onChange={(e) => handleIntentionsChange(e.target.value)}
                   className="w-full p-4 text-lg bg-gray-700/70 backdrop-blur-sm border-white/10 text-white rounded-lg min-h-[120px] placeholder-white/60"
                   placeholder="Today, I intend to..."
+                  onKeyDown={(e) => {
+                    // Ensure Enter key creates a new line
+                    if (e.key === 'Enter') {
+                      e.stopPropagation();
+                    }
+                  }}
                 />
                 <p className="text-xs text-white/70 mt-2 text-left">Enter up to three intentions for your day. Separate multiple intentions with new lines.</p>
               </motion.div>
