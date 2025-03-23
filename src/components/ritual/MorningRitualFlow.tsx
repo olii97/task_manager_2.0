@@ -21,6 +21,19 @@ interface MorningRitual {
   date: string;
 }
 
+// Create a type for the morning_rituals table that the Supabase client will understand
+// This is a workaround since we can't modify the types.ts file
+type MorningRitualTable = {
+  id: string;
+  user_id: string;
+  gratitude_items: string[];
+  intentions: string[];
+  journal_entry?: string | null;
+  date: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export const MorningRitualFlow = () => {
   const { session } = useAuth();
   const { toast } = useToast();
@@ -167,19 +180,25 @@ export const MorningRitualFlow = () => {
     try {
       // Check if an entry already exists for today
       const today = new Date().toISOString().split('T')[0];
-      const { data: existingEntry } = await supabase
-        .from('morning_rituals')
+      
+      // Use type assertion to bypass TypeScript checking for the table name
+      const { data: existingEntry, error: fetchError } = await supabase
+        .from('morning_rituals' as any)
         .select('id')
         .eq('user_id', userId)
         .eq('date', today)
-        .single();
+        .maybeSingle();
+      
+      if (fetchError) {
+        throw fetchError;
+      }
       
       let result;
       
       if (existingEntry) {
         // Update existing entry
         result = await supabase
-          .from('morning_rituals')
+          .from('morning_rituals' as any)
           .update({
             gratitude_items: filteredGratitude,
             intentions: filteredIntentions,
@@ -189,7 +208,7 @@ export const MorningRitualFlow = () => {
       } else {
         // Insert new entry
         result = await supabase
-          .from('morning_rituals')
+          .from('morning_rituals' as any)
           .insert({
             user_id: userId,
             gratitude_items: filteredGratitude,
