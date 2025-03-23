@@ -1,3 +1,4 @@
+
 -- Create the morning rituals table
 CREATE TABLE public.morning_rituals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -7,10 +8,17 @@ CREATE TABLE public.morning_rituals (
   journal_entry TEXT,
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- Add a unique constraint for one entry per user per day
   UNIQUE(user_id, date)
 );
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_morning_rituals_updated_at
+BEFORE UPDATE ON public.morning_rituals
+FOR EACH ROW
+EXECUTE FUNCTION update_modified_column();
 
 -- Set up RLS policies
 ALTER TABLE public.morning_rituals ENABLE ROW LEVEL SECURITY;
@@ -34,4 +42,4 @@ CREATE POLICY "Users can update their own morning rituals"
 CREATE POLICY "Users can delete their own morning rituals"
   ON public.morning_rituals
   FOR DELETE
-  USING (auth.uid() = user_id); 
+  USING (auth.uid() = user_id);
