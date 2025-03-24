@@ -14,13 +14,20 @@ import { WeightTrackerCard } from "@/components/home/WeightTrackerCard";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
+import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Settings, LayoutGrid } from "lucide-react";
 import ChatBot from "@/components/chat/ChatBot";
+import { useToast } from "@/components/ui/use-toast";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 
 const Index = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
+  const { toast } = useToast();
+  const { resetSettings } = useDashboardSettings();
 
   // Journal entry data
   const { todayEntry, isLoading: isJournalLoading, refreshTodayEntry } = useJournalEntry(userId);
@@ -55,8 +62,24 @@ const Index = () => {
     }
   }, [userId, refreshTodayEntry]);
 
+  const handleResetDashboard = () => {
+    resetSettings();
+    toast({
+      title: "Dashboard reset",
+      description: "All hidden tiles have been restored.",
+    });
+  };
+
   return (
     <div className="container py-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <Button variant="outline" size="sm" onClick={handleResetDashboard}>
+          <LayoutGrid className="h-4 w-4 mr-1" />
+          Reset Layout
+        </Button>
+      </div>
+
       {/* Main content area - tasks, journal, and weight tracker side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Today's Tasks */}
@@ -102,17 +125,12 @@ const Index = () => {
         />
         
         {/* Wrap Up Day Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Download a summary of your day including journal entries, completed tasks, and workout activities.
-            </p>
-            <WrapUpDayButton userId={userId} />
-          </CardContent>
-        </Card>
+        <DashboardCard id="daily-summary" title="Daily Summary">
+          <p className="text-muted-foreground mb-4">
+            Download a summary of your day including journal entries, completed tasks, and workout activities.
+          </p>
+          <WrapUpDayButton userId={userId} />
+        </DashboardCard>
       </div>
 
       {/* Task Form Dialog */}
