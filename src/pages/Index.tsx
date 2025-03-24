@@ -10,6 +10,7 @@ import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
 import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
 import { WrapUpDayButton } from "@/components/home/WrapUpDayButton";
+import { WeightTrackerCard } from "@/components/home/WeightTrackerCard";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
@@ -56,8 +57,8 @@ const Index = () => {
 
   return (
     <div className="container py-6">
-      {/* Main content area - tasks and journal side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Main content area - tasks, journal, and weight tracker side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Today's Tasks */}
         <TodaysTasks 
           onEditTask={handleEditTask} 
@@ -70,6 +71,11 @@ const Index = () => {
           isLoading={isJournalLoading}
           refreshTodayEntry={refreshTodayEntry}
         />
+
+        {/* Weight Tracker */}
+        {userId && (
+          <WeightTrackerCard userId={userId} />
+        )}
       </div>
       
       {/* Featured Goal and Weekly Intentions row - moved below tasks and journal */}

@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { PenLine, Plus, Check, X } from "lucide-react";
 import { JournalEntry, ReflectionEntry } from "@/types/journal";
 import { getMoodEmoji } from "@/types/journal";
-import { formatDistanceToNow, parseISO, format, isValid } from "date-fns";
+import { formatDistanceToNow, parseISO, format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
@@ -115,39 +115,13 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
     setIsEditing(false);
   };
   
-  // Safe formatting function that checks for valid dates
-  const safeFormatDistanceToNow = (dateString: string | undefined) => {
-    if (!dateString) return "";
-    try {
-      const date = parseISO(dateString);
-      if (!isValid(date)) return "";
-      return formatDistanceToNow(date, { addSuffix: true });
-    } catch (error) {
-      console.error("Date formatting error:", error);
-      return "";
-    }
-  };
-
-  // Safe time formatting function
-  const safeFormatTime = (dateString: string | undefined) => {
-    if (!dateString) return "";
-    try {
-      const date = parseISO(dateString);
-      if (!isValid(date)) return "";
-      return format(date, "h:mm a");
-    } catch (error) {
-      console.error("Time formatting error:", error);
-      return "";
-    }
-  };
-  
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Today's Journal</CardTitle>
         {entry && (
           <span className="text-xs text-muted-foreground">
-            {safeFormatDistanceToNow(entry.updated_at)}
+            {formatDistanceToNow(parseISO(entry.updated_at), { addSuffix: true })}
           </span>
         )}
       </CardHeader>
@@ -196,7 +170,7 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
                   <div className="mt-2 mb-3">
                     <div className="flex justify-between items-center">
                       <p className="text-xs text-muted-foreground">
-                        {latestReflection.timestamp ? safeFormatTime(latestReflection.timestamp) : ""}
+                        {format(parseISO(latestReflection.timestamp), "h:mm a")}
                       </p>
                       <Button 
                         variant="ghost" 

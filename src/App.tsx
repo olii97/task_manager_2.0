@@ -14,6 +14,7 @@ import Goals from "./pages/Goals";
 import Journal from "./pages/Journal";
 import Strava from "./pages/Strava";
 import Tasks from "./pages/Tasks";
+import Weight from "./pages/Weight";
 import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
@@ -122,6 +123,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Tasks />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/weight"
+                element={
+                  <ProtectedRoute>
+                    <Weight />
                   </ProtectedRoute>
                 }
               />
