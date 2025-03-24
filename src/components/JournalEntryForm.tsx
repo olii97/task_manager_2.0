@@ -51,8 +51,7 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       // Set reflection from existing entry
       if (existingEntry.reflections && existingEntry.reflections.length > 0) {
         // Get the most recent reflection
-        const mostRecentReflection = existingEntry.reflections[existingEntry.reflections.length - 1];
-        setReflection(mostRecentReflection?.content || "");
+        setReflection(existingEntry.reflections[existingEntry.reflections.length - 1].content);
       } else if (existingEntry.reflection) {
         setReflection(existingEntry.reflection);
       }
@@ -77,10 +76,9 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
     
     try {
       // Create a new reflection entry with the current timestamp
-      const reflectionContent = reflection ? reflection.trim() : "";
       const newReflection: ReflectionEntry = {
         timestamp: new Date().toISOString(),
-        content: reflectionContent
+        content: reflection.trim()
       };
       
       // Get existing reflections or create a new array
@@ -88,16 +86,16 @@ export const JournalEntryForm = ({ existingEntry, onCancel }: JournalEntryFormPr
       
       if (existingEntry?.reflections && existingEntry.reflections.length > 0) {
         // Filter out empty reflections from existing entries
-        reflectionsArray = existingEntry.reflections.filter(r => r.content && r.content.trim() !== "");
+        reflectionsArray = existingEntry.reflections.filter(r => r.content.trim() !== "");
       }
       
       // Add the new reflection if it's not empty
-      if (reflectionContent !== "") {
+      if (newReflection.content !== "") {
         reflectionsArray.push(newReflection);
       }
       
       // Create a legacy reflection string for backward compatibility
-      const legacyReflection = reflectionContent;
+      const legacyReflection = reflection.trim();
       
       const entryData = {
         user_id: session?.user.id,

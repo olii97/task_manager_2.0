@@ -193,20 +193,16 @@ export const MorningRitualFlow = () => {
         throw fetchError;
       }
       
-      // Safely prepare journal entry field
-      // Make sure to handle null or undefined values properly
-      const journalEntry = ritual.journal_entry ? ritual.journal_entry.trim() : null;
-      
       let result;
       
-      if (existingEntry && existingEntry.id) {
+      if (existingEntry) {
         // Update existing entry
         result = await supabase
           .from('morning_rituals' as any)
           .update({
             gratitude_items: filteredGratitude,
             intentions: filteredIntentions,
-            journal_entry: journalEntry
+            journal_entry: ritual.journal_entry?.trim() || null
           })
           .eq('id', existingEntry.id);
       } else {
@@ -217,7 +213,7 @@ export const MorningRitualFlow = () => {
             user_id: userId,
             gratitude_items: filteredGratitude,
             intentions: filteredIntentions,
-            journal_entry: journalEntry,
+            journal_entry: ritual.journal_entry?.trim() || null,
             date: today
           });
       }
