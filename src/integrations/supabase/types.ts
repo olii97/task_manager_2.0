@@ -45,44 +45,6 @@ export type Database = {
         }
         Relationships: []
       }
-      morning_rituals: {
-        Row: {
-          id: string
-          user_id: string
-          gratitude_items: string[]
-          intentions: string[]
-          journal_entry: string | null
-          date: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          gratitude_items?: string[]
-          intentions?: string[]
-          journal_entry?: string | null
-          date: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          gratitude_items?: string[]
-          intentions?: string[]
-          journal_entry?: string | null
-          date?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "morning_rituals_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       journal_entries: {
         Row: {
           challenges: string | null
