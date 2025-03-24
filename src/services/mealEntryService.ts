@@ -24,6 +24,15 @@ export interface NutritionItemEntry {
   fiber: number;
 }
 
+export interface DailyTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  mealCount: number;
+}
+
 export const saveMealEntry = async (
   userId: string,
   mealDescription: string,
@@ -154,4 +163,40 @@ export const mealEntryToNutritionResult = (
       fiber: mealEntry.total_fiber
     }
   };
+};
+
+// New function to fetch today's meal entries and calculate totals
+export const fetchDailyTotals = async (userId: string): Promise<DailyTotals> => {
+  // Get today's date at midnight (start of day)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const { data, error } = await supabase
+    .from("meal_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("meal_date", today.toISOString())
+    .order("meal_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching daily meal entries:", error);
+    throw new Error("Failed to fetch daily meal entries");
+  }
+
+  // Calculate totals from all meals today
+  const totals = (data || []).reduce(
+    (acc, meal) => {
+      return {
+        calories: acc.calories + Number(meal.total_calories || 0),
+        protein: acc.protein + Number(meal.total_protein || 0),
+        carbs: acc.carbs + Number(meal.total_carbs || 0),
+        fat: acc.fat + Number(meal.total_fat || 0),
+        fiber: acc.fiber + Number(meal.total_fiber || 0),
+        mealCount: acc.mealCount + 1
+      };
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, mealCount: 0 }
+  );
+
+  return totals;
 }; 

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { analyzeMeal, type OpenAIModel, type NutritionItem } from "@/services/nutritionService";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Save, Trash2, Eye, Edit, Check } from "lucide-react";
+import { Loader2, Save, Trash2, Eye, Edit, Check, Calendar } from "lucide-react";
 import { formatDistance } from "date-fns";
 import { 
   saveMealEntry, 
@@ -13,7 +13,9 @@ import {
   deleteMealEntry, 
   fetchMealEntryWithItems,
   mealEntryToNutritionResult,
-  type MealEntry 
+  fetchDailyTotals,
+  type MealEntry,
+  type DailyTotals 
 } from "@/services/mealEntryService";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -30,6 +32,14 @@ const Nutrition = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [nutritionResults, setNutritionResults] = useState<any>(null);
   const [mealEntries, setMealEntries] = useState<MealEntry[]>([]);
+  const [dailyTotals, setDailyTotals] = useState<DailyTotals>({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0,
+    mealCount: 0
+  });
   const [model, setModel] = useState<OpenAIModel>("gpt-4-turbo-preview");
   const [editableItems, setEditableItems] = useState<NutritionItem[]>([]);
   const [editableTotals, setEditableTotals] = useState<{
@@ -50,6 +60,7 @@ const Nutrition = () => {
   useEffect(() => {
     if (userId) {
       loadMealEntries();
+      loadDailyTotals();
     }
   }, [userId]);
 
@@ -87,6 +98,18 @@ const Nutrition = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadDailyTotals = async () => {
+    if (!userId) return;
+    
+    try {
+      const totals = await fetchDailyTotals(userId);
+      setDailyTotals(totals);
+    } catch (error) {
+      console.error("Failed to load daily totals:", error);
+      // Don't show a toast as this is a background operation
     }
   };
 
@@ -144,8 +167,8 @@ const Nutrition = () => {
       });
       // Exit edit mode
       setIsEditing(false);
-      // Refresh meal entries list
-      loadMealEntries();
+      // Refresh meal entries list and daily totals
+      await Promise.all([loadMealEntries(), loadDailyTotals()]);
     } catch (error) {
       toast({
         title: "Error",
@@ -166,6 +189,8 @@ const Nutrition = () => {
       });
       // Update local state to remove the deleted meal
       setMealEntries(prevEntries => prevEntries.filter(entry => entry.id !== mealId));
+      // Reload daily totals
+      loadDailyTotals();
     } catch (error) {
       toast({
         title: "Error",
@@ -460,69 +485,217 @@ const Nutrition = () => {
         </div>
 
         {/* Meal History Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Meal History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-6">
+          {/* Daily Totals Card */}
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-md flex items-center">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Today's Nutrition Totals
+                </CardTitle>
+                <span className="text-sm text-muted-foreground">
+                  {dailyTotals.mealCount} {dailyTotals.mealCount === 1 ? 'meal' : 'meals'} logged
+                </span>
               </div>
-            ) : mealEntries.length === 0 ? (
-              <p className="text-muted-foreground">
-                No meal history yet. Analyze and save meals to see them here.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {mealEntries.map((entry) => (
-                  <div key={entry.id} className="border rounded-md p-3">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium truncate max-w-[250px]">
-                          {entry.meal_description}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {entry.meal_date ? formatDistance(new Date(entry.meal_date), new Date(), { addSuffix: true }) : 'Unknown date'}
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewMeal(entry.id as string)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleDeleteMeal(entry.id as string)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
+            </CardHeader>
+            <CardContent>
+              {dailyTotals.mealCount > 0 ? (
+                <>
+                  <div className="grid grid-cols-5 gap-2 text-center">
+                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                      <p className="text-muted-foreground text-xs">Calories</p>
+                      <p className="text-xl font-semibold">{Math.round(dailyTotals.calories)}</p>
                     </div>
-                    <div className="flex gap-4 mt-2 text-sm">
-                      <div>
-                        <span className="font-medium">{entry.total_calories}</span>
-                        <span className="text-muted-foreground ml-1">cal</span>
+                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                      <p className="text-muted-foreground text-xs">Protein</p>
+                      <p className="text-xl font-semibold">{dailyTotals.protein.toFixed(1)}g</p>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                      <p className="text-muted-foreground text-xs">Carbs</p>
+                      <p className="text-xl font-semibold">{dailyTotals.carbs.toFixed(1)}g</p>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                      <p className="text-muted-foreground text-xs">Fat</p>
+                      <p className="text-xl font-semibold">{dailyTotals.fat.toFixed(1)}g</p>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                      <p className="text-muted-foreground text-xs">Fiber</p>
+                      <p className="text-xl font-semibold">{dailyTotals.fiber.toFixed(1)}g</p>
+                    </div>
+                  </div>
+                  
+                  {/* Macro Distribution */}
+                  <div className="mt-4">
+                    <p className="text-sm font-medium mb-2">Macronutrient Distribution</p>
+                    <div className="relative h-6 bg-gray-100 rounded-full overflow-hidden">
+                      {/* Calculate macronutrient percentages */}
+                      {(() => {
+                        const proteinCals = dailyTotals.protein * 4;
+                        const carbsCals = dailyTotals.carbs * 4;
+                        const fatCals = dailyTotals.fat * 9;
+                        const totalCals = proteinCals + carbsCals + fatCals;
+                        
+                        const proteinPct = totalCals > 0 ? (proteinCals / totalCals) * 100 : 0;
+                        const carbsPct = totalCals > 0 ? (carbsCals / totalCals) * 100 : 0;
+                        const fatPct = totalCals > 0 ? (fatCals / totalCals) * 100 : 0;
+                        
+                        return (
+                          <>
+                            <div 
+                              className="absolute h-full bg-green-400" 
+                              style={{ width: `${proteinPct}%` }}
+                            ></div>
+                            <div 
+                              className="absolute h-full bg-blue-400" 
+                              style={{ width: `${carbsPct}%`, left: `${proteinPct}%` }}
+                            ></div>
+                            <div 
+                              className="absolute h-full bg-yellow-400" 
+                              style={{ width: `${fatPct}%`, left: `${proteinPct + carbsPct}%` }}
+                            ></div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    
+                    {/* Legend */}
+                    <div className="flex justify-between mt-2 text-xs">
+                      {(() => {
+                        const proteinCals = dailyTotals.protein * 4;
+                        const carbsCals = dailyTotals.carbs * 4;
+                        const fatCals = dailyTotals.fat * 9;
+                        const totalCals = proteinCals + carbsCals + fatCals;
+                        
+                        const proteinPct = totalCals > 0 ? (proteinCals / totalCals) * 100 : 0;
+                        const carbsPct = totalCals > 0 ? (carbsCals / totalCals) * 100 : 0;
+                        const fatPct = totalCals > 0 ? (fatCals / totalCals) * 100 : 0;
+                        
+                        return (
+                          <>
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-green-400 rounded-sm mr-1"></div>
+                              <span>Protein: {proteinPct.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-blue-400 rounded-sm mr-1"></div>
+                              <span>Carbs: {carbsPct.toFixed(1)}%</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-3 h-3 bg-yellow-400 rounded-sm mr-1"></div>
+                              <span>Fat: {fatPct.toFixed(1)}%</span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  
+                  {/* Daily Goals Reference */}
+                  <div className="mt-4 bg-white p-3 rounded-lg shadow-sm">
+                    <p className="text-sm font-medium mb-2">Daily Goals Reference</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Daily Protein Target:</span>
+                        <span className="font-medium">{(0.8 * 70).toFixed(0)}g - {(2 * 70).toFixed(0)}g</span>
                       </div>
-                      <div>
-                        <span className="font-medium">{entry.total_protein}g</span>
-                        <span className="text-muted-foreground ml-1">protein</span>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Your Protein:</span>
+                        <span className={`font-medium ${dailyTotals.protein < 0.8 * 70 ? 'text-red-500' : 'text-green-500'}`}>
+                          {dailyTotals.protein.toFixed(1)}g
+                        </span>
                       </div>
-                      <div>
-                        <span className="font-medium">{entry.total_carbs}g</span>
-                        <span className="text-muted-foreground ml-1">carbs</span>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Daily Fiber Target:</span>
+                        <span className="font-medium">25g - 35g</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Your Fiber:</span>
+                        <span className={`font-medium ${dailyTotals.fiber < 25 ? 'text-red-500' : 'text-green-500'}`}>
+                          {dailyTotals.fiber.toFixed(1)}g
+                        </span>
+                      </div>
+                      <div className="col-span-2 mt-1">
+                        <span className="text-xs text-muted-foreground">
+                          * Based on general recommendations for an average adult.
+                        </span>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-center">
+                  No meals logged today
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Meal History List Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Meal History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : mealEntries.length === 0 ? (
+                <p className="text-muted-foreground">
+                  No meal history yet. Analyze and save meals to see them here.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {mealEntries.map((entry) => (
+                    <div key={entry.id} className="border rounded-md p-3">
+                      <div className="flex justify-between">
+                        <div>
+                          <p className="font-medium truncate max-w-[250px]">
+                            {entry.meal_description}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {entry.meal_date ? formatDistance(new Date(entry.meal_date), new Date(), { addSuffix: true }) : 'Unknown date'}
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewMeal(entry.id as string)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDeleteMeal(entry.id as string)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 mt-2 text-sm">
+                        <div>
+                          <span className="font-medium">{entry.total_calories}</span>
+                          <span className="text-muted-foreground ml-1">cal</span>
+                        </div>
+                        <div>
+                          <span className="font-medium">{entry.total_protein}g</span>
+                          <span className="text-muted-foreground ml-1">protein</span>
+                        </div>
+                        <div>
+                          <span className="font-medium">{entry.total_carbs}g</span>
+                          <span className="text-muted-foreground ml-1">carbs</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
