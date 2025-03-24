@@ -1,4 +1,6 @@
+
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { PenLine, Plus, Check, X } from "lucide-react";
@@ -8,7 +10,6 @@ import { formatDistanceToNow, parseISO, format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
-import { DashboardCard } from "@/components/ui/dashboard-card";
 
 interface TodaysJournalCardProps {
   entry: JournalEntry | null;
@@ -114,112 +115,116 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
     setIsEditing(false);
   };
   
-  const titleRightContent = entry ? (
-    <span className="text-xs text-muted-foreground">
-      {formatDistanceToNow(parseISO(entry.updated_at), { addSuffix: true })}
-    </span>
-  ) : null;
-  
   return (
-    <DashboardCard id="todays-journal" title="Today's Journal" titleRightContent={titleRightContent}>
-      {isLoading ? (
-        <div className="h-24 bg-muted animate-pulse rounded-md"></div>
-      ) : entry ? (
-        <div>
-          <div className="flex items-center mb-2">
-            <span className="text-2xl mr-2">{entry.mood ? getMoodEmoji(entry.mood) : "😐"}</span>
-            <p className="text-sm text-muted-foreground">
-              Mood: {entry.mood}/5 • Energy: {entry.energy}/5
-            </p>
-          </div>
-          
-          {isEditing ? (
-            <div className="mt-2 mb-3">
-              <Textarea
-                value={reflectionText}
-                onChange={(e) => setReflectionText(e.target.value)}
-                placeholder="Update your reflection..."
-                className="min-h-[100px] mb-2"
-                autoFocus
-              />
-              <div className="flex space-x-2">
-                <Button 
-                  size="sm" 
-                  onClick={handleSaveReflection}
-                  disabled={isSaving}
-                >
-                  <Check className="h-4 w-4 mr-1" /> Save
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleCancelEdit}
-                  disabled={isSaving}
-                >
-                  <X className="h-4 w-4 mr-1" /> Cancel
-                </Button>
-              </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Today's Journal</CardTitle>
+        {entry && (
+          <span className="text-xs text-muted-foreground">
+            {formatDistanceToNow(parseISO(entry.updated_at), { addSuffix: true })}
+          </span>
+        )}
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="h-24 bg-muted animate-pulse rounded-md"></div>
+        ) : entry ? (
+          <div>
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-2">{entry.mood ? getMoodEmoji(entry.mood) : "😐"}</span>
+              <p className="text-sm text-muted-foreground">
+                Mood: {entry.mood}/5 • Energy: {entry.energy}/5
+              </p>
             </div>
-          ) : (
-            <>
-              {latestReflection ? (
-                <div className="mt-2 mb-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-muted-foreground">
-                      {format(parseISO(latestReflection.timestamp), "h:mm a")}
-                    </p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="h-6 px-2 text-xs" 
-                      onClick={handleEditClick}
-                    >
-                      <PenLine className="h-3 w-3 mr-1" /> Edit
-                    </Button>
-                  </div>
-                  <p className="text-sm line-clamp-4 whitespace-pre-wrap mt-1">
-                    {latestReflection.content}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-2 mb-3">
+            
+            {isEditing ? (
+              <div className="mt-2 mb-3">
+                <Textarea
+                  value={reflectionText}
+                  onChange={(e) => setReflectionText(e.target.value)}
+                  placeholder="Update your reflection..."
+                  className="min-h-[100px] mb-2"
+                  autoFocus
+                />
+                <div className="flex space-x-2">
                   <Button 
-                    variant="outline" 
                     size="sm" 
-                    onClick={handleEditClick}
+                    onClick={handleSaveReflection}
+                    disabled={isSaving}
                   >
-                    <PenLine className="h-4 w-4 mr-1" /> Add Reflection
+                    <Check className="h-4 w-4 mr-1" /> Save
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Cancel
                   </Button>
                 </div>
-              )}
-            </>
-          )}
-          
-          {/* Show gratitude if available */}
-          {entry.gratitude && (
-            <p className="text-sm line-clamp-2 mt-2 mb-3">
-              <span className="font-medium">Grateful for:</span> {entry.gratitude}
-            </p>
-          )}
-          
-          <div className="mt-4">
-            <Button asChild variant="outline" size="sm">
+              </div>
+            ) : (
+              <>
+                {latestReflection ? (
+                  <div className="mt-2 mb-3">
+                    <div className="flex justify-between items-center">
+                      <p className="text-xs text-muted-foreground">
+                        {format(parseISO(latestReflection.timestamp), "h:mm a")}
+                      </p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-6 px-2 text-xs" 
+                        onClick={handleEditClick}
+                      >
+                        <PenLine className="h-3 w-3 mr-1" /> Edit
+                      </Button>
+                    </div>
+                    <p className="text-sm line-clamp-4 whitespace-pre-wrap mt-1">
+                      {latestReflection.content}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-2 mb-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleEditClick}
+                    >
+                      <PenLine className="h-4 w-4 mr-1" /> Add Reflection
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+            
+            {/* Show gratitude if available */}
+            {entry.gratitude && (
+              <p className="text-sm line-clamp-2 mt-2 mb-3">
+                <span className="font-medium">Grateful for:</span> {entry.gratitude}
+              </p>
+            )}
+            
+            <div className="mt-4">
+              <Button asChild variant="outline" size="sm">
+                <Link to="/journal">
+                  <PenLine className="h-4 w-4 mr-1" /> View Full Entry
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="mb-4 text-muted-foreground">You haven't journaled today yet.</p>
+            <Button asChild>
               <Link to="/journal">
-                <PenLine className="h-4 w-4 mr-1" /> View Full Entry
+                <Plus className="h-4 w-4 mr-1" /> Add Journal Entry
               </Link>
             </Button>
           </div>
-        </div>
-      ) : (
-        <div>
-          <p className="mb-4 text-muted-foreground">You haven't journaled today yet.</p>
-          <Button asChild>
-            <Link to="/journal">
-              <Plus className="h-4 w-4 mr-1" /> Add Journal Entry
-            </Link>
-          </Button>
-        </div>
-      )}
-    </DashboardCard>
+        )}
+      </CardContent>
+    </Card>
   );
 };

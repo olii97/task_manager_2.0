@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Settings, LayoutGrid } from "lucide-react";
 import ChatBot from "@/components/chat/ChatBot";
 import { useToast } from "@/components/ui/use-toast";
-import { DashboardCard } from "@/components/ui/dashboard-card";
+import { DashboardCard } from "@/components/home/DashboardCard";
 
 const Index = () => {
   const { session } = useAuth();
