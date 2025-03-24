@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
-import { Rocket, RefreshCw, Sunrise, Scale } from "lucide-react";
+import { Rocket, RefreshCw, Sunrise, Scale, Apple } from "lucide-react";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
 
 export const AppHeader = () => {
@@ -81,6 +81,17 @@ export const AppHeader = () => {
             <Link to="/weight" className="flex items-center">
               <Scale className="h-4 w-4 mr-1" />
               <span>Weight</span>
+            </Link>
+          </Button>
+          <Button 
+            asChild 
+            variant={isActiveRoute("/nutrition") ? "secondary" : "ghost"} 
+            size="sm"
+            className={isActiveRoute("/nutrition") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
+          >
+            <Link to="/nutrition" className="flex items-center">
+              <Apple className="h-4 w-4 mr-1" />
+              <span>Nutrition</span>
             </Link>
           </Button>
           <Button 

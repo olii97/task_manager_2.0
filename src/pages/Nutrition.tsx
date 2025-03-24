@@ -1,0 +1,531 @@
+import { useAuth } from "@/components/AuthProvider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { analyzeMeal, type OpenAIModel, type NutritionItem } from "@/services/nutritionService";
+import { toast } from "@/components/ui/use-toast";
+import { Loader2, Save, Trash2, Eye, Edit, Check } from "lucide-react";
+import { formatDistance } from "date-fns";
+import { 
+  saveMealEntry, 
+  fetchMealEntries, 
+  deleteMealEntry, 
+  fetchMealEntryWithItems,
+  mealEntryToNutritionResult,
+  type MealEntry 
+} from "@/services/mealEntryService";
+import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Label } from "@/components/ui/label";
+
+const Nutrition = () => {
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  
+  const [mealDescription, setMealDescription] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [nutritionResults, setNutritionResults] = useState<any>(null);
+  const [mealEntries, setMealEntries] = useState<MealEntry[]>([]);
+  const [model, setModel] = useState<OpenAIModel>("gpt-4-turbo-preview");
+  const [editableItems, setEditableItems] = useState<NutritionItem[]>([]);
+  const [editableTotals, setEditableTotals] = useState<{
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+  }>({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    fiber: 0
+  });
+
+  // Load meal entries when component mounts
+  useEffect(() => {
+    if (userId) {
+      loadMealEntries();
+    }
+  }, [userId]);
+
+  // Calculate totals when items change
+  useEffect(() => {
+    if (isEditing && editableItems.length > 0) {
+      const newTotals = editableItems.reduce(
+        (acc, item) => {
+          return {
+            calories: acc.calories + Number(item.calories || 0),
+            protein: acc.protein + Number(item.protein || 0),
+            carbs: acc.carbs + Number(item.carbs || 0),
+            fat: acc.fat + Number(item.fat || 0),
+            fiber: acc.fiber + Number(item.fiber || 0)
+          };
+        },
+        { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
+      );
+      setEditableTotals(newTotals);
+    }
+  }, [isEditing, editableItems]);
+
+  const loadMealEntries = async () => {
+    if (!userId) return;
+    
+    setIsLoading(true);
+    try {
+      const entries = await fetchMealEntries(userId);
+      setMealEntries(entries);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load meal history",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!mealDescription.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a meal description",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const results = await analyzeMeal(mealDescription, model);
+      setNutritionResults(results);
+      setEditableItems(JSON.parse(JSON.stringify(results.items)));
+      setEditableTotals(JSON.parse(JSON.stringify(results.totals)));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to analyze meal. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSaveMeal = async () => {
+    if (!userId || !nutritionResults) {
+      toast({
+        title: "Error",
+        description: "No meal data to save",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If editing, use the edited values
+    const dataToSave = isEditing 
+      ? { 
+          items: editableItems, 
+          totals: editableTotals 
+        } 
+      : nutritionResults;
+
+    setIsSaving(true);
+    try {
+      await saveMealEntry(userId, mealDescription, dataToSave);
+      toast({
+        title: "Success",
+        description: "Meal saved successfully",
+      });
+      // Exit edit mode
+      setIsEditing(false);
+      // Refresh meal entries list
+      loadMealEntries();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save meal",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    try {
+      await deleteMealEntry(mealId);
+      toast({
+        title: "Success",
+        description: "Meal deleted successfully",
+      });
+      // Update local state to remove the deleted meal
+      setMealEntries(prevEntries => prevEntries.filter(entry => entry.id !== mealId));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete meal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleViewMeal = async (mealId: string) => {
+    try {
+      const { mealEntry, nutritionItems } = await fetchMealEntryWithItems(mealId);
+      setMealDescription(mealEntry.meal_description);
+      const result = mealEntryToNutritionResult(mealEntry, nutritionItems);
+      setNutritionResults(result);
+      setEditableItems(JSON.parse(JSON.stringify(result.items)));
+      setEditableTotals(JSON.parse(JSON.stringify(result.totals)));
+      setIsEditing(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load meal details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleEditMode = () => {
+    if (!isEditing && nutritionResults) {
+      // Enter edit mode
+      setEditableItems(JSON.parse(JSON.stringify(nutritionResults.items)));
+      setEditableTotals(JSON.parse(JSON.stringify(nutritionResults.totals)));
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const updateItemField = (index: number, field: keyof NutritionItem, value: string) => {
+    const newItems = [...editableItems];
+    
+    if (field === 'food_item') {
+      newItems[index][field] = value;
+    } else {
+      // Convert to number for numerical fields
+      const numValue = value === '' ? 0 : Number(value);
+      newItems[index][field] = numValue as any;
+    }
+    
+    setEditableItems(newItems);
+  };
+
+  const addNewItem = () => {
+    setEditableItems([
+      ...editableItems,
+      { food_item: '', calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
+    ]);
+  };
+
+  const removeItem = (index: number) => {
+    setEditableItems(editableItems.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="container py-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Meal Analysis Section */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Meal Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                  <Label htmlFor="model-select">Model</Label>
+                  <ToggleGroup 
+                    type="single" 
+                    value={model}
+                    onValueChange={(value) => value && setModel(value as OpenAIModel)}
+                    className="justify-start mb-2"
+                  >
+                    <ToggleGroupItem value="gpt-3.5-turbo" size="sm">
+                      GPT-3.5
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="gpt-4-turbo-preview" size="sm">
+                      GPT-4
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+
+                <Textarea
+                  placeholder="Describe your meal (e.g., '2 eggs, 2 slices of whole wheat toast with butter, and a cup of coffee with milk')"
+                  value={mealDescription}
+                  onChange={(e) => setMealDescription(e.target.value)}
+                  className="min-h-[100px]"
+                />
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleAnalyze} 
+                    disabled={isAnalyzing}
+                    className="flex-1"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      "Analyze Meal"
+                    )}
+                  </Button>
+                  {nutritionResults && !isEditing && (
+                    <Button 
+                      onClick={toggleEditMode}
+                      variant="outline"
+                      title="Edit nutrition data"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {isEditing && (
+                    <Button 
+                      onClick={toggleEditMode}
+                      variant="outline"
+                      title="Finish editing"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {nutritionResults && (
+                    <Button 
+                      onClick={handleSaveMeal} 
+                      disabled={isSaving}
+                      variant="outline"
+                      title="Save meal"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Results Table */}
+              {nutritionResults && !isEditing && (
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-2">Nutrition Information</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-4 py-2 text-left">Food Item</th>
+                          <th className="px-4 py-2 text-right">Calories</th>
+                          <th className="px-4 py-2 text-right">Protein (g)</th>
+                          <th className="px-4 py-2 text-right">Carbs (g)</th>
+                          <th className="px-4 py-2 text-right">Fat (g)</th>
+                          <th className="px-4 py-2 text-right">Fiber (g)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {nutritionResults.items.map((item: any, index: number) => (
+                          <tr key={index} className="border-t">
+                            <td className="px-4 py-2">{item.food_item}</td>
+                            <td className="px-4 py-2 text-right">{item.calories}</td>
+                            <td className="px-4 py-2 text-right">{item.protein}</td>
+                            <td className="px-4 py-2 text-right">{item.carbs}</td>
+                            <td className="px-4 py-2 text-right">{item.fat}</td>
+                            <td className="px-4 py-2 text-right">{item.fiber}</td>
+                          </tr>
+                        ))}
+                        <tr className="border-t bg-muted font-semibold">
+                          <td className="px-4 py-2">Total</td>
+                          <td className="px-4 py-2 text-right">{nutritionResults.totals.calories}</td>
+                          <td className="px-4 py-2 text-right">{nutritionResults.totals.protein}</td>
+                          <td className="px-4 py-2 text-right">{nutritionResults.totals.carbs}</td>
+                          <td className="px-4 py-2 text-right">{nutritionResults.totals.fat}</td>
+                          <td className="px-4 py-2 text-right">{nutritionResults.totals.fiber}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Editable Results Table */}
+              {nutritionResults && isEditing && (
+                <div className="mt-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-semibold">Edit Nutrition Information</h3>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={addNewItem}
+                      className="text-xs"
+                    >
+                      + Add Item
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="px-4 py-2 text-left">Food Item</th>
+                          <th className="px-4 py-2 text-right">Calories</th>
+                          <th className="px-4 py-2 text-right">Protein</th>
+                          <th className="px-4 py-2 text-right">Carbs</th>
+                          <th className="px-4 py-2 text-right">Fat</th>
+                          <th className="px-4 py-2 text-right">Fiber</th>
+                          <th className="px-4 py-2 text-right w-10"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {editableItems.map((item, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="px-4 py-2">
+                              <Input
+                                value={item.food_item}
+                                onChange={(e) => updateItemField(index, 'food_item', e.target.value)}
+                                className="h-8 p-1"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <Input
+                                type="number"
+                                value={item.calories}
+                                onChange={(e) => updateItemField(index, 'calories', e.target.value)}
+                                className="h-8 p-1 w-16"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <Input
+                                type="number"
+                                value={item.protein}
+                                onChange={(e) => updateItemField(index, 'protein', e.target.value)}
+                                className="h-8 p-1 w-16"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <Input
+                                type="number"
+                                value={item.carbs}
+                                onChange={(e) => updateItemField(index, 'carbs', e.target.value)}
+                                className="h-8 p-1 w-16"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <Input
+                                type="number"
+                                value={item.fat}
+                                onChange={(e) => updateItemField(index, 'fat', e.target.value)}
+                                className="h-8 p-1 w-16"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <Input
+                                type="number"
+                                value={item.fiber}
+                                onChange={(e) => updateItemField(index, 'fiber', e.target.value)}
+                                className="h-8 p-1 w-16"
+                              />
+                            </td>
+                            <td className="px-2 py-2 text-right">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => removeItem(index)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="border-t bg-muted font-semibold">
+                          <td className="px-4 py-2">Total</td>
+                          <td className="px-4 py-2 text-right">{editableTotals.calories.toFixed(1)}</td>
+                          <td className="px-4 py-2 text-right">{editableTotals.protein.toFixed(1)}</td>
+                          <td className="px-4 py-2 text-right">{editableTotals.carbs.toFixed(1)}</td>
+                          <td className="px-4 py-2 text-right">{editableTotals.fat.toFixed(1)}</td>
+                          <td className="px-4 py-2 text-right">{editableTotals.fiber.toFixed(1)}</td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Meal History Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Meal History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : mealEntries.length === 0 ? (
+              <p className="text-muted-foreground">
+                No meal history yet. Analyze and save meals to see them here.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {mealEntries.map((entry) => (
+                  <div key={entry.id} className="border rounded-md p-3">
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="font-medium truncate max-w-[250px]">
+                          {entry.meal_description}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {entry.meal_date ? formatDistance(new Date(entry.meal_date), new Date(), { addSuffix: true }) : 'Unknown date'}
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewMeal(entry.id as string)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeleteMeal(entry.id as string)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 mt-2 text-sm">
+                      <div>
+                        <span className="font-medium">{entry.total_calories}</span>
+                        <span className="text-muted-foreground ml-1">cal</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">{entry.total_protein}g</span>
+                        <span className="text-muted-foreground ml-1">protein</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">{entry.total_carbs}g</span>
+                        <span className="text-muted-foreground ml-1">carbs</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default Nutrition; 

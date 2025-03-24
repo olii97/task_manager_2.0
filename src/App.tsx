@@ -19,6 +19,7 @@ import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
 import MorningRitual from "./pages/MorningRitual";
+import Nutrition from "./pages/Nutrition";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
@@ -131,6 +132,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Weight />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/nutrition"
+                element={
+                  <ProtectedRoute>
+                    <Nutrition />
                   </ProtectedRoute>
                 }
               />
