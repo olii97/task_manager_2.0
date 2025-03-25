@@ -298,6 +298,7 @@ const Tasks = () => {
         onPlanTasks={() => setPlannerOpen(true)}
         onQuickTaskCreated={handleQuickTaskCreated}
         onWeeklyReflection={handleWeeklyReflection}
+        projects={projects}
       />
 
       <DragDropContext onDragEnd={handleDragEnd}>

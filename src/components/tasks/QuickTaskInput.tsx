@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
 import { analyzeTaskText } from "@/services/quickTaskService";
 import { toast } from "@/hooks/use-toast";
+import { Project } from "@/types/projects";
 
 interface QuickTaskInputProps {
   onTaskCreated: (task: any) => void;
+  projects?: Project[];
 }
 
-export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
+export function QuickTaskInput({ onTaskCreated, projects = [] }: QuickTaskInputProps) {
   const [taskText, setTaskText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -27,7 +29,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
 
     setIsProcessing(true);
     try {
-      const taskData = await analyzeTaskText(taskText);
+      const taskData = await analyzeTaskText(taskText, projects);
       onTaskCreated(taskData);
       setTaskText("");
       toast({

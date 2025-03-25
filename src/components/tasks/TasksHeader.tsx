@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw, Calendar, BookOpen } from "lucide-react";
 import { QuickTaskInput } from "./QuickTaskInput";
 import { Task } from "@/types/tasks";
+import { Project } from "@/types/projects";
 
 interface TasksHeaderProps {
   onAddTask: () => void;
@@ -10,6 +11,7 @@ interface TasksHeaderProps {
   onPlanTasks: () => void;
   onQuickTaskCreated: (taskData: Omit<Task, "id" | "created_at" | "updated_at">) => void;
   onWeeklyReflection?: () => void;
+  projects?: Project[];
 }
 
 export function TasksHeader({ 
@@ -17,7 +19,8 @@ export function TasksHeader({
   onResetSchedule, 
   onPlanTasks, 
   onQuickTaskCreated,
-  onWeeklyReflection
+  onWeeklyReflection,
+  projects = []
 }: TasksHeaderProps) {
   return (
     <div className="flex flex-col space-y-4 mb-6">
@@ -67,7 +70,10 @@ export function TasksHeader({
       
       {/* Quick Task Input with AI */}
       <div className="w-full">
-        <QuickTaskInput onTaskCreated={onQuickTaskCreated} />
+        <QuickTaskInput 
+          onTaskCreated={onQuickTaskCreated} 
+          projects={projects}
+        />
       </div>
     </div>
   );
