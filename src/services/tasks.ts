@@ -1,6 +1,5 @@
 import { supabase } from "@/supabaseClient";
 import { Task } from "@/types/tasks";
-import { toast } from "@/hooks/use-toast";
 
 /**
  * Fetch all tasks for a user
@@ -191,34 +190,6 @@ export const scheduleTaskForToday = async (
     };
   } catch (error) {
     console.error('Error scheduling task:', error);
-    throw error;
-  }
-};
-
-/**
- * Bulk schedule multiple tasks for today with a specific energy level
- */
-export const bulkScheduleTasks = async (
-  taskIds: string[],
-  energyLevel: 'high' | 'low'
-): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('tasks')
-      .update({ 
-        is_scheduled_today: true, 
-        energy_level: energyLevel 
-      })
-      .in('id', taskIds);
-      
-    if (error) throw error;
-    
-    toast({
-      title: "Tasks scheduled",
-      description: `${taskIds.length} tasks have been scheduled for today.`,
-    });
-  } catch (error) {
-    console.error('Error bulk scheduling tasks:', error);
     throw error;
   }
 }; 
