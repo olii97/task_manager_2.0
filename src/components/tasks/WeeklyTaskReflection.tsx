@@ -9,7 +9,6 @@ import { Loader2, CheckCircle2, Calendar } from "lucide-react";
 import { supabase } from "@/supabaseClient";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "@/hooks/use-toast";
-import { getOpenAIApiKey } from "@/services/tasks/taskReflectionService";
 
 interface WeeklyTaskReflectionProps {
   open: boolean;
@@ -68,11 +67,11 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
 
     setIsLoadingAI(true);
     try {
-      const apiKey = getOpenAIApiKey();
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
       if (!apiKey) {
         toast({
-          title: "OpenAI API Key Required",
-          description: "Please set your OpenAI API key in settings to use this feature.",
+          title: "OpenAI API Key Not Found",
+          description: "The OpenAI API key is not configured in the environment.",
           variant: "destructive"
         });
         return;
@@ -121,8 +120,8 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogHeader className="pb-4">
           <DialogTitle className="flex items-center text-xl">
             <Calendar className="h-5 w-5 mr-2" />
             Weekly Task Reflection
@@ -130,25 +129,25 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
         </DialogHeader>
 
         <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="tasks">Completed Tasks</TabsTrigger>
             <TabsTrigger value="reflection">Your Reflection</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="tasks" className="space-y-4">
+          <TabsContent value="tasks" className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
             {completedTasks.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
                 No tasks completed this week.
               </p>
             ) : (
               completedTasks.map((task) => (
-                <Card key={task.id}>
-                  <CardContent className="p-4">
+                <Card key={task.id} className="shadow-sm">
+                  <CardContent className="p-3">
                     <div className="flex items-center">
-                      <CheckCircle2 className="h-5 w-5 text-green-500 mr-2" />
-                      <div>
-                        <p className="font-medium">{task.title}</p>
-                        <p className="text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{task.title}</p>
+                        <p className="text-xs text-muted-foreground">
                           Completed on {new Date(task.completion_date!).toLocaleDateString()}
                         </p>
                       </div>
@@ -165,38 +164,39 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
                 value={reflectionText}
                 onChange={(e) => setReflectionText(e.target.value)}
                 placeholder="Reflect on your completed tasks this week..."
-                className="min-h-[200px]"
+                className="min-h-[150px] resize-none"
               />
             </div>
 
             {aiResponse && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium mb-2">AI Insights</h4>
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <h4 className="font-medium mb-2 text-sm">AI Insights</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {aiResponse}
                 </p>
               </div>
             )}
 
-            <div className="flex justify-between">
+            <div className="flex justify-between pt-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleGetAIInsights}
                 disabled={isLoadingAI || !completedTasks.length}
               >
                 {isLoadingAI ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                     Getting Insights...
                   </>
                 ) : (
                   "Get AI Insights"
                 )}
               </Button>
-              <Button onClick={handleSaveReflection} disabled={isSubmitting}>
+              <Button size="sm" onClick={handleSaveReflection} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                     Saving...
                   </>
                 ) : (
