@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Task } from "@/types/tasks";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, CheckCircle2, Calendar } from "lucide-react";
@@ -36,10 +36,11 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
         .insert({
           user_id: session.user.id,
           date: today.toISOString().split('T')[0],
-          entry_type: 'weekly_task_reflection',
           reflection: reflectionText.trim(),
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          energy: 0,
+          mood: 0
         });
 
       if (error) throw error;
@@ -78,7 +79,7 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
       }
 
       const taskList = completedTasks
-        .map(task => `- ${task.title} (${task.priority})`)
+        .map(task => `- ${task.title} (Priority: ${task.priority})`)
         .join('\n');
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -96,7 +97,7 @@ export function WeeklyTaskReflection({ open, onClose, completedTasks }: WeeklyTa
             },
             {
               role: "user",
-              content: `Here are the tasks I completed this week:\n\n${taskList}\n\nPlease provide a thoughtful reflection on these completed tasks, focusing on patterns, achievements, and potential areas for improvement.`
+              content: `Here are the tasks I completed this week:\n\n${taskList}\n\nPlease provide a thoughtful reflection on these completed tasks, focusing on patterns, achievements, and potential areas for improvement. Keep the response concise but meaningful.`
             }
           ]
         })
