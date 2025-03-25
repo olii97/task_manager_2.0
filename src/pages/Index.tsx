@@ -18,6 +18,9 @@ import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ChatBot from "@/components/chat/ChatBot";
 import { fetchProjects } from "@/services/projects/projectService";
+import { fetchCalendarEntries } from "@/services/calendar/calendarService";
+import { VerticalCalendarWidget } from "@/components/calendar/VerticalCalendarWidget";
+import { addDays } from "date-fns";
 
 const Index = () => {
   const { session } = useAuth();
@@ -56,6 +59,17 @@ const Index = () => {
     enabled: !!userId,
   });
 
+  // Fetch calendar entries
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const calendarEndDate = addDays(today, 14);
+  
+  const { data: calendarEntries = [], isLoading: isCalendarLoading } = useQuery({
+    queryKey: ["calendar", userId, today, calendarEndDate],
+    queryFn: () => fetchCalendarEntries(userId!, today, calendarEndDate),
+    enabled: !!userId,
+  });
+
   // Refresh journal entry when component mounts
   useEffect(() => {
     if (userId) {
@@ -80,9 +94,14 @@ const Index = () => {
           refreshTodayEntry={refreshTodayEntry}
         />
 
-        {/* Weight Tracker */}
+        {/* Calendar Widget */}
         {userId && (
-          <WeightTrackerCard userId={userId} />
+          <VerticalCalendarWidget
+            entries={calendarEntries}
+            userId={userId}
+            daysToShow={7}
+            isLoading={isCalendarLoading}
+          />
         )}
       </div>
       
