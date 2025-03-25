@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Task } from "@/types/tasks";
@@ -36,6 +35,7 @@ export const useTaskManager = (userId: string | undefined) => {
       title: taskData.title!,
       description: taskData.description,
       priority: taskData.priority as 1 | 2 | 3 | 4,
+      energy_level: taskData.energy_level as 'high' | 'low' | undefined,
       is_completed: false,
       is_scheduled_today: false,
     });
@@ -49,6 +49,7 @@ export const useTaskManager = (userId: string | undefined) => {
         title: taskData.title,
         description: taskData.description,
         priority: taskData.priority,
+        energy_level: taskData.energy_level,
       },
     });
   };

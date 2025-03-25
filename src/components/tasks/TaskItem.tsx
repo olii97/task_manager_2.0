@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from "react";
-import { Task, priorityColors, priorityEmojis } from "@/types/tasks";
+import { Task, priorityColors, priorityEmojis, priorityBackgroundColors } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -87,6 +86,9 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
   // Determine energy class based on task energy level
   const energyClass = task.energy_level === 'high' ? 'high-energy-task' : 
                       task.energy_level === 'low' ? 'low-energy-task' : '';
+  
+  // Get the priority background color
+  const priorityBgClass = priorityBackgroundColors[task.priority];
 
   return (
     <>
@@ -111,7 +113,7 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
         whileHover={{ scale: 1.01 }}
         transition={{ duration: 0.2 }}
       >
-        <Card className={`mb-2 ${task.is_completed ? 'bg-gray-50' : ''} ${energyClass}`}>
+        <Card className={`mb-2 task-item ${task.is_completed ? 'bg-gray-50' : priorityBgClass} ${energyClass}`}>
           <CardContent className="p-4 flex items-start">
             <div className="flex-shrink-0 mr-3 mt-1">
               <Checkbox 

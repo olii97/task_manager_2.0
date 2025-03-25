@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Task } from "@/types/tasks";
 import { TaskItem } from "./TaskItem";
@@ -16,6 +15,7 @@ interface TaskSectionProps {
   collapsible?: boolean;
   defaultOpen?: boolean;
   emptyMessage?: string;
+  className?: string;
 }
 
 export function TaskSection({ 
@@ -26,7 +26,8 @@ export function TaskSection({
   icon, 
   collapsible = false, 
   defaultOpen = true,
-  emptyMessage = "No tasks found."
+  emptyMessage = "No tasks found.",
+  className = ""
 }: TaskSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
@@ -35,7 +36,7 @@ export function TaskSection({
       <Collapsible
         open={isOpen}
         onOpenChange={setIsOpen}
-        className="mb-6"
+        className={`mb-6 ${className}`}
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
@@ -78,7 +79,7 @@ export function TaskSection({
   }
 
   return (
-    <div className="mb-6">
+    <div className={`mb-6 ${className}`}>
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-lg font-semibold flex items-center">
           {icon && <span className="mr-2">{icon}</span>}

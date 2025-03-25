@@ -1,4 +1,3 @@
-
 export interface Task {
   id: string;
   title: string;
@@ -24,6 +23,13 @@ export const priorityColors: Record<number, string> = {
   2: 'text-orange-500 border-orange-500',
   3: 'text-yellow-500 border-yellow-500',
   4: 'text-green-500 border-green-500',
+};
+
+export const priorityBackgroundColors: Record<number, string> = {
+  1: 'bg-red-50/70',
+  2: 'bg-orange-50/70',
+  3: 'bg-yellow-50/70',
+  4: 'bg-green-50/70',
 };
 
 export const priorityEmojis: Record<number, string> = {
