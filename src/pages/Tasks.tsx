@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
 import { Task } from "@/types/tasks";
@@ -21,6 +21,8 @@ import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { DroppableTaskSection } from "@/components/tasks/DroppableTaskSection";
 import { Zap, Battery, ClipboardList } from "lucide-react";
+import { WeeklyTaskReflection } from "@/components/tasks/WeeklyTaskReflection";
+import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/tasks/taskReflectionService";
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -30,6 +32,8 @@ const Tasks = () => {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [showWeeklyReflection, setShowWeeklyReflection] = useState(false);
+  const [weeklyCompletedTasks, setWeeklyCompletedTasks] = useState<Task[]>([]);
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", userId],
@@ -234,6 +238,28 @@ const Tasks = () => {
     addTaskMutation(taskData);
   };
 
+  useEffect(() => {
+    const checkWeeklyReflection = async () => {
+      if (session?.user.id) {
+        const shouldShow = await shouldShowWeeklyReflection(session.user.id);
+        if (shouldShow) {
+          const tasks = await getWeeklyCompletedTasks(session.user.id);
+          setWeeklyCompletedTasks(tasks);
+          setShowWeeklyReflection(true);
+        }
+      }
+    };
+    checkWeeklyReflection();
+  }, [session?.user.id]);
+
+  const handleWeeklyReflection = async () => {
+    if (session?.user.id) {
+      const tasks = await getWeeklyCompletedTasks(session.user.id);
+      setWeeklyCompletedTasks(tasks);
+      setShowWeeklyReflection(true);
+    }
+  };
+
   if (isLoading) {
     return <TasksLoadingState />;
   }
@@ -245,6 +271,7 @@ const Tasks = () => {
         onResetSchedule={handleResetSchedule}
         onPlanTasks={() => setPlannerOpen(true)}
         onQuickTaskCreated={handleQuickTaskCreated}
+        onWeeklyReflection={handleWeeklyReflection}
       />
 
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -321,6 +348,12 @@ const Tasks = () => {
           }}
         />
       )}
+
+      <WeeklyTaskReflection
+        open={showWeeklyReflection}
+        onClose={() => setShowWeeklyReflection(false)}
+        completedTasks={weeklyCompletedTasks}
+      />
     </div>
   );
 };
