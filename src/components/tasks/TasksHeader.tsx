@@ -51,7 +51,7 @@ export function TasksHeader({
         </div>
       </div>
       
-      {/* Quick Task Input */}
+      {/* Quick Task Input with AI */}
       <div className="w-full">
         <QuickTaskInput onTaskCreated={onQuickTaskCreated} />
       </div>

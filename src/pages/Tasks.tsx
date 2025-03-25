@@ -202,10 +202,6 @@ const Tasks = () => {
     }
   };
 
-  const handleQuickTaskCreated = (taskData: Omit<Task, "id" | "created_at" | "updated_at">) => {
-    addTaskMutation(taskData);
-  };
-
   // Filter tasks into different sections
   const backlogTasks = tasks.filter(task => 
     !task.is_completed && !task.is_scheduled_today
@@ -233,6 +229,10 @@ const Tasks = () => {
     const completionDate = new Date(task.completion_date);
     return completionDate < today;
   });
+
+  const handleQuickTaskCreated = (taskData: Omit<Task, "id" | "created_at" | "updated_at">) => {
+    addTaskMutation(taskData);
+  };
 
   if (isLoading) {
     return <TasksLoadingState />;
