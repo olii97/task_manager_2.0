@@ -7,6 +7,7 @@ export interface Task {
   is_completed: boolean;
   is_scheduled_today: boolean;
   completion_date?: string;
+  project_id?: string;
   created_at: string;
   updated_at: string;
 }

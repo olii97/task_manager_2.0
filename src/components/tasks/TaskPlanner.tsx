@@ -12,20 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { FlaskConical, Zap, Battery, Plus } from "lucide-react";
+import { FlaskConical, Zap, Battery, Plus, Folder } from "lucide-react";
 import { bulkScheduleTasks } from "@/services/tasks/taskBatchService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { Project } from "@/types/projects";
 
 interface TaskPlannerProps {
   open: boolean;
   onClose: () => void;
   tasks: Task[];
-  onAddTask: () => void; // Changed to match what Index.tsx provides
+  onAddTask: () => void;
+  projects?: Project[];
 }
 
-export function TaskPlanner({ open, onClose, tasks, onAddTask }: TaskPlannerProps) {
+export function TaskPlanner({ open, onClose, tasks, onAddTask, projects = [] }: TaskPlannerProps) {
   
   const [selectedHighEnergyTasks, setSelectedHighEnergyTasks] = useState<string[]>([]);
   const [selectedLowEnergyTasks, setSelectedLowEnergyTasks] = useState<string[]>([]);
@@ -36,6 +38,12 @@ export function TaskPlanner({ open, onClose, tasks, onAddTask }: TaskPlannerProp
   const backlogTasks = tasks.filter(task => 
     !task.is_completed && !task.is_scheduled_today
   ).sort((a, b) => a.priority - b.priority);
+
+  // Function to get project name for a task
+  const getProjectForTask = (task: Task) => {
+    if (!task.project_id || !Array.isArray(projects)) return null;
+    return projects.find(p => p.id === task.project_id);
+  };
 
   const { mutate: scheduleHighEnergyTasks, isPending: isSchedulingHigh } = useMutation({
     mutationFn: (taskIds: string[]) => bulkScheduleTasks(taskIds, 'high'),
@@ -189,39 +197,48 @@ export function TaskPlanner({ open, onClose, tasks, onAddTask }: TaskPlannerProp
                       initial="hidden"
                       animate="show"
                     >
-                      {backlogTasks.map((task, index) => (
-                        <motion.div 
-                          key={task.id}
-                          variants={itemVariants}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Card 
-                            className={`cursor-pointer hover:bg-gray-50 ${
-                              selectedHighEnergyTasks.includes(task.id) ? 'border-blue-300 bg-blue-50' : ''
-                            }`}
-                            onClick={() => toggleHighEnergyTask(task.id)}
+                      {backlogTasks.map((task, index) => {
+                        const taskProject = getProjectForTask(task);
+                        return (
+                          <motion.div 
+                            key={task.id}
+                            variants={itemVariants}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                           >
-                            <CardContent className="p-3 flex items-center">
-                              <Checkbox 
-                                checked={selectedHighEnergyTasks.includes(task.id)}
-                                onCheckedChange={() => toggleHighEnergyTask(task.id)}
-                                className="mr-3"
-                              />
-                              <div className="flex-grow">
-                                <div className="flex items-center">
-                                  <span className="mr-2">{priorityEmojis[task.priority]}</span>
-                                  <span>{task.title}</span>
+                            <Card 
+                              className={`cursor-pointer hover:bg-gray-50 ${
+                                selectedHighEnergyTasks.includes(task.id) ? 'border-blue-300 bg-blue-50' : ''
+                              } ${taskProject?.color ? `border-l-4 ${taskProject.color}` : ''}`}
+                              onClick={() => toggleHighEnergyTask(task.id)}
+                            >
+                              <CardContent className="p-3 flex items-center">
+                                <Checkbox 
+                                  checked={selectedHighEnergyTasks.includes(task.id)}
+                                  onCheckedChange={() => toggleHighEnergyTask(task.id)}
+                                  className="mr-3"
+                                />
+                                <div className="flex-grow">
+                                  <div className="flex items-center flex-wrap">
+                                    <span className="mr-2">{priorityEmojis[task.priority]}</span>
+                                    <span>{task.title}</span>
+                                    {taskProject && (
+                                      <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-100 flex items-center">
+                                        <Folder className="h-3 w-3 mr-1" />
+                                        {taskProject.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {task.description && (
+                                    <p className="text-sm text-muted-foreground">{task.description}</p>
+                                  )}
                                 </div>
-                                {task.description && (
-                                  <p className="text-sm text-muted-foreground">{task.description}</p>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))}
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </TabsContent>
@@ -240,39 +257,48 @@ export function TaskPlanner({ open, onClose, tasks, onAddTask }: TaskPlannerProp
                       initial="hidden"
                       animate="show"
                     >
-                      {remainingTasks.map((task, index) => (
-                        <motion.div 
-                          key={task.id}
-                          variants={itemVariants}
-                          transition={{ duration: 0.3, delay: index * 0.05 }}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Card 
-                            className={`cursor-pointer hover:bg-gray-50 ${
-                              selectedLowEnergyTasks.includes(task.id) ? 'border-blue-300 bg-blue-50' : ''
-                            }`}
-                            onClick={() => toggleLowEnergyTask(task.id)}
+                      {remainingTasks.map((task, index) => {
+                        const taskProject = getProjectForTask(task);
+                        return (
+                          <motion.div 
+                            key={task.id}
+                            variants={itemVariants}
+                            transition={{ duration: 0.3, delay: index * 0.05 }}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                           >
-                            <CardContent className="p-3 flex items-center">
-                              <Checkbox 
-                                checked={selectedLowEnergyTasks.includes(task.id)}
-                                onCheckedChange={() => toggleLowEnergyTask(task.id)}
-                                className="mr-3"
-                              />
-                              <div className="flex-grow">
-                                <div className="flex items-center">
-                                  <span className="mr-2">{priorityEmojis[task.priority]}</span>
-                                  <span>{task.title}</span>
+                            <Card 
+                              className={`cursor-pointer hover:bg-gray-50 ${
+                                selectedLowEnergyTasks.includes(task.id) ? 'border-blue-300 bg-blue-50' : ''
+                              } ${taskProject?.color ? `border-l-4 ${taskProject.color}` : ''}`}
+                              onClick={() => toggleLowEnergyTask(task.id)}
+                            >
+                              <CardContent className="p-3 flex items-center">
+                                <Checkbox 
+                                  checked={selectedLowEnergyTasks.includes(task.id)}
+                                  onCheckedChange={() => toggleLowEnergyTask(task.id)}
+                                  className="mr-3"
+                                />
+                                <div className="flex-grow">
+                                  <div className="flex items-center flex-wrap">
+                                    <span className="mr-2">{priorityEmojis[task.priority]}</span>
+                                    <span>{task.title}</span>
+                                    {taskProject && (
+                                      <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-100 flex items-center">
+                                        <Folder className="h-3 w-3 mr-1" />
+                                        {taskProject.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {task.description && (
+                                    <p className="text-sm text-muted-foreground">{task.description}</p>
+                                  )}
                                 </div>
-                                {task.description && (
-                                  <p className="text-sm text-muted-foreground">{task.description}</p>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.div>
-                      ))}
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </TabsContent>

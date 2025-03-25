@@ -13,7 +13,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Zap, Battery } from "lucide-react";
+import { Zap, Battery, Folder } from "lucide-react";
+import { Project } from "@/types/projects";
 
 interface TaskFormProps {
   open: boolean;
@@ -21,14 +22,16 @@ interface TaskFormProps {
   onSave: (taskData: Partial<Task>) => void;
   task?: Task;
   title: string;
+  projects?: Project[];
 }
 
-export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) {
+export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: TaskFormProps) {
   const [formData, setFormData] = useState<Partial<Task>>({
     title: "",
     description: "",
     priority: 4,
     energy_level: undefined,
+    project_id: undefined,
   });
 
   useEffect(() => {
@@ -38,6 +41,7 @@ export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) 
         description: task.description || "",
         priority: task.priority,
         energy_level: task.energy_level,
+        project_id: task.project_id,
       });
     } else {
       setFormData({
@@ -45,6 +49,7 @@ export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) 
         description: "",
         priority: 4,
         energy_level: undefined,
+        project_id: undefined,
       });
     }
   }, [task, open]);
@@ -60,6 +65,10 @@ export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) 
 
   const handleEnergyLevelChange = (value: string) => {
     setFormData((prev) => ({ ...prev, energy_level: value as 'high' | 'low' }));
+  };
+
+  const handleProjectChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, project_id: value === "none" ? undefined : value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -147,6 +156,29 @@ export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) 
                 </Label>
               </div>
             </RadioGroup>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="project" className="text-sm font-medium flex items-center">
+              <Folder className="h-4 w-4 mr-1" />
+              Project (Optional)
+            </label>
+            <Select
+              value={formData.project_id || "none"}
+              onValueChange={handleProjectChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {Array.isArray(projects) && projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <DialogFooter>
