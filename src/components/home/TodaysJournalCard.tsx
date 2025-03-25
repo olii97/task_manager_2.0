@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -202,7 +203,7 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
             
             {/* Show gratitude if available */}
             {entry.gratitude && (
-              <p className="text-sm line-clamp-4 whitespace-pre-wrap mt-2 mb-3">
+              <p className="text-sm line-clamp-2 mt-2 mb-3">
                 <span className="font-medium">Grateful for:</span> {entry.gratitude}
               </p>
             )}
