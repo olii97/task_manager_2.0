@@ -25,6 +25,7 @@ import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 import { TabBarTimer } from "./components/pomodoro/TabBarTimer";
+import Calendar from "./pages/Calendar";
 
 const queryClient = new QueryClient();
 
@@ -140,6 +141,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Nutrition />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <ProtectedRoute>
+                    <Calendar />
                   </ProtectedRoute>
                 }
               />
