@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Task } from "@/types/tasks";
 import { TaskSection } from "@/components/tasks/TaskSection";
@@ -15,13 +14,13 @@ export function CompletedTasks({ tasks, onEditTask, limit = 10 }: CompletedTasks
   
   return (
     <TaskSection
-      title="Completed Tasks"
+      title="Previously Completed Tasks"
       tasks={limitedTasks}
       onEditTask={onEditTask}
       icon={<CheckCheck className="h-5 w-5" />}
       collapsible={true}
       defaultOpen={false}
-      emptyMessage="No completed tasks yet."
+      emptyMessage="No previously completed tasks found."
     />
   );
 }
