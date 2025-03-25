@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -143,7 +142,7 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
                   value={reflectionText}
                   onChange={(e) => setReflectionText(e.target.value)}
                   placeholder="Update your reflection..."
-                  className="min-h-[100px] mb-2"
+                  className="min-h-[200px] mb-2"
                   autoFocus
                 />
                 <div className="flex space-x-2">
@@ -181,9 +180,11 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
                         <PenLine className="h-3 w-3 mr-1" /> Edit
                       </Button>
                     </div>
-                    <p className="text-sm line-clamp-4 whitespace-pre-wrap mt-1">
-                      {latestReflection.content}
-                    </p>
+                    <div className="mt-1 min-h-[120px]">
+                      <p className="text-sm line-clamp-8 whitespace-pre-wrap">
+                        {latestReflection.content}
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="mt-2 mb-3">
@@ -201,7 +202,7 @@ export const TodaysJournalCard = ({ entry, isLoading, refreshTodayEntry }: Today
             
             {/* Show gratitude if available */}
             {entry.gratitude && (
-              <p className="text-sm line-clamp-2 mt-2 mb-3">
+              <p className="text-sm line-clamp-4 whitespace-pre-wrap mt-2 mb-3">
                 <span className="font-medium">Grateful for:</span> {entry.gratitude}
               </p>
             )}
