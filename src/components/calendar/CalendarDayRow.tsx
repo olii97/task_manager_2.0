@@ -1,16 +1,17 @@
 import React from "react";
-import { CalendarEntry as CalendarEntryType } from "@/services/calendar/calendarService";
-import { CalendarEntry } from "./CalendarEntry";
+import { CalendarEntry } from "@/services/calendar/calendarService";
+import { CalendarEntry as CalendarEntryComponent } from "./CalendarEntry";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface CalendarDayRowProps {
   date: Date;
-  workEntries: CalendarEntryType[];
-  personalEntries: CalendarEntryType[];
+  workEntries: CalendarEntry[];
+  personalEntries: CalendarEntry[];
   onAddEntry: (date: Date, entryType: 'work' | 'personal') => void;
-  onEditEntry: (entry: CalendarEntryType) => void;
+  onEditEntry: (entry: CalendarEntry) => void;
 }
 
 export function CalendarDayRow({
@@ -26,15 +27,23 @@ export function CalendarDayRow({
   // Determine if this is today's date
   const isToday = new Date().toDateString() === date.toDateString();
   
+  // Format date label (EEE = day of week, MMM = month, d = day)
+  const dateLabel = format(date, "EEE, MMM d");
+  
+  // Add year only if it's different from current year
+  const currentYear = new Date().getFullYear();
+  const dateYear = date.getFullYear();
+  const dateLabelWithYear = dateLabel + (dateYear !== currentYear ? `, ${dateYear}` : '');
+  
   return (
-    <div className={`grid grid-cols-[100px_1fr_1fr] border-b min-h-[130px] ${isToday ? 'bg-muted/30' : ''}`}>
+    <div className={`grid grid-cols-[100px_1fr_1fr] border-b min-h-[130px] ${isToday ? 'bg-blue-50' : ''}`}>
       {/* Date column */}
-      <div className="flex flex-col items-center justify-center border-r p-3">
-        <div className={`text-2xl font-medium mb-1 ${isToday ? 'text-primary' : 'text-foreground'}`}>
+      <div className={`flex flex-col items-center justify-center border-r p-3 ${isToday ? 'bg-blue-100' : ''}`}>
+        <div className={`text-2xl font-medium mb-1 ${isToday ? 'text-blue-700' : 'text-foreground'}`}>
           {date.getDate()}
         </div>
-        <div className="text-sm text-muted-foreground">
-          {formatDate(date, "MMM EEE").toUpperCase()}
+        <div className={`text-sm ${isToday ? 'text-blue-700 font-medium' : 'text-muted-foreground'}`}>
+          {dateLabelWithYear}
         </div>
       </div>
       
@@ -57,7 +66,7 @@ export function CalendarDayRow({
             <p className="text-xs text-muted-foreground italic">No work items for this day</p>
           ) : (
             workEntries.map(entry => (
-              <CalendarEntry 
+              <CalendarEntryComponent 
                 key={entry.id} 
                 entry={entry} 
                 onEdit={onEditEntry} 
@@ -86,7 +95,7 @@ export function CalendarDayRow({
             <p className="text-xs text-muted-foreground italic">No personal items for this day</p>
           ) : (
             personalEntries.map(entry => (
-              <CalendarEntry 
+              <CalendarEntryComponent 
                 key={entry.id} 
                 entry={entry} 
                 onEdit={onEditEntry} 

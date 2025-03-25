@@ -25,9 +25,15 @@ export function QuickCalendarInput({ onEntryCreated }: QuickCalendarInputProps) 
       return;
     }
 
+    console.log("Processing calendar input:", entryText);
     setIsProcessing(true);
+    
     try {
+      // Use the direct approach with added logging
+      console.log("Starting calendar text analysis...");
       const entryData = await analyzeCalendarText(entryText);
+      console.log("Successfully analyzed text:", entryData);
+      
       onEntryCreated(entryData);
       setEntryText("");
       toast({
@@ -36,6 +42,11 @@ export function QuickCalendarInput({ onEntryCreated }: QuickCalendarInputProps) 
       });
     } catch (error) {
       console.error("Failed to create calendar entry:", error);
+      toast({
+        title: "Error",
+        description: "Could not create entry. Please try adding it manually.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
