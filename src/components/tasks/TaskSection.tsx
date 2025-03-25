@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronRight, ChevronDown } from "lucide-react";
+import { Project } from "@/types/projects";
 
 interface TaskSectionProps {
   title: string;
@@ -16,6 +17,7 @@ interface TaskSectionProps {
   defaultOpen?: boolean;
   emptyMessage?: string;
   className?: string;
+  projects?: Project[];
 }
 
 export function TaskSection({ 
@@ -27,7 +29,8 @@ export function TaskSection({
   collapsible = false, 
   defaultOpen = true,
   emptyMessage = "No tasks found.",
-  className = ""
+  className = "",
+  projects = []
 }: TaskSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
@@ -70,6 +73,7 @@ export function TaskSection({
                 key={task.id}
                 task={task}
                 onEditTask={onEditTask}
+                projects={projects}
               />
             ))
           )}
@@ -100,6 +104,7 @@ export function TaskSection({
             key={task.id}
             task={task}
             onEditTask={onEditTask}
+            projects={projects}
           />
         ))
       )}

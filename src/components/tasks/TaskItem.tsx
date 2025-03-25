@@ -3,20 +3,22 @@ import { Task, priorityColors, priorityEmojis, priorityBackgroundColors } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Timer, Play } from "lucide-react";
+import { Edit, Trash2, Timer, Play, Folder } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { FloatingXP } from "@/components/animations/FloatingXP";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
+import { Project } from "@/types/projects";
 
 interface TaskItemProps {
   task: Task;
   onEditTask: (task: Task) => void;
+  projects?: Project[];
 }
 
-export function TaskItem({ task, onEditTask }: TaskItemProps) {
+export function TaskItem({ task, onEditTask, projects = [] }: TaskItemProps) {
   const queryClient = useQueryClient();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showXP, setShowXP] = useState(false);
@@ -90,6 +92,9 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
   // Get the priority background color
   const priorityBgClass = priorityBackgroundColors[task.priority];
 
+  // Find the project if it exists
+  const taskProject = task.project_id ? projects.find(p => p.id === task.project_id) : undefined;
+
   return (
     <>
       <ConfettiEffect isActive={showConfetti} />
@@ -113,7 +118,7 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
         whileHover={{ scale: 1.01 }}
         transition={{ duration: 0.2 }}
       >
-        <Card className={`mb-2 task-item ${task.is_completed ? 'bg-gray-50' : priorityBgClass} ${energyClass}`}>
+        <Card className={`mb-2 task-item ${task.is_completed ? 'bg-gray-50' : priorityBgClass} ${energyClass} ${taskProject?.color ? `border-l-4 ${taskProject.color}` : ''}`}>
           <CardContent className="p-4 flex items-start">
             <div className="flex-shrink-0 mr-3 mt-1">
               <Checkbox 
@@ -125,7 +130,7 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
               />
             </div>
             <div className="flex-grow">
-              <div className="flex items-center mb-1">
+              <div className="flex items-center flex-wrap mb-1">
                 <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-gray-500' : ''}`}>
                   {task.title}
                 </span>
@@ -138,6 +143,12 @@ export function TaskItem({ task, onEditTask }: TaskItemProps) {
                     'bg-energy-low/10 text-energy-low'
                   }`}>
                     {task.energy_level === 'high' ? '⚡ High energy' : '🔋 Low energy'}
+                  </span>
+                )}
+                {taskProject && (
+                  <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-100 flex items-center">
+                    <Folder className="h-3 w-3 mr-1" />
+                    {taskProject.name}
                   </span>
                 )}
               </div>

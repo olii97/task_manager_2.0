@@ -1,35 +1,28 @@
 import React from "react";
-import { Task } from "@/types/tasks";
 import { Draggable } from "react-beautiful-dnd";
 import { TaskItem } from "./TaskItem";
+import { Task } from "@/types/tasks";
+import { Project } from "@/types/projects";
 
 interface DraggableTaskItemProps {
   task: Task;
   index: number;
   onEditTask: (task: Task) => void;
+  projects?: Project[];
 }
 
-export const DraggableTaskItem: React.FC<DraggableTaskItemProps> = ({
-  task,
-  index,
-  onEditTask
-}) => {
+export function DraggableTaskItem({ task, index, onEditTask, projects = [] }: DraggableTaskItemProps) {
   return (
     <Draggable draggableId={task.id} index={index}>
-      {(provided, snapshot) => (
+      {(provided) => (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          style={{
-            ...provided.draggableProps.style,
-            opacity: snapshot.isDragging ? 0.8 : 1
-          }}
-          className={snapshot.isDragging ? "dragging" : ""}
         >
-          <TaskItem task={task} onEditTask={onEditTask} />
+          <TaskItem task={task} onEditTask={onEditTask} projects={projects} />
         </div>
       )}
     </Draggable>
   );
-}; 
+} 

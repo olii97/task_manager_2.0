@@ -1,32 +1,40 @@
 import React from "react";
 import { Task } from "@/types/tasks";
-import { TaskSection } from "@/components/tasks/TaskSection";
+import { TaskSection } from "./TaskSection";
 import { CheckSquare } from "lucide-react";
+import { Project } from "@/types/projects";
 
 interface TodaysCompletedTasksProps {
   tasks: Task[];
   onEditTask: (task: Task) => void;
+  projects?: Project[];
 }
 
-export function TodaysCompletedTasks({ tasks, onEditTask }: TodaysCompletedTasksProps) {
-  // Filter tasks completed today
+export function TodaysCompletedTasks({ tasks, onEditTask, projects = [] }: TodaysCompletedTasksProps) {
+  // Filter only tasks completed today
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const tasksCompletedToday = tasks.filter(task => {
-    if (!task.is_completed || !task.completion_date) return false;
+  const todaysCompletedTasks = tasks.filter(task => {
+    if (!task.completion_date) return false;
     const completionDate = new Date(task.completion_date);
     return completionDate >= today;
   });
   
+  if (todaysCompletedTasks.length === 0) {
+    return null;
+  }
+  
   return (
     <TaskSection
-      title="Tasks Completed Today"
-      tasks={tasksCompletedToday}
+      title="Completed Today"
+      tasks={todaysCompletedTasks}
       onEditTask={onEditTask}
-      icon={<CheckSquare className="h-5 w-5" />}
-      emptyMessage="No tasks completed today yet."
-      className="bg-green-50/50 border-green-100"
+      icon={<CheckSquare className="h-5 w-5 text-green-500" />}
+      collapsible={true}
+      defaultOpen={true}
+      emptyMessage="No tasks completed today."
+      projects={projects}
     />
   );
 } 
