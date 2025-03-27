@@ -263,4 +263,27 @@ export const fetchDailyTotalsByDate = async (userId: string, date: string): Prom
   );
 
   return totals;
+};
+
+// New function to fetch last 7 days of meal data
+export const fetchLastSevenDays = async (userId: string): Promise<{ date: string; totals: DailyTotals }[]> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Create array of last 7 days
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    return date.toISOString().split('T')[0];
+  }).reverse();
+
+  // Fetch data for each day
+  const results = await Promise.all(
+    dates.map(async (date) => {
+      const totals = await fetchDailyTotalsByDate(userId, date);
+      return { date, totals };
+    })
+  );
+
+  return results;
 }; 
