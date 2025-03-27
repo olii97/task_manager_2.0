@@ -4,9 +4,16 @@ import { QuickCalendarInput } from "./QuickCalendarInput";
 import { CalendarDayRow } from "./CalendarDayRow";
 import { CalendarEntryForm } from "./CalendarEntryForm";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addDays, subDays, startOfDay, format, isToday, subMonths, isBefore } from "date-fns";
+import { addDays, subDays, startOfDay, format, isToday, subMonths, isBefore, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, ChevronUp, ChevronDown } from "lucide-react";
+
+/**
+ * Convert a Date to YYYY-MM-DD format in local timezone
+ */
+const formatDateToLocalDate = (date: Date): string => {
+  return format(date, 'yyyy-MM-dd');
+};
 
 interface VerticalCalendarProps {
   entries: CalendarEntryType[];
@@ -26,7 +33,7 @@ export function VerticalCalendar({
   const queryClient = useQueryClient();
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CalendarEntryType | undefined>(undefined);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [selectedType, setSelectedType] = useState<'work' | 'personal'>('personal');
   const calendarRef = useRef<HTMLDivElement>(null);
   const todayRowRef = useRef<HTMLDivElement>(null);
@@ -35,19 +42,17 @@ export function VerticalCalendar({
 
   // Generate a range of dates
   const today = startOfDay(new Date());
-  const dateStart = startDate || today;
-  const dateEnd = endDate || addDays(today, daysToShow);
+  const dateStart = startDate ? startOfDay(startDate) : today;
+  const dateEnd = endDate ? startOfDay(endDate) : addDays(today, daysToShow);
   
   // Calculate total days to show if startDate and endDate are provided
   const totalDaysToShow = startDate && endDate 
-    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) 
+    ? Math.ceil((dateEnd.getTime() - dateStart.getTime()) / (1000 * 60 * 60 * 24)) 
     : daysToShow;
   
   // Generate an array of dates
   const allDates = Array.from({ length: totalDaysToShow }, (_, i) => {
-    const date = new Date(dateStart);
-    date.setDate(date.getDate() + i);
-    return date;
+    return addDays(dateStart, i);
   });
 
   // Filter dates based on showEarlierEntries state
@@ -74,7 +79,7 @@ export function VerticalCalendar({
 
   // Group entries by date
   const entriesByDate = dates.map(date => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateToLocalDate(date);
     const dayEntries = entries.filter(entry => entry.date === dateStr);
     
     return {
@@ -85,7 +90,7 @@ export function VerticalCalendar({
   });
 
   const handleAddEntry = (date: Date, entryType: 'work' | 'personal') => {
-    setSelectedDate(date);
+    setSelectedDate(startOfDay(date));
     setSelectedType(entryType);
     setEditingEntry(undefined);
     setEntryFormOpen(true);
@@ -93,6 +98,8 @@ export function VerticalCalendar({
 
   const handleEditEntry = (entry: CalendarEntryType) => {
     setEditingEntry(entry);
+    // When editing, ensure the date is properly parsed from the string
+    setSelectedDate(startOfDay(parseISO(entry.date)));
     setEntryFormOpen(true);
   };
 

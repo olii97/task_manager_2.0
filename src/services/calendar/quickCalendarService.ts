@@ -1,11 +1,19 @@
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { format, addDays, nextMonday, parseISO, startOfDay, formatISO } from "date-fns";
 import { NewCalendarEntry } from "./calendarService";
-import { format, addDays, nextMonday } from "date-fns";
 
 // Get the client-side API key - we'll try both formats
 const CLIENT_KEY = import.meta.env.VITE_OPENAI_CLIENT_KEY || 
                   import.meta.env.VITE_OPENAI_API_KEY ||
                   import.meta.env.REACT_APP_OPENAI_CLIENT_KEY;
+
+/**
+ * Convert a Date to YYYY-MM-DD format in local timezone
+ */
+const formatDateToLocalDate = (date: Date): string => {
+  return format(date, 'yyyy-MM-dd');
+};
 
 export const analyzeCalendarText = async (calendarText: string): Promise<NewCalendarEntry> => {
   if (!CLIENT_KEY) {
@@ -18,12 +26,15 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
   }
 
   try {
-    // Get today's date for the system prompt
-    const today = new Date();
-    const todayFormatted = format(today, "yyyy-MM-dd");
+    // Get today's date in local timezone
+    const today = startOfDay(new Date());
+    const todayFormatted = formatDateToLocalDate(today);
     const todayReadable = format(today, "EEEE, MMMM d, yyyy");
     
-    // Most basic and direct approach
+    // Calculate tomorrow and next Monday in local timezone
+    const tomorrow = addDays(today, 1);
+    const nextMondayDate = nextMonday(today);
+    
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -55,7 +66,7 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
             Output: {
               "title": "Doctor appointment",
               "description": "At 2pm",
-              "date": "${format(new Date(today.getTime() + 86400000), 'yyyy-MM-dd')}",
+              "date": "${formatDateToLocalDate(tomorrow)}",
               "entry_type": "personal",
               "is_recurring": false
             }
@@ -64,7 +75,7 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
             Output: {
               "title": "Weekly team meeting",
               "description": "At 10am",
-              "date": "${format(nextMonday(today), 'yyyy-MM-dd')}",
+              "date": "${formatDateToLocalDate(nextMondayDate)}",
               "entry_type": "work",
               "is_recurring": true,
               "recurrence_pattern": "weekly"
@@ -103,14 +114,28 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
     const parsedResponse = JSON.parse(data.choices[0].message.content);
     console.log("API response:", parsedResponse);
     
-    // Set defaults for missing fields
-    const todayIsoDate = todayFormatted;
+    // Parse the date string in local timezone
+    let eventDate: Date;
+    try {
+      // First convert the date string to a Date object in local timezone
+      const dateStr = parsedResponse.date || todayFormatted;
+      eventDate = parseISO(dateStr);
+      
+      // Ensure we're working with the start of the day in local timezone
+      eventDate = startOfDay(eventDate);
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      eventDate = today;
+    }
     
-    // Return the validated calendar data
+    // Format the date back to YYYY-MM-DD in local timezone
+    const formattedDate = formatDateToLocalDate(eventDate);
+    console.log("Formatted date for calendar entry:", formattedDate);
+    
     return {
       title: parsedResponse.title || "Untitled Event",
       description: parsedResponse.description || "",
-      date: parsedResponse.date || todayIsoDate,
+      date: formattedDate,
       entry_type: (parsedResponse.entry_type === 'work' || parsedResponse.entry_type === 'personal') 
                 ? parsedResponse.entry_type 
                 : 'personal',
