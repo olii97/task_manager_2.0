@@ -2,12 +2,12 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
-import { Rocket, RefreshCw, Sunrise, Scale, Apple, Calendar } from "lucide-react";
+import { Rocket, RefreshCw, Sunrise, Scale, Apple, Calendar, LogOut } from "lucide-react";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
 
 export const AppHeader = () => {
   const location = useLocation();
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
   const { resetIntroScreen } = useIntroScreen();
 
   if (!session) return null;
@@ -124,6 +124,15 @@ export const AppHeader = () => {
             title="Reset Intro Screen"
           >
             <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white/80 hover:text-white hover:bg-white/10 ml-2"
+            onClick={signOut}
+            title="Sign Out"
+          >
+            <LogOut className="h-4 w-4" />
           </Button>
         </nav>
       </div>

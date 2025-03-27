@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Briefcase, User } from "lucide-react";
+import { CalendarIcon, Briefcase, User, BellRing } from "lucide-react";
 import { CalendarEntry, NewCalendarEntry } from "@/services/calendar/calendarService";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -40,6 +40,8 @@ export function CalendarEntryForm({
     status: 'pending',
     is_recurring: false,
     recurrence_pattern: undefined,
+    has_reminder: false,
+    reminder_days_before: 1,
   });
 
   const [date, setDate] = useState<Date>(initialDate);
@@ -54,6 +56,8 @@ export function CalendarEntryForm({
         status: entry.status || 'pending',
         is_recurring: entry.is_recurring,
         recurrence_pattern: entry.recurrence_pattern,
+        has_reminder: entry.has_reminder || false,
+        reminder_days_before: entry.reminder_days_before || 1,
       });
       setDate(new Date(entry.date));
     } else {
@@ -65,6 +69,8 @@ export function CalendarEntryForm({
         status: 'pending',
         is_recurring: false,
         recurrence_pattern: undefined,
+        has_reminder: false,
+        reminder_days_before: 1,
       });
       setDate(initialDate);
     }
@@ -104,6 +110,21 @@ export function CalendarEntryForm({
     setFormData((prev) => ({ 
       ...prev, 
       recurrence_pattern: value
+    }));
+  };
+
+  const handleReminderChange = (checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      has_reminder: checked,
+      reminder_days_before: checked ? (prev.reminder_days_before || 1) : undefined
+    }));
+  };
+
+  const handleReminderDaysChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      reminder_days_before: parseInt(value, 10)
     }));
   };
 
@@ -217,6 +238,41 @@ export function CalendarEntryForm({
                   <SelectItem value="weekly">Weekly</SelectItem>
                   <SelectItem value="monthly">Monthly</SelectItem>
                   <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="has_reminder" 
+              checked={formData.has_reminder}
+              onCheckedChange={handleReminderChange}
+            />
+            <Label htmlFor="has_reminder" className="flex items-center">
+              <BellRing className="h-4 w-4 mr-1 text-amber-500" />
+              Set Reminder
+            </Label>
+          </div>
+
+          {formData.has_reminder && (
+            <div className="space-y-2">
+              <Label htmlFor="reminder_days_before">Remind Me</Label>
+              <Select
+                value={formData.reminder_days_before?.toString() || '1'}
+                onValueChange={handleReminderDaysChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select days before" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">On the day</SelectItem>
+                  <SelectItem value="1">1 day before</SelectItem>
+                  <SelectItem value="2">2 days before</SelectItem>
+                  <SelectItem value="3">3 days before</SelectItem>
+                  <SelectItem value="7">1 week before</SelectItem>
+                  <SelectItem value="14">2 weeks before</SelectItem>
+                  <SelectItem value="30">1 month before</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,12 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
-import { CalendarEntry as CalendarEntryType, NewCalendarEntry, addCalendarEntry } from "@/services/calendar/calendarService";
+import { CalendarEntry as CalendarEntryType, NewCalendarEntry, addCalendarEntry, fetchUpcomingReminders, checkDueReminders } from "@/services/calendar/calendarService";
 import { QuickCalendarInput } from "./QuickCalendarInput";
 import { CalendarDayRow } from "./CalendarDayRow";
 import { CalendarEntryForm } from "./CalendarEntryForm";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addDays, subDays, startOfDay, format, isToday, subMonths, isBefore } from "date-fns";
+import { ReminderSidebar } from "@/components/calendar/ReminderSidebar";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { addDays, subDays, startOfDay, format, isToday, subMonths, isBefore, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, ChevronUp, ChevronDown } from "lucide-react";
+
+/**
+ * Convert a Date to YYYY-MM-DD format in local timezone
+ */
+const formatDateToLocalDate = (date: Date): string => {
+  return format(date, 'yyyy-MM-dd');
+};
 
 interface VerticalCalendarProps {
   entries: CalendarEntryType[];
@@ -26,28 +34,33 @@ export function VerticalCalendar({
   const queryClient = useQueryClient();
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CalendarEntryType | undefined>(undefined);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [selectedType, setSelectedType] = useState<'work' | 'personal'>('personal');
   const calendarRef = useRef<HTMLDivElement>(null);
   const todayRowRef = useRef<HTMLDivElement>(null);
   const [showEarlierEntries, setShowEarlierEntries] = useState(false);
   const [initialViewDays, setInitialViewDays] = useState(60); // Show 60 days initially
 
+  // Fetch reminders
+  const { data: reminders = [] } = useQuery({
+    queryKey: ["reminders", userId],
+    queryFn: () => fetchUpcomingReminders(userId),
+    enabled: !!userId
+  });
+
   // Generate a range of dates
   const today = startOfDay(new Date());
-  const dateStart = startDate || today;
-  const dateEnd = endDate || addDays(today, daysToShow);
+  const dateStart = startDate ? startOfDay(startDate) : today;
+  const dateEnd = endDate ? startOfDay(endDate) : addDays(today, daysToShow);
   
   // Calculate total days to show if startDate and endDate are provided
   const totalDaysToShow = startDate && endDate 
-    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) 
+    ? Math.ceil((dateEnd.getTime() - dateStart.getTime()) / (1000 * 60 * 60 * 24)) 
     : daysToShow;
   
   // Generate an array of dates
   const allDates = Array.from({ length: totalDaysToShow }, (_, i) => {
-    const date = new Date(dateStart);
-    date.setDate(date.getDate() + i);
-    return date;
+    return addDays(dateStart, i);
   });
 
   // Filter dates based on showEarlierEntries state
@@ -62,11 +75,34 @@ export function VerticalCalendar({
     }
   }, [entries, showEarlierEntries]);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Check for due reminders on mount and every 5 minutes
+  useEffect(() => {
+    if (!userId) return;
+
+    // Check immediately on mount
+    checkDueReminders(userId);
+
+    // Then check every 5 minutes
+    const interval = setInterval(() => {
+      checkDueReminders(userId);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [userId]);
+
   // Add calendar entry mutation
   const { mutate: addEntryMutation } = useMutation({
     mutationFn: (entry: NewCalendarEntry) => addCalendarEntry(userId, entry),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
       setEntryFormOpen(false);
       setEditingEntry(undefined);
     }
@@ -74,7 +110,7 @@ export function VerticalCalendar({
 
   // Group entries by date
   const entriesByDate = dates.map(date => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateToLocalDate(date);
     const dayEntries = entries.filter(entry => entry.date === dateStr);
     
     return {
@@ -85,7 +121,7 @@ export function VerticalCalendar({
   });
 
   const handleAddEntry = (date: Date, entryType: 'work' | 'personal') => {
-    setSelectedDate(date);
+    setSelectedDate(startOfDay(date));
     setSelectedType(entryType);
     setEditingEntry(undefined);
     setEntryFormOpen(true);
@@ -93,6 +129,8 @@ export function VerticalCalendar({
 
   const handleEditEntry = (entry: CalendarEntryType) => {
     setEditingEntry(entry);
+    // When editing, ensure the date is properly parsed from the string
+    setSelectedDate(startOfDay(parseISO(entry.date)));
     setEntryFormOpen(true);
   };
 
@@ -115,68 +153,76 @@ export function VerticalCalendar({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Quick Add with AI */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold">Quick Add Calendar Entry</h2>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={toggleEarlierEntries}
-              className="flex items-center gap-1"
-            >
-              {showEarlierEntries ? (
-                <>
-                  <ChevronUp className="h-4 w-4" />
-                  <span>Hide Earlier Entries</span>
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-4 w-4" />
-                  <span>Show Earlier Entries</span>
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={scrollToToday}
-              className="flex items-center gap-1"
-            >
-              <CalendarIcon className="h-4 w-4" />
-              <span>Today</span>
-            </Button>
+    <div className="flex h-full gap-6">
+      {/* Main calendar section - make it slightly narrower */}
+      <div className="flex flex-col h-full flex-[2]">
+        {/* Quick Add with AI */}
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-lg font-semibold">Quick Add Calendar Entry</h2>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={toggleEarlierEntries}
+                className="flex items-center gap-1"
+              >
+                {showEarlierEntries ? (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    <span>Hide Earlier Entries</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    <span>Show Earlier Entries</span>
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={scrollToToday}
+                className="flex items-center gap-1"
+              >
+                <CalendarIcon className="h-4 w-4" />
+                <span>Today</span>
+              </Button>
+            </div>
           </div>
+          <QuickCalendarInput onEntryCreated={handleQuickEntryCreated} />
         </div>
-        <QuickCalendarInput onEntryCreated={handleQuickEntryCreated} />
+        
+        {/* Calendar header */}
+        <div className="grid grid-cols-[100px_1fr_1fr] border-b border-t font-medium text-sm bg-muted/50 sticky top-0 z-10">
+          <div className="p-3 border-r text-center">Date</div>
+          <div className="p-3 border-r text-center text-blue-600">Work</div>
+          <div className="p-3 text-center text-purple-600">Personal</div>
+        </div>
+        
+        {/* Calendar body - scrollable */}
+        <div className="flex-grow overflow-y-auto" ref={calendarRef}>
+          {entriesByDate.map(({ date, workEntries, personalEntries }) => (
+            <div 
+              key={date.toISOString()}
+              ref={isToday(date) ? todayRowRef : null}
+              className={isToday(date) ? "border-l-4 border-primary" : ""}
+            >
+              <CalendarDayRow
+                date={date}
+                workEntries={workEntries}
+                personalEntries={personalEntries}
+                onAddEntry={handleAddEntry}
+                onEditEntry={handleEditEntry}
+              />
+            </div>
+          ))}
+        </div>
       </div>
-      
-      {/* Calendar header */}
-      <div className="grid grid-cols-[100px_1fr_1fr] border-b border-t font-medium text-sm bg-muted/50 sticky top-0 z-10">
-        <div className="p-3 border-r text-center">Date</div>
-        <div className="p-3 border-r text-center text-blue-600">Work</div>
-        <div className="p-3 text-center text-purple-600">Personal</div>
-      </div>
-      
-      {/* Calendar body - scrollable */}
-      <div className="flex-grow overflow-y-auto" ref={calendarRef}>
-        {entriesByDate.map(({ date, workEntries, personalEntries }) => (
-          <div 
-            key={date.toISOString()}
-            ref={isToday(date) ? todayRowRef : null}
-            className={isToday(date) ? "border-l-4 border-primary" : ""}
-          >
-            <CalendarDayRow
-              date={date}
-              workEntries={workEntries}
-              personalEntries={personalEntries}
-              onAddEntry={handleAddEntry}
-              onEditEntry={handleEditEntry}
-            />
-          </div>
-        ))}
+
+      {/* Reminder sidebar - make it wider */}
+      <div className="w-[400px] flex-shrink-0">
+        <ReminderSidebar reminders={reminders} />
       </div>
       
       {/* Entry form dialog */}

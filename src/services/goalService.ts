@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Goal, GoalCategory } from "@/types/goals";
 
@@ -100,12 +99,12 @@ export const isQuarterEnd = () => {
   const day = today.getDate();
   const month = today.getMonth() + 1;
   
-  // Fix the quarter end detection logic
+  // Only show reminder in the last week of the quarter
   return (
-    (day >= 25 && month === 3) || // End of Q1
-    (day >= 25 && month === 6) || // End of Q2
-    (day >= 25 && month === 9) || // End of Q3
-    (day >= 25 && month === 12)   // End of Q4
+    (day >= 28 && month === 3) || // End of Q1
+    (day >= 28 && month === 6) || // End of Q2
+    (day >= 28 && month === 9) || // End of Q3
+    (day >= 28 && month === 12)   // End of Q4
   );
 };
 
@@ -125,4 +124,34 @@ export const getNextQuarter = (): { quarter: number; year: number } => {
   } else {
     return { quarter: quarter + 1, year };
   }
+};
+
+export const getQuarterEndReminderDismissed = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("user_preferences")
+    .select("quarter_end_reminder_dismissed")
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows returned
+      return false;
+    }
+    throw error;
+  }
+
+  return data.quarter_end_reminder_dismissed || false;
+};
+
+export const dismissQuarterEndReminder = async (userId: string) => {
+  const { error } = await supabase
+    .from("user_preferences")
+    .upsert({
+      user_id: userId,
+      quarter_end_reminder_dismissed: true,
+      updated_at: new Date().toISOString()
+    });
+
+  if (error) throw error;
+  return true;
 };

@@ -50,14 +50,16 @@ export function CalendarEntry({ entry, onEdit }: CalendarEntryProps) {
   const isWorkType = entry.entry_type === 'work';
 
   return (
-    <Card className={cn(
-      "mb-2 overflow-hidden border-l-4",
-      isWorkType 
-        ? "border-l-blue-500"
-        : "border-l-purple-500",
+    <div className={cn(
+      "group relative mb-2 rounded-lg border bg-card overflow-hidden",
+      "hover:border-accent-foreground/20 transition-colors",
       isCompleted ? "bg-muted/40" : "bg-card"
     )}>
-      <CardContent className="p-3 flex items-start">
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1",
+        isWorkType ? "bg-blue-500" : "bg-purple-500"
+      )} />
+      <div className="p-3 pl-4 flex items-start">
         {isWorkType && (
           <div className="flex-shrink-0 mr-3 mt-1">
             <Checkbox 
@@ -92,7 +94,7 @@ export function CalendarEntry({ entry, onEdit }: CalendarEntryProps) {
             </p>
           )}
         </div>
-        <div className="flex-shrink-0 ml-2 flex space-x-1">
+        <div className="flex-shrink-0 ml-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -110,7 +112,7 @@ export function CalendarEntry({ entry, onEdit }: CalendarEntryProps) {
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 } 

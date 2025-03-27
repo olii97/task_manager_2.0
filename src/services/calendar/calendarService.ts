@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { parseISO, differenceInDays, formatISO, startOfDay } from "date-fns";
 
 export interface CalendarEntry {
   id: string;
@@ -11,6 +12,8 @@ export interface CalendarEntry {
   status?: 'pending' | 'completed' | 'cancelled';
   is_recurring: boolean;
   recurrence_pattern?: string;
+  has_reminder: boolean;
+  reminder_days_before?: number;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +50,45 @@ export const fetchCalendarEntries = async (
 };
 
 /**
+ * Fetch upcoming reminders for a user
+ */
+export const fetchUpcomingReminders = async (
+  userId: string
+): Promise<CalendarEntry[]> => {
+  try {
+    const today = startOfDay(new Date());
+    const todayFormatted = formatISO(today, { representation: 'date' });
+    
+    const { data, error } = await supabase
+      .from('calendar_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('has_reminder', true)
+      .gte('date', todayFormatted)
+      .order('date', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching reminders:', error);
+      throw error;
+    }
+
+    return data as CalendarEntry[];
+  } catch (error) {
+    console.error('Error in fetchUpcomingReminders:', error);
+    throw error;
+  }
+};
+
+/**
+ * Calculate days remaining until a calendar entry
+ */
+export const getDaysRemaining = (entry: CalendarEntry): number => {
+  const entryDate = parseISO(entry.date);
+  const today = startOfDay(new Date());
+  return differenceInDays(entryDate, today);
+};
+
+/**
  * Add a new calendar entry
  */
 export const addCalendarEntry = async (
@@ -59,7 +101,8 @@ export const addCalendarEntry = async (
       .insert({
         ...entry,
         user_id: userId,
-        status: entry.status || 'pending'
+        status: entry.status || 'pending',
+        has_reminder: entry.has_reminder || false
       })
       .select('*')
       .single();
@@ -140,5 +183,55 @@ export const deleteCalendarEntry = async (entryId: string): Promise<void> => {
   } catch (error) {
     console.error('Error in deleteCalendarEntry:', error);
     throw error;
+  }
+};
+
+/**
+ * Check for due reminders and show notifications
+ */
+export const checkDueReminders = async (userId: string): Promise<void> => {
+  try {
+    const today = startOfDay(new Date());
+    const todayFormatted = formatISO(today, { representation: 'date' });
+    
+    // Fetch all upcoming entries with reminders
+    const { data: entries, error } = await supabase
+      .from('calendar_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('has_reminder', true)
+      .gte('date', todayFormatted);
+
+    if (error) {
+      console.error('Error fetching reminders:', error);
+      return;
+    }
+
+    // Check each entry
+    entries.forEach((entry: CalendarEntry) => {
+      const eventDate = parseISO(entry.date);
+      const daysUntilEvent = differenceInDays(eventDate, today);
+      
+      // If the days until event matches the reminder setting, show notification
+      if (daysUntilEvent === entry.reminder_days_before) {
+        // Check if we have notification permission
+        if (Notification.permission === "granted") {
+          // Show notification
+          toast({
+            title: "Calendar Reminder",
+            description: `${entry.title} is coming up in ${daysUntilEvent} days`,
+            duration: 10000, // Show for 10 seconds
+          });
+          
+          // Also show system notification if supported
+          new Notification("Calendar Reminder", {
+            body: `${entry.title} is coming up in ${daysUntilEvent} days`,
+            icon: "/calendar-icon.png" // Make sure to add an icon
+          });
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error checking reminders:', error);
   }
 }; 
