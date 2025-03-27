@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { analyzeMeal, type OpenAIModel, type NutritionItem } from "@/services/nutritionService";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Save, Trash2, Eye, Edit, Check, Calendar } from "lucide-react";
-import { formatDistance } from "date-fns";
+import { formatDistance, format } from "date-fns";
 import { 
   saveMealEntry, 
   fetchMealEntries, 
@@ -14,12 +14,17 @@ import {
   fetchMealEntryWithItems,
   mealEntryToNutritionResult,
   fetchDailyTotals,
+  fetchMealsByDate,
+  fetchDailyTotalsByDate,
   type MealEntry,
   type DailyTotals 
 } from "@/services/mealEntryService";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const Nutrition = () => {
   const { session } = useAuth();
@@ -32,6 +37,7 @@ const Nutrition = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [nutritionResults, setNutritionResults] = useState<any>(null);
   const [mealEntries, setMealEntries] = useState<MealEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [dailyTotals, setDailyTotals] = useState<DailyTotals>({
     calories: 0,
     protein: 0,
@@ -56,13 +62,13 @@ const Nutrition = () => {
     fiber: 0
   });
 
-  // Load meal entries when component mounts
+  // Load meal entries when component mounts or date changes
   useEffect(() => {
     if (userId) {
       loadMealEntries();
       loadDailyTotals();
     }
-  }, [userId]);
+  }, [userId, selectedDate]);
 
   // Calculate totals when items change
   useEffect(() => {
@@ -88,7 +94,7 @@ const Nutrition = () => {
     
     setIsLoading(true);
     try {
-      const entries = await fetchMealEntries(userId);
+      const entries = await fetchMealsByDate(userId, selectedDate.toISOString());
       setMealEntries(entries);
     } catch (error) {
       toast({
@@ -105,11 +111,10 @@ const Nutrition = () => {
     if (!userId) return;
     
     try {
-      const totals = await fetchDailyTotals(userId);
+      const totals = await fetchDailyTotalsByDate(userId, selectedDate.toISOString());
       setDailyTotals(totals);
     } catch (error) {
       console.error("Failed to load daily totals:", error);
-      // Don't show a toast as this is a background operation
     }
   };
 
@@ -160,7 +165,7 @@ const Nutrition = () => {
 
     setIsSaving(true);
     try {
-      await saveMealEntry(userId, mealDescription, dataToSave);
+      await saveMealEntry(userId, mealDescription, dataToSave, selectedDate.toISOString());
       toast({
         title: "Success",
         description: "Meal saved successfully",
@@ -259,7 +264,31 @@ const Nutrition = () => {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Meal Analysis</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Meal Analysis</CardTitle>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !selectedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -492,7 +521,7 @@ const Nutrition = () => {
               <div className="flex justify-between items-center">
                 <CardTitle className="text-md flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  Today's Nutrition Totals
+                  {format(selectedDate, "PPP")} Nutrition Totals
                 </CardTitle>
                 <span className="text-sm text-muted-foreground">
                   {dailyTotals.mealCount} {dailyTotals.mealCount === 1 ? 'meal' : 'meals'} logged
