@@ -3,7 +3,7 @@ import { CalendarEntry as CalendarEntryType, NewCalendarEntry, addCalendarEntry,
 import { QuickCalendarInput } from "./QuickCalendarInput";
 import { CalendarDayRow } from "./CalendarDayRow";
 import { CalendarEntryForm } from "./CalendarEntryForm";
-import { ReminderSidebar } from "./ReminderSidebar";
+import { ReminderSidebar } from "@/components/calendar/ReminderSidebar";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { addDays, subDays, startOfDay, format, isToday, subMonths, isBefore, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -153,9 +153,9 @@ export function VerticalCalendar({
   };
 
   return (
-    <div className="flex h-full gap-4">
-      {/* Main calendar section */}
-      <div className="flex flex-col h-full flex-grow">
+    <div className="flex h-full gap-6">
+      {/* Main calendar section - make it slightly narrower */}
+      <div className="flex flex-col h-full flex-[2]">
         {/* Quick Add with AI */}
         <div className="mb-4">
           <div className="flex justify-between items-center mb-2">
@@ -219,9 +219,9 @@ export function VerticalCalendar({
           ))}
         </div>
       </div>
-      
-      {/* Reminder sidebar */}
-      <div className="w-[300px]">
+
+      {/* Reminder sidebar - make it wider */}
+      <div className="w-[400px] flex-shrink-0">
         <ReminderSidebar reminders={reminders} />
       </div>
       
