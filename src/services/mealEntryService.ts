@@ -36,7 +36,8 @@ export interface DailyTotals {
 export const saveMealEntry = async (
   userId: string,
   mealDescription: string,
-  nutritionResult: NutritionResult
+  nutritionResult: NutritionResult,
+  mealDate?: string
 ): Promise<MealEntry> => {
   console.log("Saving meal entry with nutrition result:", JSON.stringify(nutritionResult, null, 2));
   
@@ -46,7 +47,7 @@ export const saveMealEntry = async (
     .insert({
       user_id: userId,
       meal_description: mealDescription,
-      meal_date: new Date().toISOString(),
+      meal_date: mealDate || new Date().toISOString(),
       total_calories: nutritionResult.totals.calories,
       total_protein: nutritionResult.totals.protein,
       total_carbs: nutritionResult.totals.carbs,
@@ -199,4 +200,90 @@ export const fetchDailyTotals = async (userId: string): Promise<DailyTotals> => 
   );
 
   return totals;
+};
+
+// New function to fetch meals for a specific date
+export const fetchMealsByDate = async (userId: string, date: string): Promise<MealEntry[]> => {
+  // Convert date to start and end of day
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from("meal_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("meal_date", startOfDay.toISOString())
+    .lte("meal_date", endOfDay.toISOString())
+    .order("meal_date", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching meals by date:", error);
+    throw new Error("Failed to fetch meals by date");
+  }
+
+  return data || [];
+};
+
+// New function to fetch daily totals for a specific date
+export const fetchDailyTotalsByDate = async (userId: string, date: string): Promise<DailyTotals> => {
+  // Convert date to start and end of day
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  const { data, error } = await supabase
+    .from("meal_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("meal_date", startOfDay.toISOString())
+    .lte("meal_date", endOfDay.toISOString())
+    .order("meal_date", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching daily totals by date:", error);
+    throw new Error("Failed to fetch daily totals by date");
+  }
+
+  // Calculate totals from all meals for the day
+  const totals = (data || []).reduce(
+    (acc, meal) => {
+      return {
+        calories: acc.calories + Number(meal.total_calories || 0),
+        protein: acc.protein + Number(meal.total_protein || 0),
+        carbs: acc.carbs + Number(meal.total_carbs || 0),
+        fat: acc.fat + Number(meal.total_fat || 0),
+        fiber: acc.fiber + Number(meal.total_fiber || 0),
+        mealCount: acc.mealCount + 1
+      };
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, mealCount: 0 }
+  );
+
+  return totals;
+};
+
+// New function to fetch last 7 days of meal data
+export const fetchLastSevenDays = async (userId: string): Promise<{ date: string; totals: DailyTotals }[]> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Create array of last 7 days
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    return date.toISOString().split('T')[0];
+  }).reverse();
+
+  // Fetch data for each day
+  const results = await Promise.all(
+    dates.map(async (date) => {
+      const totals = await fetchDailyTotalsByDate(userId, date);
+      return { date, totals };
+    })
+  );
+
+  return results;
 }; 

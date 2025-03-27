@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { analyzeMeal, type OpenAIModel, type NutritionItem } from "@/services/nutritionService";
 import { toast } from "@/components/ui/use-toast";
 import { Loader2, Save, Trash2, Eye, Edit, Check, Calendar } from "lucide-react";
-import { formatDistance } from "date-fns";
+import { formatDistance, format, isToday, isYesterday } from "date-fns";
 import { 
   saveMealEntry, 
   fetchMealEntries, 
@@ -14,12 +14,90 @@ import {
   fetchMealEntryWithItems,
   mealEntryToNutritionResult,
   fetchDailyTotals,
+  fetchMealsByDate,
+  fetchDailyTotalsByDate,
+  fetchLastSevenDays,
   type MealEntry,
   type DailyTotals 
 } from "@/services/mealEntryService";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+const calculateMacroPercentages = (totals: DailyTotals) => {
+  const proteinCals = totals.protein * 4;
+  const carbsCals = totals.carbs * 4;
+  const fatCals = totals.fat * 9;
+  const totalCals = proteinCals + carbsCals + fatCals;
+  
+  return {
+    protein: totalCals > 0 ? (proteinCals / totalCals) * 100 : 0,
+    carbs: totalCals > 0 ? (carbsCals / totalCals) * 100 : 0,
+    fat: totalCals > 0 ? (fatCals / totalCals) * 100 : 0
+  };
+};
+
+const MacroBar = ({ totals }: { totals: DailyTotals }) => {
+  const percentages = calculateMacroPercentages(totals);
+  
+  return (
+    <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
+      <div 
+        className="absolute h-full bg-green-400" 
+        style={{ width: `${percentages.protein}%` }}
+      ></div>
+      <div 
+        className="absolute h-full bg-blue-400" 
+        style={{ width: `${percentages.carbs}%`, left: `${percentages.protein}%` }}
+      ></div>
+      <div 
+        className="absolute h-full bg-yellow-400" 
+        style={{ width: `${percentages.fat}%`, left: `${percentages.protein + percentages.carbs}%` }}
+      ></div>
+    </div>
+  );
+};
+
+const MacroTooltip = ({ totals }: { totals: DailyTotals }) => {
+  const percentages = calculateMacroPercentages(totals);
+  
+  return (
+    <div className="space-y-2">
+      <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
+        <div 
+          className="absolute h-full bg-green-400" 
+          style={{ width: `${percentages.protein}%` }}
+        ></div>
+        <div 
+          className="absolute h-full bg-blue-400" 
+          style={{ width: `${percentages.carbs}%`, left: `${percentages.protein}%` }}
+        ></div>
+        <div 
+          className="absolute h-full bg-yellow-400" 
+          style={{ width: `${percentages.fat}%`, left: `${percentages.protein + percentages.carbs}%` }}
+        ></div>
+      </div>
+      <div className="flex justify-between text-xs">
+        <div className="flex items-center">
+          <div className="w-2 h-2 bg-green-400 rounded-sm mr-1"></div>
+          <span>Protein: {percentages.protein.toFixed(1)}%</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-2 h-2 bg-blue-400 rounded-sm mr-1"></div>
+          <span>Carbs: {percentages.carbs.toFixed(1)}%</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-2 h-2 bg-yellow-400 rounded-sm mr-1"></div>
+          <span>Fat: {percentages.fat.toFixed(1)}%</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Nutrition = () => {
   const { session } = useAuth();
@@ -32,6 +110,7 @@ const Nutrition = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [nutritionResults, setNutritionResults] = useState<any>(null);
   const [mealEntries, setMealEntries] = useState<MealEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [dailyTotals, setDailyTotals] = useState<DailyTotals>({
     calories: 0,
     protein: 0,
@@ -55,14 +134,16 @@ const Nutrition = () => {
     fat: 0,
     fiber: 0
   });
+  const [weeklyData, setWeeklyData] = useState<{ date: string; totals: DailyTotals }[]>([]);
 
-  // Load meal entries when component mounts
+  // Load meal entries when component mounts or date changes
   useEffect(() => {
     if (userId) {
       loadMealEntries();
       loadDailyTotals();
+      loadWeeklyData();
     }
-  }, [userId]);
+  }, [userId, selectedDate]);
 
   // Calculate totals when items change
   useEffect(() => {
@@ -88,7 +169,7 @@ const Nutrition = () => {
     
     setIsLoading(true);
     try {
-      const entries = await fetchMealEntries(userId);
+      const entries = await fetchMealsByDate(userId, selectedDate.toISOString());
       setMealEntries(entries);
     } catch (error) {
       toast({
@@ -105,11 +186,20 @@ const Nutrition = () => {
     if (!userId) return;
     
     try {
-      const totals = await fetchDailyTotals(userId);
+      const totals = await fetchDailyTotalsByDate(userId, selectedDate.toISOString());
       setDailyTotals(totals);
     } catch (error) {
       console.error("Failed to load daily totals:", error);
-      // Don't show a toast as this is a background operation
+    }
+  };
+
+  const loadWeeklyData = async () => {
+    if (!userId) return;
+    try {
+      const data = await fetchLastSevenDays(userId);
+      setWeeklyData(data);
+    } catch (error) {
+      console.error("Failed to load weekly data:", error);
     }
   };
 
@@ -160,7 +250,7 @@ const Nutrition = () => {
 
     setIsSaving(true);
     try {
-      await saveMealEntry(userId, mealDescription, dataToSave);
+      await saveMealEntry(userId, mealDescription, dataToSave, selectedDate.toISOString());
       toast({
         title: "Success",
         description: "Meal saved successfully",
@@ -255,11 +345,138 @@ const Nutrition = () => {
   return (
     <div className="container py-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Weekly Overview Card */}
+        <div className="md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Weekly Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="px-4 py-2 text-left">Date</th>
+                      <th className="px-4 py-2 text-right">Calories</th>
+                      <th className="px-4 py-2 text-right">Protein</th>
+                      <th className="px-4 py-2 text-right">Carbs</th>
+                      <th className="px-4 py-2 text-right">Fat</th>
+                      <th className="px-4 py-2 text-right">Fiber</th>
+                      <th className="px-4 py-2 text-right">Meals</th>
+                      <th className="px-4 py-2 text-center">Macros</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeklyData.map((day) => {
+                      const date = new Date(day.date);
+                      const isCurrentDay = isToday(date);
+                      const isPreviousDay = isYesterday(date);
+                      const dateDisplay = isCurrentDay 
+                        ? "Today" 
+                        : isPreviousDay 
+                          ? "Yesterday" 
+                          : format(date, "EEE, MMM d");
+
+                      return (
+                        <TooltipProvider key={day.date}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <tr 
+                                className={cn(
+                                  "border-b hover:bg-muted/50 cursor-pointer",
+                                  isCurrentDay && "bg-muted"
+                                )}
+                                onClick={() => setSelectedDate(date)}
+                              >
+                                <td className="px-4 py-2">{dateDisplay}</td>
+                                <td className="px-4 py-2 text-right">{Math.round(day.totals.calories)}</td>
+                                <td className="px-4 py-2 text-right">{day.totals.protein.toFixed(1)}g</td>
+                                <td className="px-4 py-2 text-right">{day.totals.carbs.toFixed(1)}g</td>
+                                <td className="px-4 py-2 text-right">{day.totals.fat.toFixed(1)}g</td>
+                                <td className="px-4 py-2 text-right">{day.totals.fiber.toFixed(1)}g</td>
+                                <td className="px-4 py-2 text-right">{day.totals.mealCount}</td>
+                                <td className="px-4 py-2">
+                                  <div className="w-32 mx-auto">
+                                    <MacroBar totals={day.totals} />
+                                  </div>
+                                </td>
+                              </tr>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="w-64">
+                              <div className="space-y-2">
+                                <p className="font-medium">{format(date, "MMMM d, yyyy")}</p>
+                                <div className="space-y-2">
+                                  <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className="absolute h-full bg-green-400" 
+                                      style={{ width: `${calculateMacroPercentages(day.totals).protein}%` }}
+                                    ></div>
+                                    <div 
+                                      className="absolute h-full bg-blue-400" 
+                                      style={{ width: `${calculateMacroPercentages(day.totals).carbs}%`, left: `${calculateMacroPercentages(day.totals).protein}%` }}
+                                    ></div>
+                                    <div 
+                                      className="absolute h-full bg-yellow-400" 
+                                      style={{ width: `${calculateMacroPercentages(day.totals).fat}%`, left: `${calculateMacroPercentages(day.totals).protein + calculateMacroPercentages(day.totals).carbs}%` }}
+                                    ></div>
+                                  </div>
+                                  <div className="flex justify-between text-xs">
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-green-400 rounded-sm mr-1"></div>
+                                      <span>Protein: {calculateMacroPercentages(day.totals).protein.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-blue-400 rounded-sm mr-1"></div>
+                                      <span>Carbs: {calculateMacroPercentages(day.totals).carbs.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-yellow-400 rounded-sm mr-1"></div>
+                                      <span>Fat: {calculateMacroPercentages(day.totals).fat.toFixed(1)}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Meal Analysis Section */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Meal Analysis</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle>Meal Analysis</CardTitle>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "justify-start text-left font-normal",
+                        !selectedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -492,7 +709,7 @@ const Nutrition = () => {
               <div className="flex justify-between items-center">
                 <CardTitle className="text-md flex items-center">
                   <Calendar className="h-4 w-4 mr-2" />
-                  Today's Nutrition Totals
+                  {format(selectedDate, "PPP")} Nutrition Totals
                 </CardTitle>
                 <span className="text-sm text-muted-foreground">
                   {dailyTotals.mealCount} {dailyTotals.mealCount === 1 ? 'meal' : 'meals'} logged
