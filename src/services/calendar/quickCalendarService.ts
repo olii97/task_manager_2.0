@@ -57,9 +57,13 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
             - entry_type: "work" for professional activities or "personal" for personal events
             - is_recurring: boolean indicating if it's a repeating event
             - recurrence_pattern: "daily", "weekly", "monthly", or "yearly" (if is_recurring is true)
+            - has_reminder: boolean indicating if a reminder should be set
+            - reminder_days_before: Number of days before the event to remind the user (if has_reminder is true)
             
             When user mentions days like "tomorrow", "next Monday", or "in 2 weeks", calculate the correct date based on today.
             When only time is mentioned (e.g., "at 3pm"), use today's date.
+            If the user mentions wanting a reminder or being reminded, set has_reminder to true.
+            If a specific reminder time is mentioned (like "remind me 3 days before"), set reminder_days_before accordingly.
             
             Examples (assuming today is ${todayReadable}):
             Input: "Doctor appointment tomorrow at 2pm"
@@ -68,7 +72,8 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
               "description": "At 2pm",
               "date": "${formatDateToLocalDate(tomorrow)}",
               "entry_type": "personal",
-              "is_recurring": false
+              "is_recurring": false,
+              "has_reminder": false
             }
             
             Input: "Weekly team meeting every Monday at 10am"
@@ -78,16 +83,30 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
               "date": "${formatDateToLocalDate(nextMondayDate)}",
               "entry_type": "work",
               "is_recurring": true,
-              "recurrence_pattern": "weekly"
+              "recurrence_pattern": "weekly",
+              "has_reminder": false
             }
             
-            Input: "Buy groceries this evening"
+            Input: "Buy groceries this evening and remind me"
             Output: {
               "title": "Buy groceries",
               "description": "This evening",
               "date": "${todayFormatted}",
               "entry_type": "personal",
-              "is_recurring": false
+              "is_recurring": false,
+              "has_reminder": true,
+              "reminder_days_before": 0
+            }
+            
+            Input: "Presentation due in 2 weeks, remind me 3 days before"
+            Output: {
+              "title": "Presentation due",
+              "description": "",
+              "date": "${formatDateToLocalDate(addDays(today, 14))}",
+              "entry_type": "work",
+              "is_recurring": false,
+              "has_reminder": true,
+              "reminder_days_before": 3
             }
             
             Now analyze the following input:`
@@ -142,6 +161,10 @@ export const analyzeCalendarText = async (calendarText: string): Promise<NewCale
       status: 'pending',
       is_recurring: !!parsedResponse.is_recurring,
       recurrence_pattern: parsedResponse.is_recurring ? (parsedResponse.recurrence_pattern || 'weekly') : undefined,
+      has_reminder: !!parsedResponse.has_reminder,
+      reminder_days_before: parsedResponse.has_reminder 
+                          ? (parsedResponse.reminder_days_before || 1) 
+                          : undefined,
     };
   } catch (error) {
     console.error("Error analyzing calendar text:", error);
