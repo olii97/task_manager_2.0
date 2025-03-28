@@ -1,10 +1,10 @@
 import React from 'react';
-import { MorningRitualFlow } from '@/components/ritual/MorningRitualFlow';
+import { MeditationRitual } from '@/components/ritual/MeditationRitual';
 
 const MorningRitual = () => {
   return (
     <div className="h-screen w-screen">
-      <MorningRitualFlow />
+      <MeditationRitual />
     </div>
   );
 };

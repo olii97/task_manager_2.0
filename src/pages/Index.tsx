@@ -11,6 +11,7 @@ import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
 import { StravaActivitiesCard } from "@/components/home/StravaActivitiesCard";
 import { WrapUpDayButton } from "@/components/home/WrapUpDayButton";
 import { WeightTrackerCard } from "@/components/home/WeightTrackerCard";
+import { MorningRitualButton } from "@/components/home/MorningRitualButton";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useStravaActivities } from "@/hooks/useStravaActivities";
@@ -104,6 +105,13 @@ const Index = () => {
           />
         )}
       </div>
+      
+      {/* Morning Ritual Button */}
+      {userId && (
+        <div className="mb-6">
+          <MorningRitualButton />
+        </div>
+      )}
       
       {/* Featured Goal and Weekly Intentions row - moved below tasks and journal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
