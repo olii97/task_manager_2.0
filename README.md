@@ -14,30 +14,72 @@ This application is designed as an all-in-one platform for personal development,
 ## Key Features
 
 ### Mindfulness & Reflection
+*Key files: `src/components/ritual/`, `src/pages/MorningRitual.tsx`, `src/pages/Journal.tsx`*
 - 🌅 **Morning Ritual**: Guided process with Monument Valley-inspired sunrise animation
+  - `src/components/ritual/MeditationRitual.tsx` - Core ritual component
+  - `src/components/animations/Sunrise.tsx` - Animated background
 - 🙏 **Gratitude Practice**: Enter items you're grateful for with AI-powered reflections
+  - `src/components/ritual/GratitudeSection.tsx` - Gratitude input and display
 - 🎯 **Intentions Setting**: Set daily intentions with personalized AI encouragement
+  - `src/components/ritual/IntentionsSection.tsx` - Intentions management
+  - `src/pages/Intentions.tsx` - Intentions overview
+  - `src/pages/IntentionsEdit.tsx` - Editing interface
 - 📝 **Journaling**: Capture thoughts and reflections with streak tracking
+  - `src/pages/Journal.tsx` - Journal interface
+  - `src/components/journal/JournalEditor.tsx` - Rich text editor
 - 🔄 **Weekly Reflections**: AI-assisted review of your accomplishments and patterns
+  - `src/components/journal/WeeklyReflection.tsx` - Weekly review UI
 
 ### Productivity
+*Key files: `src/components/tasks/`, `src/components/pomodoro/`, `src/pages/Tasks.tsx`*
 - ✅ **Task Management**: Create, organize, and track tasks with prioritization
+  - `src/pages/Tasks.tsx` - Main task interface
+  - `src/components/tasks/TaskList.tsx` - Task display and organization
+  - `src/services/quickTaskService.ts` - Task analysis and processing
 - ⚡ **Energy-Based Planning**: Organize tasks by energy level required (high/low)
+  - `src/components/tasks/EnergyLevelSelector.tsx` - Energy level UI
+  - `src/components/tasks/TaskFilters.tsx` - Energy-based filtering
 - 🍅 **Pomodoro Timer**: Built-in focus timer with work/break intervals
+  - `src/components/pomodoro/PomodoroTimer.tsx` - Timer interface
+  - `src/components/pomodoro/PomodoroProvider.tsx` - Timer state management
+  - `src/components/pomodoro/TabBarTimer.tsx` - Persistent timer display
 - 🗂️ **Project Organization**: Group tasks by projects with progress tracking
+  - `src/components/projects/ProjectList.tsx` - Project management
+  - `src/components/tasks/ProjectSelector.tsx` - Project assignment
 - 📊 **Weekly Task Analysis**: AI-powered insights on task completion patterns
+  - `src/services/tasks/taskReflectionService.ts` - Task analysis logic
 - 📆 **Calendar Integration**: Schedule events with natural language processing
+  - `src/pages/Calendar.tsx` - Calendar interface
+  - `src/services/calendar/quickCalendarService.ts` - Event processing
 
 ### Health & Fitness
+*Key files: `src/pages/Nutrition.tsx`, `src/pages/Weight.tsx`, `src/components/strava/`*
 - 🏃‍♂️ **Strava Integration**: Connect and display your Strava workout activities
+  - `src/pages/Strava.tsx` - Strava dashboard
+  - `src/components/strava/StravaActivities.tsx` - Activity display
+  - `src/components/strava/StravaConnect.tsx` - Authentication
 - 🥗 **Nutrition Tracking**: Log meals with AI analysis of nutritional content
+  - `src/pages/Nutrition.tsx` - Nutrition interface
+  - `src/services/nutritionService.ts` - Meal analysis
+  - `src/components/nutrition/MacroBar.tsx` - Macro visualization
 - ⚖️ **Weight Monitoring**: Track weight trends over time
+  - `src/pages/Weight.tsx` - Weight tracking interface
+  - `src/components/weight/WeightChart.tsx` - Trend visualization
 - 📈 **Macro Tracking**: Visualize protein, carbs, and fat distribution
+  - `src/components/nutrition/MacroBreakdown.tsx` - Detailed macro analysis
+  - `src/components/nutrition/NutritionGoals.tsx` - Goal setting
 
 ### Goals & Growth
+*Key files: `src/pages/Goals.tsx`, `src/components/goals/`*
 - 🏆 **Goal Setting**: Create and track long-term goals
+  - `src/pages/Goals.tsx` - Goals interface
+  - `src/components/goals/GoalEditor.tsx` - Goal creation/editing
 - 📈 **Progress Tracking**: Monitor advancement toward your objectives
+  - `src/components/goals/GoalProgress.tsx` - Progress visualization
+  - `src/components/goals/MilestoneTracker.tsx` - Milestone tracking
 - 🌱 **Quarterly Planning**: Reminders for quarter-end reflection and planning
+  - `src/components/QuarterEndReminder.tsx` - Planning notifications
+  - `src/components/goals/QuarterlyReview.tsx` - Review interface
 
 ## AI Integration Points
 
