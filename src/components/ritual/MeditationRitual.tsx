@@ -9,8 +9,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowRight, Check } from 'lucide-react';
 
+// Get the client-side API key from environment variables
+const CLIENT_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || 
+                      import.meta.env.VITE_OPENAI_CLIENT_KEY || 
+                      import.meta.env.REACT_APP_OPENAI_CLIENT_KEY;
+
 // Steps for the ritual flow
-type Step = 'greeting' | 'gratitude' | 'intentions' | 'journal';
+type Step = 'greeting' | 'gratitude' | 'gratitude-response' | 'intentions' | 'intentions-response' | 'journal';
 
 // Interface for ritual data
 interface RitualData {
@@ -38,6 +43,12 @@ export const MeditationRitual = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInputs, setShowInputs] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0); // 0 to 100
+  const [aiResponse, setAiResponse] = useState<string>('');
+  const [isLoadingResponse, setIsLoadingResponse] = useState(false);
+  const [responses, setResponses] = useState<{
+    gratitude?: string;
+    intentions?: string;
+  }>({});
 
   // Start sunrise animation on component mount
   useEffect(() => {
@@ -120,11 +131,81 @@ export const MeditationRitual = () => {
     }));
   };
 
-  // Navigate to next step
-  const nextStep = () => {
-    // Validate current step
+  // Function to get AI response for gratitude
+  const getGratitudeResponse = async (items: string[]) => {
+    if (!CLIENT_API_KEY) {
+      throw new Error("API key is missing. Please check your environment variables.");
+    }
+
+    const filteredItems = items.filter(item => item.trim() !== '');
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CLIENT_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a mindful, empathetic guide helping someone with their morning reflection. Respond in a warm, encouraging tone. Keep responses concise (2-3 sentences max)."
+          },
+          {
+            role: "user",
+            content: `I am grateful for: ${filteredItems.join(', ')}. Please reflect on these expressions of gratitude and offer a brief, meaningful insight.`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error from OpenAI API: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content || '';
+  };
+
+  // Function to get AI response for intentions
+  const getIntentionsResponse = async (items: string[]) => {
+    if (!CLIENT_API_KEY) {
+      throw new Error("API key is missing. Please check your environment variables.");
+    }
+
+    const filteredItems = items.filter(item => item.trim() !== '');
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CLIENT_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a mindful, empathetic guide helping someone with their daily intentions. Respond in a warm, encouraging tone. Keep responses concise (2-3 sentences max)."
+          },
+          {
+            role: "user",
+            content: `My intentions for today are: ${filteredItems.join(', ')}. Please offer encouragement and a brief insight about these intentions.`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error from OpenAI API: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content || '';
+  };
+
+  // Modified nextStep function
+  const nextStep = async () => {
     if (currentStep === 'gratitude') {
-      // Check if at least one gratitude item is filled
       const hasGratitude = ritualData.gratitude_items.some(item => item.trim() !== '');
       if (!hasGratitude) {
         toast({
@@ -134,10 +215,29 @@ export const MeditationRitual = () => {
         });
         return;
       }
-      setCurrentStep('intentions');
-      setShowInputs(false);
+      
+      setIsLoadingResponse(true);
+      try {
+        const response = await getGratitudeResponse(ritualData.gratitude_items);
+        setResponses(prev => ({ ...prev, gratitude: response }));
+        setAiResponse(response);
+        setCurrentStep('gratitude-response');
+        setTimeout(() => {
+          setCurrentStep('intentions');
+          setShowInputs(false);
+          setAiResponse('');
+        }, 5000);
+      } catch (error) {
+        console.error('Error getting AI response:', error);
+        toast({
+          title: "Error",
+          description: "Failed to process your gratitude. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingResponse(false);
+      }
     } else if (currentStep === 'intentions') {
-      // Check if at least one intention is filled
       const hasIntention = ritualData.intentions.some(item => item.trim() !== '');
       if (!hasIntention) {
         toast({
@@ -147,8 +247,28 @@ export const MeditationRitual = () => {
         });
         return;
       }
-      setCurrentStep('journal');
-      setShowInputs(false);
+      
+      setIsLoadingResponse(true);
+      try {
+        const response = await getIntentionsResponse(ritualData.intentions);
+        setResponses(prev => ({ ...prev, intentions: response }));
+        setAiResponse(response);
+        setCurrentStep('intentions-response');
+        setTimeout(() => {
+          setCurrentStep('journal');
+          setShowInputs(false);
+          setAiResponse('');
+        }, 5000);
+      } catch (error) {
+        console.error('Error getting AI response:', error);
+        toast({
+          title: "Error",
+          description: "Failed to process your intentions. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingResponse(false);
+      }
     }
   };
 
@@ -220,15 +340,30 @@ export const MeditationRitual = () => {
           title: "What are you grateful for today?",
           description: "Consider the people, experiences, or things that bring joy to your life."
         };
+      case 'gratitude-response':
+        return {
+          title: "Reflecting on Gratitude",
+          description: "Taking a moment to appreciate your blessings."
+        };
       case 'intentions':
         return {
           title: "What are your intentions for today?",
           description: "Set your focus and purpose for the hours ahead."
         };
+      case 'intentions-response':
+        return {
+          title: "Setting Intentions",
+          description: "Preparing to move forward with purpose."
+        };
       case 'journal':
         return {
           title: "Any reflections to start your day?",
           description: "Take a moment to express your thoughts or feelings."
+        };
+      default:
+        return {
+          title: "Morning Ritual",
+          description: "Starting your day with mindfulness and intention."
         };
     }
   };
@@ -467,7 +602,48 @@ export const MeditationRitual = () => {
             transition={{ duration: 0.5 }}
             className="bg-white/10 backdrop-blur-md rounded-2xl shadow-xl p-8"
           >
-            {/* Step title and description */}
+            {/* History section */}
+            {(currentStep === 'intentions' || currentStep === 'intentions-response' || currentStep === 'journal') && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mb-8 border-b border-white/20 pb-6"
+              >
+                <h3 className="text-xl font-semibold text-white mb-3">Your Gratitude</h3>
+                <ul className="text-white/80 space-y-2 mb-4">
+                  {ritualData.gratitude_items
+                    .filter(item => item.trim() !== '')
+                    .map((item, index) => (
+                      <li key={index} className="text-sm">{item}</li>
+                    ))}
+                </ul>
+                {responses.gratitude && (
+                  <p className="text-white/90 text-sm italic mt-2">{responses.gratitude}</p>
+                )}
+              </motion.div>
+            )}
+
+            {(currentStep === 'journal') && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mb-8 border-b border-white/20 pb-6"
+              >
+                <h3 className="text-xl font-semibold text-white mb-3">Your Intentions</h3>
+                <ul className="text-white/80 space-y-2 mb-4">
+                  {ritualData.intentions
+                    .filter(item => item.trim() !== '')
+                    .map((item, index) => (
+                      <li key={index} className="text-sm">{item}</li>
+                    ))}
+                </ul>
+                {responses.intentions && (
+                  <p className="text-white/90 text-sm italic mt-2">{responses.intentions}</p>
+                )}
+              </motion.div>
+            )}
+
+            {/* Current step content */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -480,7 +656,7 @@ export const MeditationRitual = () => {
                 {getStepContent().description}
               </p>
             </motion.div>
-            
+
             {/* Step-specific content */}
             {currentStep === 'greeting' && (
               <motion.div 
@@ -511,7 +687,7 @@ export const MeditationRitual = () => {
                     key={`gratitude-${index}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.2 }}
+                    transition={{ duration: 0.8, delay: index * 0.5 }}
                     className="flex items-center gap-2"
                   >
                     <Input
@@ -527,7 +703,7 @@ export const MeditationRitual = () => {
                   className="flex justify-between pt-6"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.6 }}
+                  transition={{ duration: 0.5, delay: 1.5 }}
                 >
                   <Button
                     type="button"
@@ -539,12 +715,36 @@ export const MeditationRitual = () => {
                   </Button>
                   <Button
                     onClick={nextStep}
+                    disabled={isLoadingResponse}
                     className="bg-white/20 hover:bg-white/30 text-white border border-white/30"
                   >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    {isLoadingResponse ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
                   </Button>
                 </motion.div>
+              </motion.div>
+            )}
+            
+            {(currentStep === 'gratitude-response' || currentStep === 'intentions-response') && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+                className="text-white text-center"
+              >
+                <div className="text-xl font-light italic">
+                  "{aiResponse}"
+                </div>
               </motion.div>
             )}
             
@@ -656,4 +856,4 @@ export const MeditationRitual = () => {
       </div>
     </div>
   );
-}; 
+};
