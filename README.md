@@ -1,69 +1,137 @@
-# Welcome to your Lovable project
+# Reflect, Nourish, Connect
 
-## Project info
+A comprehensive personal wellness and productivity platform that helps users build mindful routines, track habits, manage tasks, and integrate with fitness services. The application features a beautiful, intuitive interface with multiple wellness dimensions integrated into a cohesive ecosystem.
 
-**URL**: https://lovable.dev/projects/42d6cc69-479d-423c-9649-458383e6ca01
+## Project Overview
 
-## How can I edit this code?
+This application is designed as an all-in-one platform for personal development, combining:
 
-There are several ways of editing your application.
+1. **Mindfulness & Reflection**: Morning ritual with gratitude practice, intentions setting, and journaling
+2. **Task Management**: Smart task organization with energy-based scheduling and pomodoro timer
+3. **Health & Fitness**: Nutrition tracking, weight monitoring, and Strava workout integration
+4. **Goal Setting**: Long-term goal tracking and weekly reflections
 
-**Use Lovable**
+## Key Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/42d6cc69-479d-423c-9649-458383e6ca01) and start prompting.
+### Mindfulness & Reflection
+- 🌅 **Morning Ritual**: Guided process with Monument Valley-inspired sunrise animation
+- 🙏 **Gratitude Practice**: Enter items you're grateful for with AI-powered reflections
+- 🎯 **Intentions Setting**: Set daily intentions with personalized AI encouragement
+- 📝 **Journaling**: Capture thoughts and reflections with streak tracking
+- 🔄 **Weekly Reflections**: AI-assisted review of your accomplishments and patterns
 
-Changes made via Lovable will be committed automatically to this repo.
+### Productivity
+- ✅ **Task Management**: Create, organize, and track tasks with prioritization
+- ⚡ **Energy-Based Planning**: Organize tasks by energy level required (high/low)
+- 🍅 **Pomodoro Timer**: Built-in focus timer with work/break intervals
+- 🗂️ **Project Organization**: Group tasks by projects with progress tracking
+- 📊 **Weekly Task Analysis**: AI-powered insights on task completion patterns
+- 📆 **Calendar Integration**: Schedule events with natural language processing
 
-**Use your preferred IDE**
+### Health & Fitness
+- 🏃‍♂️ **Strava Integration**: Connect and display your Strava workout activities
+- 🥗 **Nutrition Tracking**: Log meals with AI analysis of nutritional content
+- ⚖️ **Weight Monitoring**: Track weight trends over time
+- 📈 **Macro Tracking**: Visualize protein, carbs, and fat distribution
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Goals & Growth
+- 🏆 **Goal Setting**: Create and track long-term goals
+- 📈 **Progress Tracking**: Monitor advancement toward your objectives
+- 🌱 **Quarterly Planning**: Reminders for quarter-end reflection and planning
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## AI Integration Points
 
-Follow these steps:
+The application leverages OpenAI's GPT-3.5 Turbo model in several key areas:
 
+1. **Morning Ritual** (`src/components/ritual/MeditationRitual.tsx`):
+   - Analyzes gratitude entries with empathetic responses
+   - Provides encouraging insights for daily intentions
+   - Uses mindful, supportive tone throughout
+
+2. **Nutrition Analysis** (`src/services/nutritionService.ts`):
+   - Processes natural language meal descriptions
+   - Extracts detailed nutritional information including:
+     - Calories, protein, carbs, fat, and fiber
+     - Serving sizes and portions
+     - Meal components and ingredients
+
+3. **Task Intelligence** (`src/services/quickTaskService.ts`):
+   - Analyzes task descriptions for smart categorization
+   - Determines priority levels and energy requirements
+   - Suggests project associations and scheduling
+
+4. **Calendar Processing** (`src/services/calendar/quickCalendarService.ts`):
+   - Interprets natural language event descriptions
+   - Extracts dates, times, and event types
+   - Sets up appropriate recurrence and reminder patterns
+
+5. **Weekly Task Reflection** (`src/services/tasks/taskReflectionService.ts`):
+   - Provides insights on task completion patterns
+   - Offers suggestions for productivity improvements
+   - Celebrates achievements and progress
+
+## Technical Architecture
+
+### Frontend
+- **Framework**: React with TypeScript
+- **State Management**: React Query for server state, Context API for application state
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Animation**: Framer Motion for smooth UI transitions
+
+### Backend Services
+- **Authentication**: Supabase Auth
+- **Database**: Supabase PostgreSQL
+- **AI Integration**: OpenAI GPT-3.5 Turbo
+- **Fitness Integration**: Strava API
+
+### Core Components
+- **AuthProvider**: User authentication and session management
+- **PomodoroProvider**: Focus timer with task integration
+- **Settings System**: User preferences and customization
+- **Analytics Service**: Optional usage tracking for improvements
+
+## Getting Started
+
+1. Clone the repository
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. Install dependencies
+```sh
+cd reflect-nourish-connect
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+3. Set up environment variables
+Create a `.env` file with:
+```
+VITE_OPENAI_API_KEY=your_openai_api_key
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_STRAVA_CLIENT_ID=your_strava_client_id
+VITE_STRAVA_CLIENT_SECRET=your_strava_client_secret
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+4. Start the development server
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Deployment
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+The project can be deployed through [Lovable](https://lovable.dev/projects/42d6cc69-479d-423c-9649-458383e6ca01) or using your preferred hosting service like Netlify.
 
-**Use GitHub Codespaces**
+## Contributing
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Feel free to submit issues and enhancement requests. Follow these steps for contributions:
 
-## What technologies are used for this project?
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-This project is built with .
+## License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/42d6cc69-479d-423c-9649-458383e6ca01) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is licensed under the MIT License - see the LICENSE file for details.
