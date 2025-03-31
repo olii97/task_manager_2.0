@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -12,7 +11,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -159,19 +158,9 @@ serve(async (req) => {
 
     // Handle POST requests (API actions)
     if (req.method === 'POST') {
-      let requestBody;
-      try {
-        requestBody = await req.json();
-        console.log("Received request body:", JSON.stringify(requestBody));
-      } catch (e) {
-        console.error("Failed to parse request body:", e);
-        return new Response(JSON.stringify({ error: "Invalid request body" }), { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      const { action, userId, activityId } = requestBody;
+      const bodyText = await req.text();
+      const { action, userId, page = 1, perPage = 10 } = JSON.parse(bodyText);
+
       console.log("Action requested:", action);
       console.log("User ID received:", userId);
       
@@ -216,7 +205,7 @@ serve(async (req) => {
           });
         }
 
-        console.log(`Processing get_activities for user ${userId}`);
+        console.log(`Processing get_activities for user ${userId}, page ${page}, perPage ${perPage}`);
         
         const { data: tokens, error: tokenError } = await adminSupabase
           .from('strava_tokens')
@@ -244,54 +233,46 @@ serve(async (req) => {
         console.log(`Current time: ${now}, Token expires at: ${tokens.expires_at}`);
         
         if (tokens.expires_at <= now) {
-          console.log('Refreshing token...');
-          try {
-            const refreshResponse = await fetch('https://www.strava.com/oauth/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                client_id: STRAVA_CLIENT_ID,
-                client_secret: STRAVA_CLIENT_SECRET,
-                refresh_token: tokens.refresh_token,
-                grant_type: 'refresh_token',
-              }),
-            });
+          console.log('Token expired, refreshing...');
+          const refreshResponse = await fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: STRAVA_CLIENT_ID,
+              client_secret: STRAVA_CLIENT_SECRET,
+              refresh_token: tokens.refresh_token,
+              grant_type: 'refresh_token',
+            }),
+          });
 
-            if (!refreshResponse.ok) {
-              const errorText = await refreshResponse.text();
-              console.error('Token refresh failed:', errorText);
-              return new Response(JSON.stringify({ error: `Failed to refresh token: ${errorText}` }), { 
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              });
-            }
-
-            const refreshData = await refreshResponse.json();
-            console.log('Token refreshed successfully');
-            
-            await adminSupabase
-              .from('strava_tokens')
-              .update({
-                access_token: refreshData.access_token,
-                refresh_token: refreshData.refresh_token,
-                expires_at: refreshData.expires_at,
-              })
-              .eq('user_id', userId);
-            
-            tokens.access_token = refreshData.access_token;
-          } catch (refreshError) {
-            console.error('Token refresh error:', refreshError);
-            return new Response(JSON.stringify({ error: `Error refreshing token: ${refreshError.message}` }), { 
-              status: 500,
+          if (!refreshResponse.ok) {
+            const errorText = await refreshResponse.text();
+            console.error('Token refresh failed:', errorText);
+            return new Response(JSON.stringify({ error: 'Failed to refresh token' }), { 
+              status: refreshResponse.status,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           }
+
+          const refreshData = await refreshResponse.json();
+          console.log('Token refreshed successfully');
+          
+          await adminSupabase
+            .from('strava_tokens')
+            .update({
+              access_token: refreshData.access_token,
+              refresh_token: refreshData.refresh_token,
+              expires_at: refreshData.expires_at,
+            })
+            .eq('user_id', userId);
+          
+          tokens.access_token = refreshData.access_token;
         }
 
-        console.log('Fetching activities with token...');
         try {
+          console.log(`Fetching Strava activities: page=${page}, per_page=${perPage}`);
           const activitiesResponse = await fetch(
-            'https://www.strava.com/api/v3/athlete/activities?per_page=10',
+            `https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`,
             {
               headers: { 'Authorization': `Bearer ${tokens.access_token}` },
             }
