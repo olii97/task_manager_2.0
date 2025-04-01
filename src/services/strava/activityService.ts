@@ -1,6 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { StravaActivity, SavedStravaActivity } from '@/types/strava';
+import { StravaActivity, SavedStravaActivity, ActivityZones } from '@/types/strava';
 import { getStravaToken, refreshTokenIfNeeded } from './connectionService';
 import { getStoredActivityIds, saveStravaActivity, getStravaActivityById } from './storageService';
 
@@ -18,16 +17,22 @@ interface StravaActivityDetailsResult {
 /**
  * Fetches activities from Strava API
  */
-export const fetchStravaActivities = async (userId: string): Promise<StravaActivitiesResult> => {
+export const fetchStravaActivities = async (
+  userId: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<StravaActivitiesResult> => {
   try {
-    console.log("Fetching activities for user:", userId);
+    console.log(`Fetching activities for user: ${userId}, page: ${page}, perPage: ${perPage}`);
     
     const { data, error } = await supabase.functions.invoke<StravaActivity[]>(
       "strava-auth",
       {
         body: { 
           action: "get_activities",
-          userId: userId
+          userId: userId,
+          page: page,
+          perPage: perPage
         }
       }
     );
@@ -40,7 +45,7 @@ export const fetchStravaActivities = async (userId: string): Promise<StravaActiv
     if (!data || data.length === 0) {
       console.log("No activities found");
     } else {
-      console.log("Fetched activities:", data.length);
+      console.log(`Fetched ${data.length} activities for page ${page}`);
     }
 
     return { activities: data || [], error: null };
@@ -56,11 +61,15 @@ export const fetchStravaActivities = async (userId: string): Promise<StravaActiv
 /**
  * Gets activities with saved status
  */
-export const getStravaActivities = async (userId: string): Promise<StravaActivity[]> => {
+export const getStravaActivities = async (
+  userId: string,
+  page: number = 1,
+  perPage: number = 10
+): Promise<StravaActivity[]> => {
   try {
-    console.log("Fetching activities for user:", userId);
+    console.log(`Getting activities for user: ${userId}, page: ${page}, perPage: ${perPage}`);
     
-    const { activities, error } = await fetchStravaActivities(userId);
+    const { activities, error } = await fetchStravaActivities(userId, page, perPage);
     
     if (error) {
       throw new Error(error);
@@ -74,7 +83,7 @@ export const getStravaActivities = async (userId: string): Promise<StravaActivit
 
     return activitiesWithSavedStatus;
   } catch (error: any) {
-    console.error("Error fetching activities:", error);
+    console.error("Error getting activities:", error);
     throw error;
   }
 };
@@ -131,5 +140,35 @@ export const getStravaActivityDetails = async (userId: string, activityId: numbe
       activity: null, 
       error: error.message || "Failed to fetch activity details"
     };
+  }
+};
+
+/**
+ * Fetches heart rate zones for a specific activity
+ */
+export const getActivityZones = async (userId: string, activityId: number): Promise<ActivityZones | null> => {
+  try {
+    console.log(`Fetching zones for activity ${activityId}`);
+    
+    const { data, error } = await supabase.functions.invoke(
+      "strava-auth",
+      {
+        body: { 
+          action: "get_activity_zones",
+          userId: userId,
+          activityId: activityId
+        }
+      }
+    );
+
+    if (error) {
+      console.error("Strava function error:", error);
+      throw error;
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error("Error fetching activity zones:", error);
+    return null;
   }
 };

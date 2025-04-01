@@ -1,4 +1,3 @@
-
 export interface StravaActivity {
   id: number;
   name: string;
@@ -57,6 +56,7 @@ export interface StravaActivity {
   average_temp?: number;
   elevation_high?: number;
   elevation_low?: number;
+  suffer_score?: number;
 }
 
 export interface SavedStravaActivity extends StravaActivity {
@@ -87,6 +87,27 @@ export interface StravaTokens {
   access_token: string;
   refresh_token: string;
   expires_at: number;
+}
+
+export interface HeartRateZone {
+  min: number;
+  max: number;
+  time: number;
+  percent: number;
+}
+
+export interface ActivityZones {
+  heart_rate?: {
+    custom_zones: boolean;
+    zones: HeartRateZone[];
+  };
+  power?: {
+    zones: Array<{
+      min: number;
+      max: number;
+      time: number;
+    }>;
+  };
 }
 
 // Improved helper function to convert StravaActivity to SavedStravaActivity
