@@ -431,14 +431,14 @@ export const MeditationRitual = () => {
       return () => clearInterval(pulseInterval);
     }, []);
     
-    // Color transitions from cool to warm
-    const skyTopColor = getColorAtProgress('#4A3B5E', '#FFB697', easedProgress);
-    const skyMidColor = getColorAtProgress('#5D4970', '#FF9B7B', easedProgress);
-    const skyBottomColor = getColorAtProgress('#392433', '#7A616C', Math.min(1, easedProgress * 1.5));
+    // Color transitions from dark blue to light blue
+    const skyTopColor = getColorAtProgress('#1a365d', '#4a90e2', easedProgress);
+    const skyMidColor = getColorAtProgress('#2a4a7d', '#5c9ce6', easedProgress);
+    const skyBottomColor = getColorAtProgress('#3a5e9d', '#6ea8e9', Math.min(1, easedProgress * 1.5));
     
     return (
       <div className="absolute inset-0 overflow-hidden z-0">
-        {/* Base sky gradient - always present, transitions from cool to warm */}
+        {/* Base sky gradient - always present, transitions from dark blue to light blue */}
         <div 
           className="absolute inset-0" 
           style={{
@@ -490,7 +490,7 @@ export const MeditationRitual = () => {
           ))}
         </div>
         
-        {/* Animated sun with pulsing effect */}
+        {/* Sun */}
         <div 
           className="absolute rounded-full bg-gradient-to-br from-[#FFE9A6] to-[#FFC837] z-3"
           style={{ 
@@ -504,12 +504,22 @@ export const MeditationRitual = () => {
                        0 0 ${Math.min(60 + (easedProgress * 40), 100)}px rgba(255, 233, 166, ${0.2 + easedProgress * 0.1})`,
           }}
         />
-        
+
+        {/* Very distant mountains (new) */}
+        <div 
+          className="absolute bottom-[35%] left-0 right-0 h-[15%] z-8"
+          style={{
+            background: `linear-gradient(180deg, transparent 0%, rgba(26, 54, 93, 0.3) 30%, rgba(34, 139, 34, 0.4) 60%, transparent 100%)`,
+            clipPath: 'polygon(0% 100%, 10% 85%, 20% 90%, 30% 80%, 40% 85%, 50% 75%, 60% 85%, 70% 80%, 80% 85%, 90% 80%, 100% 85%, 100% 100%)',
+            transform: `translateY(${3 - easedProgress * 3}px)`,
+          }}
+        />
+
         {/* Far distant mountains */}
         <div 
-          className="absolute bottom-[25%] left-0 right-0 h-[20%] z-10"
+          className="absolute bottom-[30%] left-0 right-0 h-[20%] z-9"
           style={{
-            background: `linear-gradient(180deg, transparent 0%, rgba(86, 63, 87, 0.5) 30%, rgba(59, 43, 69, 0.7) 60%, transparent 100%)`,
+            background: `linear-gradient(180deg, transparent 0%, rgba(26, 54, 93, 0.5) 30%, rgba(34, 139, 34, 0.7) 60%, transparent 100%)`,
             clipPath: 'polygon(0% 100%, 15% 80%, 25% 85%, 35% 75%, 45% 90%, 55% 80%, 65% 85%, 75% 70%, 85% 80%, 100% 75%, 100% 100%)',
             transform: `translateY(${5 - easedProgress * 5}px)`,
           }}
@@ -517,57 +527,29 @@ export const MeditationRitual = () => {
         
         {/* Mid distant mountains */}
         <div 
-          className="absolute bottom-[23%] left-0 right-0 h-[18%] z-10"
+          className="absolute bottom-[25%] left-0 right-0 h-[18%] z-10"
           style={{
-            background: `linear-gradient(180deg, transparent 0%, rgba(69, 47, 80, 0.6) 30%, rgba(45, 33, 56, 0.8) 60%, transparent 100%)`,
+            background: `linear-gradient(180deg, transparent 0%, rgba(17, 34, 64, 0.6) 30%, rgba(46, 139, 87, 0.8) 60%, transparent 100%)`,
             clipPath: 'polygon(0% 100%, 5% 90%, 15% 75%, 30% 85%, 45% 65%, 60% 80%, 75% 70%, 90% 85%, 100% 65%, 100% 100%)',
             transform: `translateY(${10 - easedProgress * 10}px)`,
           }}
         />
         
-        {/* Near mountains with Monument Valley style structures */}
+        {/* Near mountains */}
         <div 
-          className="absolute bottom-[20%] left-0 right-0 h-[25%] z-10"
+          className="absolute bottom-[20%] left-0 right-0 h-[25%] z-11"
           style={{
-            background: `linear-gradient(180deg, transparent 0%, rgba(55, 35, 71, 0.7) 30%, rgba(36, 21, 48, 1) 60%, transparent 100%)`,
+            background: `linear-gradient(180deg, transparent 0%, rgba(10, 25, 47, 0.7) 30%, rgba(60, 179, 113, 1) 60%, transparent 100%)`,
             clipPath: 'polygon(0% 100%, 10% 80%, 15% 80%, 15% 60%, 20% 60%, 20% 80%, 30% 70%, 40% 75%, 45% 55%, 46% 55%, 46% 45%, 48% 45%, 48% 55%, 50% 55%, 50% 75%, 60% 85%, 70% 75%, 80% 90%, 85% 90%, 85% 70%, 87% 70%, 87% 90%, 95% 80%, 100% 90%, 100% 100%)',
             transform: `translateY(${15 - easedProgress * 15}px)`,
           }}
         />
-        
-        {/* Water reflection surface with ripple effect */}
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[20%] z-5"
-          style={{
-            background: 'linear-gradient(180deg, rgba(97, 122, 158, 0.8) 0%, rgba(52, 74, 94, 0.9) 100%)',
-            backdropFilter: 'blur(4px)',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Water ripples (multiple circles that pulse out) */}
-          {[...Array(3)].map((_, i) => (
-            <div 
-              key={i}
-              className="absolute rounded-full border border-white/20"
-              style={{
-                width: `${(i+1) * 10 + Math.sin(Date.now() / 1000 + i) * 5}%`,
-                height: `${((i+1) * 10 + Math.sin(Date.now() / 1000 + i) * 5) / 3}%`,
-                left: `${50 + Math.sin(Date.now() / 2000 + i * 2) * 5}%`,
-                bottom: '0%',
-                transform: 'translate(-50%, 50%)',
-                opacity: Math.max(0.1, 0.2 - i * 0.05),
-                filter: 'blur(1px)',
-                background: 'linear-gradient(180deg, rgba(135, 206, 235, 0.1) 0%, rgba(70, 130, 180, 0.05) 100%)'
-              }}
-            />
-          ))}
-        </div>
 
         {/* Atmospheric glow that radiates outward */}
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(circle at ${sunPosition.left} ${100 - parseFloat(sunPosition.bottom)}%, rgba(255, 156, 123, 0.3) 0%, transparent 70%)`,
+            background: `radial-gradient(circle at ${sunPosition.left} ${100 - parseFloat(sunPosition.bottom)}%, rgba(74, 144, 226, 0.3) 0%, transparent 70%)`,
             opacity: Math.min(0.3 + (easedProgress * 0.5), 0.8)
           }}
         />
@@ -577,8 +559,8 @@ export const MeditationRitual = () => {
           className="absolute inset-0"
           style={{
             background: `linear-gradient(to bottom, 
-              rgba(${180 - easedProgress * 30}, ${165 - easedProgress * 15}, ${170 + easedProgress * 10}, 0.2) 0%, 
-              rgba(${150 + easedProgress * 40}, ${126 + easedProgress * 30}, ${135 - easedProgress * 20}, 0.2) 100%)`,
+              rgba(26, 54, 93, 0.2) 0%, 
+              rgba(74, 144, 226, 0.2) 100%)`,
             mixBlendMode: 'soft-light'
           }}
         />
