@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
@@ -26,6 +27,7 @@ import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/
 import { ProjectList } from "@/components/projects/ProjectList";
 import { Project } from "@/types/projects";
 import { fetchProjects, getProjectTasks } from "@/services/projects/projectService";
+import { TasksDownloadButton } from "@/components/tasks/TasksDownloadButton";
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -292,14 +294,17 @@ const Tasks = () => {
 
   return (
     <div className="container py-6">
-      <TasksHeader 
-        onAddTask={() => setTaskFormOpen(true)} 
-        onResetSchedule={handleResetSchedule}
-        onPlanTasks={() => setPlannerOpen(true)}
-        onQuickTaskCreated={handleQuickTaskCreated}
-        onWeeklyReflection={handleWeeklyReflection}
-        projects={projects}
-      />
+      <div className="flex items-center justify-between mb-6">
+        <TasksHeader 
+          onAddTask={() => setTaskFormOpen(true)} 
+          onResetSchedule={handleResetSchedule}
+          onPlanTasks={() => setPlannerOpen(true)}
+          onQuickTaskCreated={handleQuickTaskCreated}
+          onWeeklyReflection={handleWeeklyReflection}
+          projects={projects}
+        />
+        <TasksDownloadButton tasks={tasks} projects={projects} />
+      </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

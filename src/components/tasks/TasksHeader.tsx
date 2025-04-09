@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw, Calendar, BookOpen } from "lucide-react";
@@ -23,7 +24,7 @@ export function TasksHeader({
   projects = []
 }: TasksHeaderProps) {
   return (
-    <div className="flex flex-col space-y-4 mb-6">
+    <div className="flex-1 flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Tasks</h1>
         <div className="flex items-center space-x-2">
