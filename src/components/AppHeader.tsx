@@ -1,20 +1,47 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/AuthProvider";
-import { Rocket, RefreshCw, Sunrise, Scale, Apple, Calendar, LogOut } from "lucide-react";
+import { Rocket, RefreshCw, LogOut, Menu } from "lucide-react";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const AppHeader = () => {
   const location = useLocation();
   const { session, signOut } = useAuth();
   const { resetIntroScreen } = useIntroScreen();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (!session) return null;
 
   const isActiveRoute = (route: string) => {
     return location.pathname === route || location.pathname.startsWith(`${route}/`);
   };
+
+  const NavButton = ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <Button 
+      asChild 
+      variant={isActiveRoute(to) ? "secondary" : "ghost"} 
+      size="sm"
+      className={isActiveRoute(to) ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
+    >
+      <Link to={to}>{children}</Link>
+    </Button>
+  );
+
+  const navItems = [
+    { path: "/", label: "Dashboard" },
+    { path: "/journal", label: "Journal" },
+    { path: "/tasks", label: "Tasks" },
+    { path: "/weight", label: "Weight" },
+    { path: "/nutrition", label: "Nutrition" },
+    { path: "/calendar", label: "Calendar" },
+  ];
 
   return (
     <header className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-b border-indigo-700 py-3 shadow-lg">
@@ -23,99 +50,14 @@ export const AppHeader = () => {
           <Rocket className="h-6 w-6 mr-2 text-yellow-300" />
           <h1 className="text-xl font-bold text-white">Launchpad</h1>
         </div>
-        <nav className="flex items-center space-x-2">
-          <Button 
-            asChild 
-            variant={isActiveRoute("/") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/">Dashboard</Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/journal") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/journal") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/journal">Journal</Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/tasks") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/tasks") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/tasks">Tasks</Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/goals") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/goals") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/goals">Goals</Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/intentions") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/intentions") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/intentions">Intentions</Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/strava") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/strava") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/strava">Strava</Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/weight") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/weight") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/weight" className="flex items-center">
-              <Scale className="h-4 w-4 mr-1" />
-              <span>Weight</span>
-            </Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/nutrition") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/nutrition") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/nutrition" className="flex items-center">
-              <Apple className="h-4 w-4 mr-1" />
-              <span>Nutrition</span>
-            </Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/calendar") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/calendar") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/calendar" className="flex items-center">
-              <Calendar className="h-4 w-4 mr-1" />
-              <span>Calendar</span>
-            </Link>
-          </Button>
-          <Button 
-            asChild 
-            variant={isActiveRoute("/morning-ritual") ? "secondary" : "ghost"} 
-            size="sm"
-            className={isActiveRoute("/morning-ritual") ? "bg-white/20 text-white" : "text-white/80 hover:text-white hover:bg-white/10"}
-          >
-            <Link to="/morning-ritual" className="flex items-center">
-              <Sunrise className="h-4 w-4 mr-1" />
-              <span>Morning Ritual</span>
-            </Link>
-          </Button>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-2">
+          {navItems.map((item) => (
+            <NavButton key={item.path} to={item.path}>
+              {item.label}
+            </NavButton>
+          ))}
           <Button
             variant="ghost"
             size="sm"
@@ -135,6 +77,32 @@ export const AppHeader = () => {
             <LogOut className="h-4 w-4" />
           </Button>
         </nav>
+
+        {/* Mobile Navigation */}
+        <div className="md:hidden">
+          <DropdownMenu open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-white">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {navItems.map((item) => (
+                <DropdownMenuItem key={item.path} asChild>
+                  <Link to={item.path} className="cursor-pointer">
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onClick={resetIntroScreen}>
+                Reset Intro Screen
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut}>
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );
