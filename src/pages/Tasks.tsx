@@ -14,6 +14,7 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { toast } from "@/hooks/use-toast";
 import { TasksLoadingState } from "@/components/tasks/TasksLoadingState";
 import { TasksHeader } from "@/components/tasks/TasksHeader";
+import { TasksDownloadButton } from "@/components/tasks/TasksDownloadButton";
 import { TodaysSections } from "@/components/tasks/TodaysSections";
 import { TaskBacklog } from "@/components/tasks/TaskBacklog";
 import { CompletedTasks } from "@/components/tasks/CompletedTasks";
@@ -27,7 +28,6 @@ import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/
 import { ProjectList } from "@/components/projects/ProjectList";
 import { Project } from "@/types/projects";
 import { fetchProjects, getProjectTasks } from "@/services/projects/projectService";
-import { TasksDownloadButton } from "@/components/tasks/TasksDownloadButton";
 
 const Tasks = () => {
   const { session } = useAuth();
