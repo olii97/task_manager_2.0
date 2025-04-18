@@ -87,19 +87,14 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
     let lastTickTime = Date.now();
     
     const timerLoop = () => {
-      // Calculate elapsed time since last tick
       const now = Date.now();
       const elapsed = now - lastTickTime;
       
-      // Only update if more than 1000ms have passed
       if (elapsed >= 1000) {
         const newState = { ...stateRef.current };
-        
-        // Number of seconds to decrement (handles case where browser throttles in background)
         const decrementAmount = Math.floor(elapsed / 1000);
         
         if (newState.timeRemaining <= decrementAmount) {
-          // Timer completed
           newState.timeRemaining = 0;
           
           if (!newState.isBreak) {
@@ -111,24 +106,25 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
               onComplete();
             }
           } else {
-            // Break timer completed
+            // Break timer completed - prepare for next work session
             newState.isBreak = false;
-            newState.status = 'idle' as PomodoroStatus;
+            newState.status = 'running';
             newState.timeRemaining = timerSettingsRef.current.workDuration * 60;
             newState.originalDuration = timerSettingsRef.current.workDuration * 60;
+            newState.startTimestamp = Date.now();
             setState(newState);
-            setIsTimerRunning(false);
+            // Keep the timer running for the next session
+            lastTickTime = now;
+            rafIdRef.current = requestAnimationFrame(timerLoop);
           }
           return;
         } else {
-          // Decrement timer by calculated amount
           newState.timeRemaining -= decrementAmount;
-          lastTickTime = now - (elapsed % 1000); // Keep remainder for accurate timing
+          lastTickTime = now - (elapsed % 1000);
           setState(newState);
         }
       }
       
-      // Continue the loop only if timer is still running
       if (isRunningRef.current && stateRef.current.status === 'running') {
         rafIdRef.current = requestAnimationFrame(timerLoop);
       }
@@ -287,11 +283,12 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       isBreak: true,
       timeRemaining: timerSettings.breakDuration * 60,
       originalDuration: timerSettings.breakDuration * 60,
-      status: 'running' as PomodoroStatus,
+      status: 'running',
       startTimestamp: Date.now(),
       pausedTimestamp: undefined
     }));
     setIsTimerRunning(true);
+    setShowCompletionDialog(false);
   };
 
   const skipBreak = () => {
@@ -300,11 +297,11 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       isBreak: false,
       timeRemaining: timerSettings.workDuration * 60,
       originalDuration: timerSettings.workDuration * 60,
-      status: 'idle',
-      startTimestamp: undefined,
+      status: 'running',
+      startTimestamp: Date.now(),
       pausedTimestamp: undefined
     }));
-    setIsTimerRunning(false);
+    setIsTimerRunning(true);
     setShowCompletionDialog(false);
   };
 

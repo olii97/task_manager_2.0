@@ -12,17 +12,11 @@ import { useAuth } from "@/components/AuthProvider";
 import { addTask } from "@/services/tasks";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 
 export const PomodoroTimer: React.FC = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-
-  const handlePomodoroComplete = () => {
-    // Refresh the tasks data when Pomodoro completes
-    queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    setShowCompletionDialog(true);
-  };
-
   const {
     state,
     showConfetti,
@@ -34,9 +28,12 @@ export const PomodoroTimer: React.FC = () => {
     stopPomodoro,
     handleStartBreak,
     handleSkipBreak,
-    isTimerRunning
+    isTimerRunning,
+    setTimerToFiveSeconds
   } = usePomodoroTimer({
-    onComplete: handlePomodoroComplete
+    onComplete: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    }
   });
 
   // Don't render if not active
@@ -62,7 +59,6 @@ export const PomodoroTimer: React.FC = () => {
         user_id: session.user.id
       });
 
-      // Refresh the tasks data
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
       toast({
@@ -127,6 +123,17 @@ export const PomodoroTimer: React.FC = () => {
                 <div className="mt-4 border-t border-border/20 pt-4">
                   <QuickTaskInput onTaskCreated={handleTaskCreated} />
                 </div>
+              )}
+
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={setTimerToFiveSeconds}
+                  className="mt-4"
+                >
+                  Test: Set 5s
+                </Button>
               )}
             </CardContent>
           </Card>
