@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePomodoro } from '../PomodoroProvider';
 import { PomodoroState, PomodoroStatus, PomodoroDistraction } from '@/types/pomodoro';
 import { logPomodoroDistraction } from '@/services/pomodoroService';
+import { updateTask } from '@/services/tasks';
 
 interface UsePomodoroTimerProps {
   onComplete?: () => void;
@@ -101,6 +102,10 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
             // Work timer completed
             newState.status = 'completed';
             setState(newState);
+            setShowConfetti(true);
+            setTimeout(() => {
+              setShowConfetti(false);
+            }, 3000);
             completePomodoro();
             if (onComplete) {
               onComplete();
@@ -322,6 +327,20 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
     }));
   }, []);
 
+  const completeCurrentTask = useCallback(async () => {
+    if (!state.currentTask) return;
+
+    await updateTask(state.currentTask.id, {
+      is_completed: true,
+      completion_date: new Date().toISOString()
+    });
+
+    setState(prev => ({
+      ...prev,
+      currentTask: undefined
+    }));
+  }, [state.currentTask]);
+
   return {
     state,
     showConfetti,
@@ -338,6 +357,8 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
     handleSkipBreak,
     handleCancelDistraction,
     isTimerRunning,
-    setTimerToFiveSeconds
+    setTimerToFiveSeconds,
+    completeCurrentTask,
+    handleLogDistraction: logDistraction
   };
 };

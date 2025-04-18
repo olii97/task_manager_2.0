@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Timer } from "lucide-react";
+import { Timer, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { PomodoroCircularTimer } from "./timer/PomodoroCircularTimer";
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 export const PomodoroTimer: React.FC = () => {
   const { session } = useAuth();
   const queryClient = useQueryClient();
+  const [showTaskConfetti, setShowTaskConfetti] = useState(false);
   const {
     state,
     showConfetti,
@@ -29,7 +30,8 @@ export const PomodoroTimer: React.FC = () => {
     handleStartBreak,
     handleSkipBreak,
     isTimerRunning,
-    setTimerToFiveSeconds
+    setTimerToFiveSeconds,
+    completeCurrentTask
   } = usePomodoroTimer({
     onComplete: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -75,9 +77,42 @@ export const PomodoroTimer: React.FC = () => {
     }
   };
 
+  const handleCompleteTask = async () => {
+    if (!state.currentTask) return;
+    
+    try {
+      await completeCurrentTask();
+      setShowTaskConfetti(true);
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      
+      toast({
+        title: "Task completed! 🎉",
+        description: `"${state.currentTask.title}" has been marked as complete.`,
+      });
+
+      // Hide confetti after 3 seconds
+      setTimeout(() => {
+        setShowTaskConfetti(false);
+      }, 3000);
+
+      // Stop the Pomodoro timer after a short delay to show the completion animation
+      setTimeout(() => {
+        stopPomodoro();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete the task. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <>
-      <ConfettiEffect isActive={showConfetti} />
+      <ConfettiEffect isActive={showConfetti || showTaskConfetti} />
       
       <AnimatePresence>
         <motion.div
@@ -99,8 +134,19 @@ export const PomodoroTimer: React.FC = () => {
               </div>
               
               {state.currentTask && !state.isBreak && (
-                <div className="text-sm font-medium mb-4 bg-background/80 p-2 rounded border border-border">
-                  {state.currentTask.title}
+                <div className="mb-4 space-y-2">
+                  <div className="text-sm font-medium bg-background/80 p-2 rounded border border-border">
+                    {state.currentTask.title}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs font-medium border-green-500 text-green-500 hover:bg-green-500/10"
+                    onClick={handleCompleteTask}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                    Complete Task
+                  </Button>
                 </div>
               )}
               
