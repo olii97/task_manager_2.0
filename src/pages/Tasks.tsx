@@ -114,6 +114,10 @@ const Tasks = () => {
       energy_level: taskData.energy_level as 'high' | 'low' | undefined,
       is_completed: false,
       is_scheduled_today: false,
+      user_id: userId!,
+      task_type: taskData.task_type || 'personal',
+      project_id: taskData.project_id,
+      category: taskData.category
     });
   };
 
@@ -366,7 +370,10 @@ const Tasks = () => {
       {/* Project section */}
       <ProjectList 
         projects={projects} 
-        taskCounts={projectTaskCounts} 
+        taskCounts={projectTaskCounts}
+        tasks={tasks}
+        onAddTask={handleAddTask}
+        onEditTask={handleEditTask}
       />
 
       {/* Task Form Dialog */}

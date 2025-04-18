@@ -9,16 +9,24 @@ import { Badge } from "@/components/ui/badge";
 import { deleteProject } from "@/services/projects/projectService";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel, AlertDialogFooter, AlertDialogHeader } from "@/components/ui/alert-dialog";
+import { Dialog } from "@/components/ui/dialog";
+import { ProjectDetailView } from "./ProjectDetailView";
+import { Task } from "@/types/tasks";
 
 interface ProjectListProps {
   projects: Project[];
   taskCounts: Record<string, number>;
+  tasks?: Task[];
+  onAddTask?: (task: Omit<Task, 'id'>) => void;
+  onEditTask?: (task: Task) => void;
 }
 
-export function ProjectList({ projects, taskCounts }: ProjectListProps) {
+export function ProjectList({ projects, taskCounts, tasks = [], onAddTask, onEditTask }: ProjectListProps) {
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
   const [projectToDelete, setProjectToDelete] = useState<Project | undefined>(undefined);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [showTaskForm, setShowTaskForm] = useState(false);
   
   const queryClient = useQueryClient();
 
@@ -30,7 +38,8 @@ export function ProjectList({ projects, taskCounts }: ProjectListProps) {
     }
   });
 
-  const handleEditProject = (project: Project) => {
+  const handleEditProject = (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
     setEditingProject(project);
     setProjectFormOpen(true);
   };
@@ -44,6 +53,14 @@ export function ProjectList({ projects, taskCounts }: ProjectListProps) {
     if (projectToDelete) {
       deleteProjectMutation(projectToDelete.id);
     }
+  };
+
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject(project);
+  };
+
+  const handleCloseDetail = () => {
+    setSelectedProject(null);
   };
 
   return (
@@ -67,12 +84,16 @@ export function ProjectList({ projects, taskCounts }: ProjectListProps) {
           </Card>
         ) : (
           projects.map(project => (
-            <Card key={project.id} className={`border-l-4 ${project.color || 'border-primary'}`}>
+            <Card 
+              key={project.id} 
+              className={`border-l-4 ${project.color || 'border-primary'} cursor-pointer transition-all duration-200 hover:shadow-lg`}
+              onClick={() => handleProjectClick(project)}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex justify-between items-center">
                   <span className="truncate">{project.name}</span>
-                  <div className="flex space-x-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditProject(project)}>
+                  <div className="flex space-x-1" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={(e) => handleEditProject(e, project)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
@@ -81,13 +102,16 @@ export function ProjectList({ projects, taskCounts }: ProjectListProps) {
                           variant="ghost" 
                           size="icon" 
                           className="text-destructive"
-                          onClick={() => setProjectToDelete(project)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProjectToDelete(project);
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                       {projectToDelete && projectToDelete.id === project.id && (
-                        <AlertDialogContent>
+                        <AlertDialogContent onClick={e => e.stopPropagation()}>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
@@ -138,6 +162,19 @@ export function ProjectList({ projects, taskCounts }: ProjectListProps) {
         onClose={handleCloseForm}
         project={editingProject}
       />
+
+      <Dialog open={selectedProject !== null} onOpenChange={(open) => !open && handleCloseDetail()}>
+        {selectedProject && (
+          <ProjectDetailView
+            project={selectedProject}
+            tasks={tasks.filter(task => task.project_id === selectedProject.id)}
+            open={true}
+            onClose={handleCloseDetail}
+            onAddTask={() => onAddTask && onAddTask({ title: '', project_id: selectedProject.id } as any)}
+            onEditTask={(task) => onEditTask && onEditTask(task)}
+          />
+        )}
+      </Dialog>
     </div>
   );
 } 
