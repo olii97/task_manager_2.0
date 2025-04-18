@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePomodoro } from '../PomodoroProvider';
-import { PomodoroState, PomodoroStatus } from '@/types/pomodoro';
+import { PomodoroState, PomodoroStatus, PomodoroDistraction } from '@/types/pomodoro';
+import { logPomodoroDistraction } from '@/services/pomodoroService';
 
-export const usePomodoroTimer = () => {
+interface UsePomodoroTimerProps {
+  onComplete?: () => void;
+}
+
+export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => {
   const {
     timerSettings,
     selectedTask,
@@ -10,6 +15,11 @@ export const usePomodoroTimer = () => {
     completedCount,
     completePomodoro,
     setIsTimerRunning,
+    currentSession,
+    setCurrentSession,
+    currentSessionId,
+    logDistraction,
+    setDistractions
   } = usePomodoro();
 
   const [state, setState] = useState<PomodoroState>({
@@ -97,6 +107,9 @@ export const usePomodoroTimer = () => {
             newState.status = 'completed';
             setState(newState);
             completePomodoro();
+            if (onComplete) {
+              onComplete();
+            }
           } else {
             // Break timer completed
             newState.isBreak = false;
@@ -122,7 +135,7 @@ export const usePomodoroTimer = () => {
     };
     
     rafIdRef.current = requestAnimationFrame(timerLoop);
-  }, [completePomodoro, setIsTimerRunning]);
+  }, [completePomodoro, setIsTimerRunning, onComplete]);
 
   // Initialize timer and handle countdown
   useEffect(() => {
@@ -260,10 +273,13 @@ export const usePomodoroTimer = () => {
     }));
   };
 
-  const addDistraction = (description: string) => {
-    console.log('Distraction logged:', description);
-    // In a real implementation, this would save the distraction to the database
-  };
+  const handleAddDistraction = useCallback(() => {
+    setShowDistractionDialog(true);
+  }, []);
+
+  const handleCancelDistraction = useCallback(() => {
+    setShowDistractionDialog(false);
+  }, []);
 
   const startBreak = () => {
     setState(prev => ({
@@ -292,16 +308,6 @@ export const usePomodoroTimer = () => {
     setShowCompletionDialog(false);
   };
 
-  const handleAddDistraction = (description: string) => {
-    addDistraction(description);
-    setShowDistractionDialog(false);
-    
-    // Auto resume after logging distraction
-    if (state.status === 'paused') {
-      resumePomodoro();
-    }
-  };
-
   const handleStartBreak = () => {
     startBreak();
     setShowCompletionDialog(false);
@@ -311,15 +317,13 @@ export const usePomodoroTimer = () => {
     skipBreak();
   };
 
-  const handleLogDistraction = () => {
-    pausePomodoro();
-    setShowDistractionDialog(true);
-  };
-
-  const cancelDistraction = () => {
-    setShowDistractionDialog(false);
-    resumePomodoro();
-  };
+  const setTimerToFiveSeconds = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      timeRemaining: 5,
+      originalDuration: prev.originalDuration
+    }));
+  }, []);
 
   return {
     state,
@@ -335,8 +339,8 @@ export const usePomodoroTimer = () => {
     handleAddDistraction,
     handleStartBreak,
     handleSkipBreak,
-    handleLogDistraction,
-    cancelDistraction,
-    isTimerRunning
+    handleCancelDistraction,
+    isTimerRunning,
+    setTimerToFiveSeconds
   };
 };

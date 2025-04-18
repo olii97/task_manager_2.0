@@ -1,4 +1,3 @@
-
 export interface PomodoroSession {
   id: string;
   user_id: string;
@@ -13,9 +12,10 @@ export interface PomodoroSession {
 
 export interface PomodoroDistraction {
   id: string;
-  session_id: string;
   description: string;
-  created_at: string;
+  timestamp: string;
+  session_id?: string;
+  created_at?: string;
 }
 
 export interface PomodoroSettings {

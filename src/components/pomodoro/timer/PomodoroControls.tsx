@@ -1,8 +1,7 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Play, Pause, StopCircle, AlertTriangle } from "lucide-react";
+import { Play, Pause, StopCircle } from "lucide-react";
 import { PomodoroStatus } from "@/types/pomodoro";
 
 interface PomodoroControlsProps {
@@ -11,7 +10,6 @@ interface PomodoroControlsProps {
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
-  onLogDistraction: () => void;
 }
 
 export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
@@ -20,7 +18,6 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
   onPause,
   onResume,
   onStop,
-  onLogDistraction,
 }) => {
   const buttonColor = isBreak ? "meditation-primary" : "pomodoro-primary";
   
@@ -58,18 +55,6 @@ export const PomodoroControls: React.FC<PomodoroControlsProps> = ({
           </Button>
         )}
       </div>
-
-      {!isBreak && status === "running" && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs font-medium bg-destructive/5 text-destructive hover:bg-destructive/10 mt-2 rounded-full px-4 py-1 transition-all duration-200"
-          onClick={onLogDistraction}
-        >
-          <AlertTriangle className="h-3 w-3 mr-1" />
-          Log Distraction
-        </Button>
-      )}
     </div>
   );
 };

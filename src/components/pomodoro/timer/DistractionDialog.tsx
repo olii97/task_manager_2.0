@@ -1,9 +1,10 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { XCircle, CheckCircle } from "lucide-react";
+import { analyzeTaskText } from "@/services/quickTaskService";
+import { useToast } from "@/hooks/use-toast";
 
 interface DistractionDialogProps {
   open: boolean;
@@ -19,12 +20,35 @@ export const DistractionDialog: React.FC<DistractionDialogProps> = ({
   onCancel,
 }) => {
   const [distractionText, setDistractionText] = useState("");
+  const { toast } = useToast();
 
   const handleAddDistraction = () => {
     if (distractionText.trim() === "") return;
     
-    onAddDistraction(distractionText);
+    // Close the dialog immediately
     setDistractionText("");
+    onOpenChange(false);
+    
+    // Start background analysis
+    analyzeTaskText(distractionText)
+      .then(analyzedTask => {
+        // Add the distraction with the analyzed title
+        onAddDistraction(analyzedTask.title);
+        toast({
+          title: "Distraction Analyzed",
+          description: "Your distraction has been analyzed and added to your tasks.",
+        });
+      })
+      .catch(error => {
+        console.error('Error analyzing distraction:', error);
+        // Fallback to using the raw text if analysis fails
+        onAddDistraction(distractionText);
+        toast({
+          title: "Analysis Failed",
+          description: "Could not analyze the distraction, but it was still logged.",
+          variant: "destructive",
+        });
+      });
   };
 
   return (
@@ -35,7 +59,7 @@ export const DistractionDialog: React.FC<DistractionDialogProps> = ({
         </DialogHeader>
         <div className="py-4">
           <p className="text-sm text-muted-foreground mb-4">
-            What distracted you? We'll add this to your task backlog.
+            What distracted you? We'll analyze it and add it to your task backlog.
           </p>
           <Input
             value={distractionText}
@@ -57,7 +81,10 @@ export const DistractionDialog: React.FC<DistractionDialogProps> = ({
           >
             <XCircle className="mr-1 h-4 w-4" /> Cancel
           </Button>
-          <Button onClick={handleAddDistraction}>
+          <Button 
+            onClick={handleAddDistraction}
+            disabled={distractionText.trim() === ""}
+          >
             <CheckCircle className="mr-1 h-4 w-4" /> Add & Continue
           </Button>
         </DialogFooter>

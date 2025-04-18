@@ -11,14 +11,8 @@ import { useIntroScreen } from "@/hooks/useIntroScreen";
 import { ProfileInitializer } from "@/components/auth/ProfileInitializer";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Goals from "./pages/Goals";
-import Strava from "./pages/Strava";
 import Tasks from "./pages/Tasks";
-import Intentions from "./pages/Intentions";
-import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
-import MorningRitual from "./pages/MorningRitual";
-import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
@@ -56,7 +50,6 @@ const App = () => (
         <AuthProvider>
           <PomodoroProvider>
             <ProfileInitializer />
-            <QuarterEndReminder />
             <PomodoroBlurOverlay />
             <PomodoroTimer />
             <TabBarTimer />
@@ -71,58 +64,10 @@ const App = () => (
                 }
               />
               <Route
-                path="/goals"
-                element={
-                  <ProtectedRoute>
-                    <Goals />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/intentions"
-                element={
-                  <ProtectedRoute>
-                    <Intentions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/intentions/edit"
-                element={
-                  <ProtectedRoute>
-                    <IntentionsEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/intentions/edit/:id"
-                element={
-                  <ProtectedRoute>
-                    <IntentionsEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/tasks"
                 element={
                   <ProtectedRoute>
                     <Tasks />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/strava"
-                element={
-                  <ProtectedRoute>
-                    <Strava />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/morning-ritual"
-                element={
-                  <ProtectedRoute>
-                    <MorningRitual />
                   </ProtectedRoute>
                 }
               />
