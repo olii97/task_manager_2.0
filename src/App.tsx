@@ -23,7 +23,6 @@ import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 import { TabBarTimer } from "./components/pomodoro/TabBarTimer";
-import Calendar from "./pages/Calendar";
 
 const queryClient = new QueryClient();
 
@@ -104,14 +103,6 @@ const App = () => (
                 }
               />
               <Route
-                path="/strava"
-                element={
-                  <ProtectedRoute>
-                    <Strava />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/tasks"
                 element={
                   <ProtectedRoute>
@@ -120,10 +111,10 @@ const App = () => (
                 }
               />
               <Route
-                path="/calendar"
+                path="/strava"
                 element={
                   <ProtectedRoute>
-                    <Calendar />
+                    <Strava />
                   </ProtectedRoute>
                 }
               />
