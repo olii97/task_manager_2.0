@@ -1,3 +1,6 @@
+export type TaskCategory = 'Consume' | 'Create' | 'Care' | 'Connect';
+export type TaskType = 'work' | 'personal';
+
 export interface Task {
   id: string;
   title: string;
@@ -10,6 +13,9 @@ export interface Task {
   project_id?: string;
   created_at: string;
   updated_at: string;
+  user_id: string;
+  category?: TaskCategory;
+  task_type: TaskType;
 }
 
 export const priorityLabels: Record<number, string> = {

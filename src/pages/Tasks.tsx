@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
@@ -120,6 +119,7 @@ const Tasks = () => {
 
   const handleUpdateTask = (taskData: Partial<Task>) => {
     if (!editingTask) return;
+    console.log('Updating task with data:', taskData);
     updateTaskMutation({
       taskId: editingTask.id,
       updates: {
@@ -127,6 +127,8 @@ const Tasks = () => {
         description: taskData.description,
         priority: taskData.priority,
         energy_level: taskData.energy_level,
+        category: taskData.category,
+        project_id: taskData.project_id,
       },
     });
   };

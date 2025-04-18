@@ -36,13 +36,16 @@ export const useTaskManager = (userId: string | undefined) => {
       description: taskData.description,
       priority: taskData.priority as 1 | 2 | 3 | 4,
       energy_level: taskData.energy_level as 'high' | 'low' | undefined,
+      category: taskData.category,
       is_completed: false,
       is_scheduled_today: false,
+      user_id: userId!,
     });
   };
 
   const handleUpdateTask = (taskData: Partial<Task>) => {
     if (!editingTask) return;
+    console.log('Updating task with data:', taskData);
     updateTaskMutation({
       taskId: editingTask.id,
       updates: {
@@ -50,6 +53,7 @@ export const useTaskManager = (userId: string | undefined) => {
         description: taskData.description,
         priority: taskData.priority,
         energy_level: taskData.energy_level,
+        category: taskData.category,
       },
     });
   };
