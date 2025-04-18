@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Task, priorityLabels } from "@/types/tasks";
+import { Task, priorityLabels, TaskCategory, TaskType } from "@/types/tasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,8 +13,20 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Zap, Battery, Folder } from "lucide-react";
+import { Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Briefcase, Home } from "lucide-react";
 import { Project } from "@/types/projects";
+
+const taskCategories = {
+  'Consume': { label: 'Consume', icon: BookOpen },
+  'Create': { label: 'Create', icon: Wrench },
+  'Care': { label: 'Care', icon: Heart },
+  'Connect': { label: 'Connect', icon: Users }
+} as const;
+
+const taskTypes = {
+  'work': { label: 'Work', icon: Briefcase },
+  'personal': { label: 'Personal', icon: Home }
+} as const;
 
 interface TaskFormProps {
   open: boolean;
@@ -32,6 +44,8 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
     priority: 4,
     energy_level: undefined,
     project_id: undefined,
+    category: undefined,
+    task_type: 'work',
   });
 
   useEffect(() => {
@@ -42,6 +56,8 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
         priority: task.priority,
         energy_level: task.energy_level,
         project_id: task.project_id,
+        category: task.category,
+        task_type: task.task_type,
       });
     } else {
       setFormData({
@@ -50,6 +66,8 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
         priority: 4,
         energy_level: undefined,
         project_id: undefined,
+        category: undefined,
+        task_type: 'work',
       });
     }
   }, [task, open]);
@@ -71,8 +89,19 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
     setFormData((prev) => ({ ...prev, project_id: value === "none" ? undefined : value }));
   };
 
+  const handleCategoryChange = (value: TaskCategory) => {
+    console.log('Category changed to:', value);
+    setFormData((prev) => ({ ...prev, category: value }));
+  };
+
+  const handleTaskTypeChange = (value: TaskType) => {
+    console.log('Task type changed to:', value);
+    setFormData((prev) => ({ ...prev, task_type: value }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Submitting form data:', formData);
     onSave(formData);
   };
 
@@ -109,6 +138,43 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
               placeholder="Add any details about this task"
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="category" className="text-sm font-medium">
+              Category
+            </label>
+            <Select
+              value={formData.category}
+              onValueChange={handleCategoryChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select category">
+                  {formData.category && (
+                    <div className="flex items-center">
+                      {taskCategories[formData.category].icon && (
+                        <div className="mr-2">
+                          {React.createElement(taskCategories[formData.category].icon, {
+                            className: "h-4 w-4"
+                          })}
+                        </div>
+                      )}
+                      {taskCategories[formData.category].label}
+                    </div>
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(taskCategories).map(([value, { label, icon: Icon }]) => (
+                  <SelectItem key={value} value={value}>
+                    <div className="flex items-center">
+                      <Icon className="h-4 w-4 mr-2" />
+                      {label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
@@ -153,6 +219,32 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
                 <Label htmlFor="low" className="flex items-center cursor-pointer">
                   <Battery className="h-4 w-4 mr-1 text-energy-low" />
                   Low Energy
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Task Type
+            </label>
+            <RadioGroup
+              value={formData.task_type}
+              onValueChange={handleTaskTypeChange}
+              className="flex space-x-2"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="work" id="work" />
+                <Label htmlFor="work" className="flex items-center cursor-pointer">
+                  <Briefcase className="h-4 w-4 mr-1" />
+                  Work
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="personal" id="personal" />
+                <Label htmlFor="personal" className="flex items-center cursor-pointer">
+                  <Home className="h-4 w-4 mr-1" />
+                  Personal
                 </Label>
               </div>
             </RadioGroup>

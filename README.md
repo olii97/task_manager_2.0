@@ -177,3 +177,194 @@ Feel free to submit issues and enhancement requests. Follow these steps for cont
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+# Task Manager Database Schema
+
+This document outlines the database schema for the Task Manager application, explaining table relationships and data flow.
+
+## Core Tables
+
+### 1. Profiles (`profiles`)
+The base table for user data. All other tables reference this table through `user_id`.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+```
+
+### 2. Projects (`projects`)
+Organizes tasks into projects. Each project belongs to a user.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  name: string
+  description: string
+  color: string
+  is_active: boolean
+  created_at: Timestamp
+  updated_at: Timestamp
+  user_id: UUID (Foreign Key → profiles.id)
+}
+```
+
+### 3. Tasks (`tasks`)
+The main table for managing tasks. Tasks can be associated with projects.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  title: string
+  description: string
+  due_date: Timestamp
+  completion_date: Timestamp
+  priority: number
+  is_completed: boolean
+  is_scheduled_today: boolean
+  energy_level: string
+  project_id: UUID (Foreign Key → projects.id)
+  created_at: Timestamp
+  updated_at: Timestamp
+  user_id: UUID (Foreign Key → profiles.id)
+}
+```
+
+### 4. Pomodoro Sessions (`pomodoro_sessions`)
+Tracks work sessions for tasks using the Pomodoro technique.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  duration_minutes: number
+  start_time: Timestamp
+  end_time: Timestamp
+  completed: boolean
+  task_id: UUID (Foreign Key → tasks.id)
+  created_at: Timestamp
+  updated_at: Timestamp
+  user_id: UUID (Foreign Key → profiles.id)
+}
+```
+
+### 5. Pomodoro Distractions (`pomodoro_distractions`)
+Tracks interruptions during Pomodoro sessions.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  description: string
+  session_id: UUID (Foreign Key → pomodoro_sessions.id)
+  created_at: Timestamp
+}
+```
+
+## Optional Tables
+
+### 6. Calendar Entries (`calendar_entries`)
+For scheduling tasks and deadlines.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  title: string
+  description: string
+  date: Timestamp
+  entry_type: string
+  has_reminder: boolean
+  reminder_days_before: number
+  is_recurring: boolean
+  recurrence_pattern: string
+  status: string
+  created_at: Timestamp
+  updated_at: Timestamp
+  user_id: UUID (Foreign Key → profiles.id)
+}
+```
+
+### 7. Quarterly Goals (`quarterly_goals`)
+For long-term goal setting.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  description: string
+  category: string
+  quarter: number
+  year: number
+  is_completed: boolean
+  created_at: Timestamp
+  updated_at: Timestamp
+  user_id: UUID (Foreign Key → profiles.id)
+}
+```
+
+### 8. Weekly Intentions (`weekly_intentions`)
+For weekly planning and reflection.
+
+```typescript
+{
+  id: UUID (Primary Key)
+  week_start: Date
+  intention_1: string
+  intention_2: string
+  intention_3: string
+  reflection_1: string
+  reflection_2: string
+  reflection_3: string
+  status: string
+  created_at: Timestamp
+  updated_at: Timestamp
+  user_id: UUID (Foreign Key → profiles.id)
+}
+```
+
+## Table Relationships
+
+### User-Centric Structure
+- All tables (except `pomodoro_distractions`) have a direct `user_id` reference to `profiles`
+- This ensures data isolation between users
+- Row Level Security (RLS) policies enforce this relationship
+
+### Task Management Flow
+1. Users create projects
+2. Tasks are created within projects (optional)
+3. Tasks can be worked on using Pomodoro sessions
+4. Pomodoro sessions can have distractions logged
+
+### Optional Planning Features
+1. Calendar entries can be used to schedule tasks
+2. Quarterly goals provide long-term planning
+3. Weekly intentions help with weekly planning and reflection
+
+## Data Flow Examples
+
+### Creating a Task
+1. User creates a project (optional)
+2. User creates a task, optionally linking it to a project
+3. Task can be scheduled in calendar entries
+
+### Working on a Task
+1. User starts a Pomodoro session for a task
+2. During the session, distractions can be logged
+3. Session completion is recorded
+4. Task completion can be updated
+
+### Planning Work
+1. User sets quarterly goals
+2. User plans weekly intentions
+3. User schedules tasks in calendar
+4. User organizes tasks into projects
+
+## Security
+- Row Level Security (RLS) is enabled on all tables
+- Users can only access their own data
+- Foreign key constraints ensure data integrity
+- Cascading deletes are implemented where appropriate
+
+## Performance
+- Indexes are created on frequently queried columns
+- Foreign key relationships are indexed
+- Timestamp fields are indexed for efficient date-based queries

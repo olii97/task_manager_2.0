@@ -3,7 +3,7 @@ import { Task, priorityColors, priorityEmojis, priorityBackgroundColors } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Timer, Play, Folder } from "lucide-react";
+import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2 } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -11,14 +11,23 @@ import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { FloatingXP } from "@/components/animations/FloatingXP";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { Project } from "@/types/projects";
+import { cn } from "@/lib/utils";
+
+const taskCategories = {
+  'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
+  'Create': { label: 'Create', icon: Wrench, color: 'text-purple-500' },
+  'Care': { label: 'Care', icon: Heart, color: 'text-pink-500' },
+  'Connect': { label: 'Connect', icon: Users, color: 'text-green-500' }
+} as const;
 
 interface TaskItemProps {
   task: Task;
   onEditTask: (task: Task) => void;
   projects?: Project[];
+  isDragging?: boolean;
 }
 
-export function TaskItem({ task, onEditTask, projects = [] }: TaskItemProps) {
+export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskItemProps) {
   const queryClient = useQueryClient();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showXP, setShowXP] = useState(false);
@@ -95,6 +104,8 @@ export function TaskItem({ task, onEditTask, projects = [] }: TaskItemProps) {
   // Find the project if it exists
   const taskProject = task.project_id ? projects.find(p => p.id === task.project_id) : undefined;
 
+  const categoryInfo = task.category ? taskCategories[task.category] : null;
+
   return (
     <>
       <ConfettiEffect isActive={showConfetti} />
@@ -118,76 +129,81 @@ export function TaskItem({ task, onEditTask, projects = [] }: TaskItemProps) {
         whileHover={{ scale: 1.01 }}
         transition={{ duration: 0.2 }}
       >
-        <Card className={`mb-2 task-item ${task.is_completed ? 'bg-gray-50' : priorityBgClass} ${energyClass} ${taskProject?.color ? `border-l-4 ${taskProject.color}` : ''}`}>
-          <CardContent className="p-4 flex items-start">
-            <div className="flex-shrink-0 mr-3 mt-1">
-              <Checkbox 
-                ref={checkboxRef as any}
-                checked={task.is_completed} 
-                onCheckedChange={handleCheckboxChange}
-                aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
-                className={task.is_completed ? "task-complete" : ""}
-              />
-            </div>
-            <div className="flex-grow">
-              <div className="flex items-center flex-wrap mb-1">
-                <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-gray-500' : ''}`}>
-                  {task.title}
-                </span>
-                <span className="ml-2 text-sm">
-                  {priorityEmojis[task.priority]}
-                </span>
-                {task.energy_level && (
-                  <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                    task.energy_level === 'high' ? 'bg-energy-high/10 text-energy-high' : 
-                    'bg-energy-low/10 text-energy-low'
-                  }`}>
-                    {task.energy_level === 'high' ? '⚡ High energy' : '🔋 Low energy'}
-                  </span>
+        <Card className={cn(
+          "group flex items-start gap-2 rounded-lg border p-3 mb-2 bg-card hover:border-accent transition-colors",
+          isDragging && "opacity-50",
+          task.is_completed && "opacity-50",
+          taskProject?.color ? `border-l-4 ${taskProject.color}` : '',
+          energyClass
+        )}>
+          <div className="flex-shrink-0 mr-3 mt-1">
+            <Checkbox 
+              ref={checkboxRef as any}
+              checked={task.is_completed} 
+              onCheckedChange={handleCheckboxChange}
+              aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
+              className={task.is_completed ? "task-complete" : ""}
+            />
+          </div>
+          <div className="flex-grow">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-gray-500' : ''}`}>
+                {task.title}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {categoryInfo && (
+                  <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
+                    <categoryInfo.icon className="h-4 w-4" />
+                  </div>
+                )}
+                {task.energy_level === "high" && (
+                  <Zap className="h-4 w-4 text-energy-high" />
+                )}
+                {task.energy_level === "low" && (
+                  <Battery className="h-4 w-4 text-energy-low" />
                 )}
                 {taskProject && (
-                  <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-100 flex items-center">
-                    <Folder className="h-3 w-3 mr-1" />
-                    {taskProject.name}
-                  </span>
+                  <div className="flex items-center text-muted-foreground" title={taskProject.name}>
+                    <Folder className="h-4 w-4" />
+                  </div>
                 )}
               </div>
-              {task.description && (
-                <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
-                  {task.description}
-                </p>
-              )}
             </div>
-            <div className="flex-shrink-0 ml-2 flex">
-              {!task.is_completed && task.energy_level === 'high' && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
-                  title="Focus Mode"
-                  onClick={handleStartPomodoro}
-                >
-                  <Play className="h-4 w-4" />
-                </Button>
-              )}
+            {task.description && (
+              <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
+                {task.description}
+              </p>
+            )}
+          </div>
+          <div className="flex-shrink-0 ml-2 flex">
+            {!task.is_completed && task.energy_level === 'high' && (
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8" 
-                onClick={() => onEditTask(task)}
+                className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+                title="Focus Mode"
+                onClick={handleStartPomodoro}
               >
-                <Edit className="h-4 w-4" />
+                <Play className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-destructive" 
-                onClick={handleDelete}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={() => onEditTask(task)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-destructive" 
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </Card>
       </motion.div>
     </>

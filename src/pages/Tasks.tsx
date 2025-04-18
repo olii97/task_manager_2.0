@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthProvider";
@@ -115,11 +114,16 @@ const Tasks = () => {
       energy_level: taskData.energy_level as 'high' | 'low' | undefined,
       is_completed: false,
       is_scheduled_today: false,
+      user_id: userId!,
+      task_type: taskData.task_type || 'personal',
+      project_id: taskData.project_id,
+      category: taskData.category
     });
   };
 
   const handleUpdateTask = (taskData: Partial<Task>) => {
     if (!editingTask) return;
+    console.log('Updating task with data:', taskData);
     updateTaskMutation({
       taskId: editingTask.id,
       updates: {
@@ -127,6 +131,8 @@ const Tasks = () => {
         description: taskData.description,
         priority: taskData.priority,
         energy_level: taskData.energy_level,
+        category: taskData.category,
+        project_id: taskData.project_id,
       },
     });
   };
@@ -364,7 +370,10 @@ const Tasks = () => {
       {/* Project section */}
       <ProjectList 
         projects={projects} 
-        taskCounts={projectTaskCounts} 
+        taskCounts={projectTaskCounts}
+        tasks={tasks}
+        onAddTask={handleAddTask}
+        onEditTask={handleEditTask}
       />
 
       {/* Task Form Dialog */}
