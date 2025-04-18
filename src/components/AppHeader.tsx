@@ -36,10 +36,7 @@ export const AppHeader = () => {
 
   const navItems = [
     { path: "/", label: "Dashboard" },
-    { path: "/journal", label: "Journal" },
     { path: "/tasks", label: "Tasks" },
-    { path: "/weight", label: "Weight" },
-    { path: "/nutrition", label: "Nutrition" },
     { path: "/calendar", label: "Calendar" },
   ];
 

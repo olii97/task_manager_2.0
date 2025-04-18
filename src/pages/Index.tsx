@@ -1,14 +1,9 @@
 import { useAuth } from "@/components/AuthProvider";
 import { useQuery } from "@tanstack/react-query";
-import { JournalStreak } from "@/components/JournalStreak";
 import { fetchTasks } from "@/services/tasks";
 import { TodaysTasks } from "@/components/tasks/TodaysTasks";
 import { TaskForm } from "@/components/tasks/TaskForm";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
-import { TodaysJournalCard } from "@/components/home/TodaysJournalCard";
-import { WrapUpDayButton } from "@/components/home/WrapUpDayButton";
-import { WeightTrackerCard } from "@/components/home/WeightTrackerCard";
-import { useJournalEntry } from "@/hooks/useJournalEntry";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,9 +15,6 @@ import { addDays } from "date-fns";
 const Index = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
-
-  // Journal entry data
-  const { todayEntry, isLoading: isJournalLoading, refreshTodayEntry } = useJournalEntry(userId);
 
   // Task management
   const {
@@ -62,28 +54,14 @@ const Index = () => {
     enabled: !!userId,
   });
 
-  // Refresh journal entry when component mounts
-  useEffect(() => {
-    if (userId) {
-      refreshTodayEntry();
-    }
-  }, [userId, refreshTodayEntry]);
-
   return (
     <div className="container py-6">
-      {/* Main content area - tasks, journal, and weight tracker side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      {/* Main content area - tasks and calendar side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Today's Tasks */}
         <TodaysTasks 
           onEditTask={handleEditTask} 
           onPlanTasks={() => setPlannerOpen(true)} 
-        />
-
-        {/* Today's Journal Entry */}
-        <TodaysJournalCard 
-          entry={todayEntry} 
-          isLoading={isJournalLoading}
-          refreshTodayEntry={refreshTodayEntry}
         />
 
         {/* Calendar Widget */}
@@ -96,19 +74,6 @@ const Index = () => {
           />
         )}
       </div>
-
-      {/* Daily Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Daily Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            Download a summary of your day including journal entries and completed tasks.
-          </p>
-          <WrapUpDayButton userId={userId} />
-        </CardContent>
-      </Card>
 
       {/* Task Form Dialog */}
       <TaskForm

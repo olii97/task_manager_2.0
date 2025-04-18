@@ -8,18 +8,16 @@ import { AppHeader } from "@/components/AppHeader";
 import { MotionConfig } from "framer-motion";
 import IntroScreen from "@/components/intro/IntroScreen";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
+import { ProfileInitializer } from "@/components/auth/ProfileInitializer";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Goals from "./pages/Goals";
-import Journal from "./pages/Journal";
 import Strava from "./pages/Strava";
 import Tasks from "./pages/Tasks";
-import Weight from "./pages/Weight";
 import Intentions from "./pages/Intentions";
 import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
 import MorningRitual from "./pages/MorningRitual";
-import Nutrition from "./pages/Nutrition";
 import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
@@ -58,6 +56,7 @@ const App = () => (
         <Sonner />
         <AuthProvider>
           <PomodoroProvider>
+            <ProfileInitializer />
             <QuarterEndReminder />
             <PomodoroBlurOverlay />
             <PomodoroTimer />
@@ -77,14 +76,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Goals />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/journal"
-                element={
-                  <ProtectedRoute>
-                    <Journal />
                   </ProtectedRoute>
                 }
               />
@@ -125,22 +116,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Tasks />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/weight"
-                element={
-                  <ProtectedRoute>
-                    <Weight />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/nutrition"
-                element={
-                  <ProtectedRoute>
-                    <Nutrition />
                   </ProtectedRoute>
                 }
               />
