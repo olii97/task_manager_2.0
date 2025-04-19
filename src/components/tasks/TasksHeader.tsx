@@ -1,10 +1,10 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, RefreshCw, Calendar, BookOpen } from "lucide-react";
 import { QuickTaskInput } from "./QuickTaskInput";
 import { Task } from "@/types/tasks";
 import { Project } from "@/types/projects";
+import { WrapUpDayButton } from "./WrapUpDayButton";
 
 interface TasksHeaderProps {
   onAddTask: () => void;
@@ -28,6 +28,8 @@ export function TasksHeader({
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Tasks</h1>
         <div className="flex items-center space-x-2">
+          <WrapUpDayButton />
+          
           {onWeeklyReflection && (
             <Button
               variant="outline"

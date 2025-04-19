@@ -12,6 +12,7 @@ import { FloatingXP } from "@/components/animations/FloatingXP";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { Project } from "@/types/projects";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
@@ -49,6 +50,12 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
         if (task.priority === 1) {
           setShowXP(true);
         }
+        
+        // Show completion toast
+        toast({
+          title: "Task completed! 🎉",
+          description: `"${task.title}" has been marked as complete.`,
+        });
         
         // Hide confetti after 2 seconds
         setTimeout(() => {
