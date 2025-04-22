@@ -13,7 +13,6 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { toast } from "@/hooks/use-toast";
 import { TasksLoadingState } from "@/components/tasks/TasksLoadingState";
 import { TasksHeader } from "@/components/tasks/TasksHeader";
-import { TasksDownloadButton } from "@/components/tasks/TasksDownloadButton";
 import { TodaysSections } from "@/components/tasks/TodaysSections";
 import { TaskBacklog } from "@/components/tasks/TaskBacklog";
 import { CompletedTasks } from "@/components/tasks/CompletedTasks";
@@ -306,10 +305,8 @@ const Tasks = () => {
           onResetSchedule={handleResetSchedule}
           onPlanTasks={() => setPlannerOpen(true)}
           onQuickTaskCreated={handleQuickTaskCreated}
-          onWeeklyReflection={handleWeeklyReflection}
           projects={projects}
         />
-        <TasksDownloadButton tasks={tasks} projects={projects} />
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -348,6 +345,7 @@ const Tasks = () => {
             icon={<ClipboardList className="h-5 w-5" />}
             emptyMessage="Your backlog is empty. Add some tasks!"
             projects={projects}
+            defaultOpen={true}
           />
         </div>
       </DragDropContext>
