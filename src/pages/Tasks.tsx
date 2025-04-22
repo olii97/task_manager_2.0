@@ -26,6 +26,8 @@ import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/
 import { ProjectList } from "@/components/projects/ProjectList";
 import { Project } from "@/types/projects";
 import { fetchProjects, getProjectTasks } from "@/services/projects/projectService";
+import { MilestonesSection } from '@/components/tasks/MilestonesSection';
+import { fetchMilestones } from '@/services/milestones/milestoneService';
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -48,6 +50,12 @@ const Tasks = () => {
   const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
     queryKey: ["projects", userId],
     queryFn: () => fetchProjects(userId!),
+    enabled: !!userId,
+  });
+
+  const { data: milestones = [], isLoading: isLoadingMilestones } = useQuery({
+    queryKey: ["milestones", userId],
+    queryFn: () => fetchMilestones(userId!),
     enabled: !!userId,
   });
 
@@ -310,6 +318,9 @@ const Tasks = () => {
           projects={projects}
         />
       </div>
+
+      {/* Add Milestones Section */}
+      <MilestonesSection milestones={milestones} />
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

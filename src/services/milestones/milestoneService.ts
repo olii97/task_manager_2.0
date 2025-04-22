@@ -27,6 +27,30 @@ export const fetchProjectMilestones = async (projectId: string): Promise<Milesto
 };
 
 /**
+ * Fetch all milestones for a user
+ */
+export const fetchMilestones = async (userId: string): Promise<Milestone[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('milestones')
+      .select('*')
+      .eq('user_id', userId)
+      .order('is_main', { ascending: false }) // Main milestones first
+      .order('date', { ascending: true }); // Then by date
+      
+    if (error) throw error;
+    
+    return data.map(m => ({
+      ...m,
+      is_main: m.is_main ?? false
+    })) as Milestone[];
+  } catch (error) {
+    console.error('Error fetching milestones:', error);
+    throw error;
+  }
+};
+
+/**
  * Add a new milestone
  */
 type CreateMilestone = Omit<Milestone, 'id' | 'created_at' | 'updated_at'>;
