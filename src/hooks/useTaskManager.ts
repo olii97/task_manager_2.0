@@ -40,6 +40,9 @@ export const useTaskManager = (userId: string | undefined) => {
       is_completed: false,
       is_scheduled_today: false,
       user_id: userId!,
+      task_type: taskData.task_type || 'personal',
+      project_id: taskData.project_id,
+      due_date: taskData.due_date,
     });
   };
 
@@ -54,6 +57,9 @@ export const useTaskManager = (userId: string | undefined) => {
         priority: taskData.priority,
         energy_level: taskData.energy_level,
         category: taskData.category,
+        project_id: taskData.project_id,
+        due_date: taskData.due_date,
+        task_type: taskData.task_type,
       },
     });
   };

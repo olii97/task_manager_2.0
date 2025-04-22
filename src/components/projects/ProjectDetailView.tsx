@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Task } from '@/types/tasks';
 import { Project } from '@/types/projects';
+import { Milestone } from '@/types/milestones';
 import { Button } from '@/components/ui/button';
-import { Plus, Zap, Battery, BookOpen, Users, Wrench, Heart, Briefcase, Home, Check, Edit2, Trash2 } from 'lucide-react';
+import { Plus, BookOpen, Users, Wrench, Heart, Briefcase, Home, Check, Edit2, Trash2, Calendar, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +12,13 @@ import { updateProject } from '@/services/projects/projectService';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { deleteTask } from '@/services/tasks';
-import { analyzeBulkTasksText } from '@/services/quickTaskService';
+import { 
+  fetchProjectMilestones, 
+  addMilestone, 
+  updateMilestone, 
+  deleteMilestone 
+} from '@/services/milestones/milestoneService';
+import { useAuth } from '@/components/AuthProvider';
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
@@ -22,37 +29,36 @@ const taskCategories = {
 
 interface ProjectDetailViewProps {
   project: Project;
-  tasks: Task[];
-  open: boolean;
   onClose: () => void;
-  onAddTask: () => void;
-  onEditTask: (task: Task) => void;
+  onUpdateProject: (project: Project) => void;
+  onDeleteProject: (projectId: string) => void;
+  onAddTask: (task: Task) => void;
+  onUpdateTask: (task: Task) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
-export function ProjectDetailView({ 
-  project, 
-  tasks, 
-  open, 
-  onClose, 
+export function ProjectDetailView({
+  project,
+  onClose,
+  onUpdateProject,
+  onDeleteProject,
   onAddTask,
-  onEditTask 
+  onUpdateTask,
+  onDeleteTask,
 }: ProjectDetailViewProps) {
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editingDescription, setEditingDescription] = useState(false);
-  const [title, setTitle] = useState(project.name);
-  const [description, setDescription] = useState(project.description || '');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProject, setEditedProject] = useState<Project>(project);
+  const [newMilestone, setNewMilestone] = useState('');
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  
-  // New state for Bulk Task Creation
-  const [bulkTasksInput, setBulkTasksInput] = useState('');
-  const [bulkTasksPreview, setBulkTasksPreview] = useState<Array<Omit<Task, "id" | "created_at" | "updated_at">> | null>(null);
-  const [isAnalyzingBulk, setIsAnalyzingBulk] = useState(false);
 
-  // Reset title and description when project changes
-  React.useEffect(() => {
-    setTitle(project.name);
-    setDescription(project.description || '');
-  }, [project]);
+  useEffect(() => {
+    if (project.id) {
+      fetchProjectMilestones(project.id).then(setMilestones);
+    }
+  }, [project.id]);
 
   // Create mutation for updating project
   const { mutate: updateProjectMutation, isPending } = useMutation({
@@ -91,7 +97,7 @@ export function ProjectDetailView({
   });
 
   const handleSaveTitle = () => {
-    if (!title.trim()) {
+    if (!editedProject.name.trim()) {
       toast({
         title: "Error",
         description: "Project title cannot be empty",
@@ -100,28 +106,28 @@ export function ProjectDetailView({
       return;
     }
     
-    updateProjectMutation({ name: title });
-    setEditingTitle(false);
+    updateProjectMutation({ name: editedProject.name });
+    setIsEditing(false);
   };
 
   const handleSaveDescription = () => {
-    updateProjectMutation({ description: description || null });
-    setEditingDescription(false);
+    updateProjectMutation({ description: editedProject.description || null });
+    setIsEditing(false);
   };
 
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSaveTitle();
     } else if (e.key === 'Escape') {
-      setTitle(project.name);
-      setEditingTitle(false);
+      setEditedProject(project);
+      setIsEditing(false);
     }
   };
 
   const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      setDescription(project.description || '');
-      setEditingDescription(false);
+      setEditedProject(project);
+      setIsEditing(false);
     }
   };
 
@@ -133,44 +139,67 @@ export function ProjectDetailView({
     }
   };
 
-  // New handler for analyzing bulk tasks
-  const handleAnalyzeBulkTasks = async () => {
-    setIsAnalyzingBulk(true);
+  const handleAddMilestone = async () => {
+    if (!newMilestone.trim() || !user) {
+      toast({
+        title: "Error",
+        description: "Milestone title and date are required",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      const tasks = await analyzeBulkTasksText(bulkTasksInput);
-      setBulkTasksPreview(tasks);
+      const milestone = await addMilestone({
+        project_id: project.id,
+        title: newMilestone,
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        is_completed: false,
+        user_id: user.id
+      });
+
+      setMilestones(prev => [...prev, milestone]);
+      setNewMilestone('');
     } catch (error) {
-      console.error('Error analyzing bulk tasks:', error);
-    } finally {
-      setIsAnalyzingBulk(false);
+      console.error('Error adding milestone:', error);
     }
   };
 
-  // New handler for confirming bulk tasks creation
-  const handleConfirmBulkTasks = () => {
-    toast({
-      title: "Bulk tasks added",
-      description: "The bulk tasks have been added to your project.",
-    });
-    console.log("Bulk tasks to add:", bulkTasksPreview);
-    // Here you would typically call an API or update state to add the new tasks
-    setBulkTasksInput('');
-    setBulkTasksPreview(null);
+  const handleUpdateMilestone = async (milestoneId: string, updates: Partial<Milestone>) => {
+    try {
+      const updatedMilestone = await updateMilestone(milestoneId, updates);
+      setMilestones(prev => 
+        prev.map(m => m.id === milestoneId ? updatedMilestone : m)
+      );
+      setEditingMilestone(null);
+    } catch (error) {
+      console.error('Error updating milestone:', error);
+    }
+  };
+
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    try {
+      await deleteMilestone(milestoneId);
+      setMilestones(prev => prev.filter(m => m.id !== milestoneId));
+    } catch (error) {
+      console.error('Error deleting milestone:', error);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-6xl h-[80vh] p-0 gap-0">
         <div className="flex h-full">
           {/* Project Header */}
           <div className="w-full flex flex-col h-full">
             <div className="flex flex-col p-6 border-b">
               <div className="flex items-center justify-between mb-2">
-                {editingTitle ? (
+                {isEditing ? (
                   <div className="flex items-center gap-2 w-full">
                     <Input 
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      value={editedProject.name}
+                      onChange={(e) => setEditedProject(prev => ({ ...prev, name: e.target.value }))}
                       className="text-xl font-semibold"
                       autoFocus
                       onKeyDown={handleTitleKeyDown}
@@ -182,21 +211,21 @@ export function ProjectDetailView({
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-semibold cursor-pointer hover:text-blue-500 transition-colors" onClick={() => setEditingTitle(true)}>
-                      {title}
+                    <h2 className="text-2xl font-semibold cursor-pointer hover:text-blue-500 transition-colors" onClick={() => setIsEditing(true)}>
+                      {editedProject.name}
                     </h2>
-                    <Button variant="ghost" size="icon" onClick={() => setEditingTitle(true)}>
+                    <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
               </div>
 
-              {editingDescription ? (
+              {isEditing ? (
                 <div className="flex flex-col gap-2">
                   <Textarea 
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={editedProject.description || ''}
+                    onChange={(e) => setEditedProject(prev => ({ ...prev, description: e.target.value }))}
                     className="min-h-[100px] text-muted-foreground"
                     placeholder="Add a description..."
                     autoFocus
@@ -212,119 +241,193 @@ export function ProjectDetailView({
               ) : (
                 <div 
                   className="text-muted-foreground cursor-pointer hover:text-blue-500 transition-colors min-h-[40px]"
-                  onClick={() => setEditingDescription(true)}
+                  onClick={() => setIsEditing(true)}
                 >
-                  {description || 'Add a description...'}
+                  {editedProject.description || 'Add a description...'}
                 </div>
               )}
             </div>
 
-            {/* Bulk Task Creation Section */}
-            <div className="px-6 py-4 border-b">
-              <h3 className="text-lg font-medium mb-2">Convert Thoughts to Tasks (ChatGPT-4)</h3>
-              <Textarea 
-                value={bulkTasksInput}
-                onChange={(e) => setBulkTasksInput(e.target.value)}
-                placeholder="Enter your thoughts here. Each new line will be treated as a separate task idea."
-              />
-              <div className="flex gap-2 mt-2">
-                <Button onClick={handleAnalyzeBulkTasks} disabled={isAnalyzingBulk || !bulkTasksInput.trim()}>
-                  {isAnalyzingBulk ? 'Converting...' : 'Convert Thoughts'}
-                </Button>
-                {bulkTasksPreview && bulkTasksPreview.length > 0 && (
-                  <Button variant="secondary" onClick={handleConfirmBulkTasks}>
-                    Add Tasks to Project
-                  </Button>
-                )}
-              </div>
-              {bulkTasksPreview && bulkTasksPreview.length > 0 && (
-                <div className="mt-2">
-                  <p className="font-medium">Preview:</p>
-                  <ul className="list-disc ml-6">
-                    {bulkTasksPreview.map((task, index) => (
-                      <li key={index}>
-                        {task.title}{task.description ? ` - ${task.description}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Tasks List */}
-            <div className="flex-1 overflow-auto p-6">
-              <div className="grid gap-4">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="group flex flex-col gap-2 rounded-lg border p-4 hover:border-accent transition-colors cursor-pointer"
-                    onClick={() => onEditTask(task)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium">{task.title}</span>
-                          <div className="flex items-center gap-1.5">
-                            {task.category && (
-                              <div 
-                                className={cn("flex items-center", taskCategories[task.category].color)} 
-                                title={taskCategories[task.category].label}
-                              >
-                                {React.createElement(taskCategories[task.category].icon, {
-                                  className: "h-4 w-4"
-                                })}
-                              </div>
-                            )}
-                            {task.energy_level === "high" && (
-                              <Zap className="h-4 w-4 text-energy-high" />
-                            )}
-                            {task.energy_level === "low" && (
-                              <Battery className="h-4 w-4 text-energy-low" />
-                            )}
-                            {task.task_type === "work" ? (
-                              <Briefcase className="h-4 w-4" />
-                            ) : (
-                              <Home className="h-4 w-4" />
-                            )}
+            {/* Main Content Area */}
+            <div className="flex flex-1 overflow-hidden">
+              {/* Left Column - Tasks List */}
+              <div className="w-2/3 overflow-auto p-6 border-r">
+                <div className="grid gap-4">
+                  {(project.tasks || []).map((task) => (
+                    <div
+                      key={task.id}
+                      className="group flex flex-col gap-2 rounded-lg border p-4 hover:border-accent transition-colors cursor-pointer"
+                      onClick={() => onUpdateTask(task)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium">{task.title}</span>
+                            <div className="flex items-center gap-1.5">
+                              {task.category && (
+                                <div 
+                                  className={cn("flex items-center", taskCategories[task.category].color)} 
+                                  title={taskCategories[task.category].label}
+                                >
+                                  {React.createElement(taskCategories[task.category].icon, {
+                                    className: "h-4 w-4"
+                                  })}
+                                </div>
+                              )}
+                              {task.task_type === "work" ? (
+                                <Briefcase className="h-4 w-4" />
+                              ) : (
+                                <Home className="h-4 w-4" />
+                              )}
+                            </div>
                           </div>
+                          {task.description && (
+                            <p className="text-sm text-muted-foreground">
+                              {task.description}
+                            </p>
+                          )}
                         </div>
-                        {task.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {task.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-1 rounded-full bg-secondary">
-                          P{task.priority}
-                        </span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => handleDeleteTask(task, e)}
-                          title="Delete task"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs px-2 py-1 rounded-full bg-secondary">
+                            P{task.priority}
+                          </span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleDeleteTask(task, e)}
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {tasks.length === 0 && (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p>No tasks in this project yet.</p>
-                  </div>
-                )}
+                  {(!project.tasks || project.tasks.length === 0) && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p>No tasks in this project yet.</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Add Task Button at the bottom */}
+                <div className="mt-6 flex justify-center">
+                  <Button onClick={() => onAddTask(project.tasks[0])} className="w-full max-w-xs">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Task
+                  </Button>
+                </div>
               </div>
-              
-              {/* Add Task Button at the bottom */}
-              <div className="mt-6 flex justify-center">
-                <Button onClick={onAddTask} className="w-full max-w-xs">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Task
-                </Button>
+
+              {/* Right Column - Milestones */}
+              <div className="w-1/3 overflow-auto p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <Flag className="h-5 w-5" />
+                  Milestones
+                </h3>
+                <div className="space-y-4">
+                  {/* Add New Milestone Form */}
+                  <div className="space-y-2 p-4 border rounded-lg">
+                    <Input
+                      placeholder="Milestone title"
+                      value={newMilestone}
+                      onChange={(e) => setNewMilestone(e.target.value)}
+                    />
+                    <Button onClick={handleAddMilestone} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Milestone
+                    </Button>
+                  </div>
+
+                  {/* Milestones List */}
+                  <div className="space-y-3">
+                    {milestones.map(milestone => (
+                      <div 
+                        key={milestone.id}
+                        className={cn(
+                          "p-3 border rounded-lg",
+                          milestone.is_completed && "opacity-50"
+                        )}
+                      >
+                        {editingMilestone === milestone ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={milestone.title}
+                              onChange={(e) => handleUpdateMilestone(milestone.id, { title: e.target.value })}
+                            />
+                            <Input
+                              type="date"
+                              value={milestone.date}
+                              onChange={(e) => handleUpdateMilestone(milestone.id, { date: e.target.value })}
+                            />
+                            <Textarea
+                              value={milestone.description}
+                              onChange={(e) => handleUpdateMilestone(milestone.id, { description: e.target.value })}
+                            />
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setEditingMilestone(null)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleDeleteMilestone(milestone.id)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium">{milestone.title}</h4>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditingMilestone(milestone)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleUpdateMilestone(milestone.id, { is_completed: !milestone.is_completed })}
+                                >
+                                  <Check className={cn(
+                                    "h-4 w-4",
+                                    milestone.is_completed ? "text-green-500" : "text-muted-foreground"
+                                  )} />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              <span>{new Date(milestone.date).toLocaleDateString()}</span>
+                            </div>
+                            {milestone.description && (
+                              <p className="text-sm text-muted-foreground">
+                                {milestone.description}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {milestones.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>No milestones yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

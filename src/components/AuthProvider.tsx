@@ -7,12 +7,14 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  user: Session['user'] | null;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   session: null, 
   loading: true,
-  signOut: async () => {}
+  signOut: async () => {},
+  user: null
 });
 
 export const useAuth = () => {
@@ -61,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate]);
 
   return (
-    <AuthContext.Provider value={{ session, loading, signOut }}>
+    <AuthContext.Provider value={{ session, loading, signOut, user: session?.user || null }}>
       {children}
     </AuthContext.Provider>
   );

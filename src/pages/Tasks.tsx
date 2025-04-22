@@ -116,7 +116,8 @@ const Tasks = () => {
       user_id: userId!,
       task_type: taskData.task_type || 'personal',
       project_id: taskData.project_id,
-      category: taskData.category
+      category: taskData.category,
+      due_date: taskData.due_date,
     });
   };
 
@@ -132,6 +133,7 @@ const Tasks = () => {
         energy_level: taskData.energy_level,
         category: taskData.category,
         project_id: taskData.project_id,
+        due_date: taskData.due_date,
       },
     });
   };

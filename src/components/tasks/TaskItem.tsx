@@ -3,7 +3,7 @@ import { Task, priorityColors, priorityEmojis, priorityBackgroundColors } from "
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2 } from "lucide-react";
+import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -141,7 +141,7 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
           isDragging && "opacity-50",
           task.is_completed && "opacity-50",
           taskProject?.color ? `border-l-4 ${taskProject.color}` : '',
-          energyClass
+          priorityBgClass
         )}>
           <div className="flex-shrink-0 mr-3 mt-1">
             <Checkbox 
@@ -152,6 +152,7 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
               className={task.is_completed ? "task-complete" : ""}
             />
           </div>
+          
           <div className="flex-grow">
             <div className="flex items-center gap-2 mb-1">
               <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-gray-500' : ''}`}>
@@ -163,12 +164,9 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
                     <categoryInfo.icon className="h-4 w-4" />
                   </div>
                 )}
-                {task.energy_level === "high" && (
-                  <Zap className="h-4 w-4 text-energy-high" />
-                )}
-                {task.energy_level === "low" && (
-                  <Battery className="h-4 w-4 text-energy-low" />
-                )}
+                <span className={cn("text-xs px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
+                  P{task.priority}
+                </span>
                 {taskProject && (
                   <div className="flex items-center text-muted-foreground" title={taskProject.name}>
                     <Folder className="h-4 w-4" />
@@ -181,9 +179,16 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
                 {task.description}
               </p>
             )}
+            {task.due_date && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                <Calendar className="h-3 w-3" />
+                <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
-          <div className="flex-shrink-0 ml-2 flex">
-            {!task.is_completed && task.energy_level === 'high' && (
+          
+          <div className="flex items-center gap-1">
+            {!task.is_completed && (
               <Button 
                 variant="ghost" 
                 size="icon" 

@@ -15,6 +15,7 @@ export const addTask = async (userId: string, task: Omit<Task, "id" | "created_a
         category: task.category,
         user_id: userId,
         project_id: task.project_id,
+        due_date: task.due_date,
       }])
       .select()
       .single();
@@ -41,6 +42,7 @@ export const updateTask = async (taskId: string, updates: Partial<Task>) => {
         category: updates.category,
         project_id: updates.project_id,
         completion_date: updates.is_completed ? new Date().toISOString() : null,
+        due_date: updates.due_date,
       })
       .eq("id", taskId)
       .select()

@@ -13,7 +13,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Briefcase, Home } from "lucide-react";
+import { Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Briefcase, Home, Calendar } from "lucide-react";
 import { Project } from "@/types/projects";
 
 const taskCategories = {
@@ -46,6 +46,7 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
     project_id: undefined,
     category: undefined,
     task_type: 'work',
+    due_date: undefined,
   });
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
         project_id: task.project_id,
         category: task.category,
         task_type: task.task_type,
+        due_date: task.due_date,
       });
     } else {
       setFormData({
@@ -68,6 +70,7 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
         project_id: undefined,
         category: undefined,
         task_type: 'work',
+        due_date: undefined,
       });
     }
   }, [task, open]);
@@ -97,6 +100,10 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
   const handleTaskTypeChange = (value: TaskType) => {
     console.log('Task type changed to:', value);
     setFormData((prev) => ({ ...prev, task_type: value }));
+  };
+
+  const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, due_date: e.target.value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -271,6 +278,21 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="due_date" className="text-sm font-medium flex items-center">
+              <Calendar className="h-4 w-4 mr-1" />
+              Due Date (Optional)
+            </label>
+            <Input
+              id="due_date"
+              name="due_date"
+              type="date"
+              value={formData.due_date || ""}
+              onChange={handleDueDateChange}
+              className="w-full"
+            />
           </div>
           
           <DialogFooter>

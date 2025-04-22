@@ -15,7 +15,10 @@ export const fetchProjects = async (userId: string): Promise<Project[]> => {
       
     if (error) throw error;
     
-    return data as Project[];
+    return data.map(project => ({
+      ...project,
+      milestones: project.milestones || []
+    })) as Project[];
   } catch (error) {
     console.error('Error fetching projects:', error);
     throw error;
@@ -32,7 +35,11 @@ export const addProject = async (
   try {
     const { data, error } = await supabase
       .from('projects')
-      .insert({ ...project, user_id: userId })
+      .insert({ 
+        ...project, 
+        user_id: userId,
+        milestones: project.milestones || []
+      })
       .select('*')
       .single();
       
@@ -60,7 +67,10 @@ export const updateProject = async (
   try {
     const { data, error } = await supabase
       .from('projects')
-      .update(updates)
+      .update({
+        ...updates,
+        milestones: updates.milestones || []
+      })
       .eq('id', projectId)
       .select('*')
       .single();
