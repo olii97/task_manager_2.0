@@ -1,30 +1,25 @@
 import React, { useState } from 'react';
 import { Milestone } from '@/types/milestones';
-import { Flag, Calendar, Folder } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Project } from '@/types/projects';
-import { ProjectDetailView } from '@/components/projects/ProjectDetailView';
+import { Task } from '@/types/tasks';
+import { Button } from '@/components/ui/button';
+import { Plus, Check, Calendar } from 'lucide-react';
+import { MilestoneForm } from './MilestoneForm';
+import { toast } from '@/hooks/use-toast';
 
 interface MilestonesSectionProps {
   milestones: Milestone[];
-  projects: Project[];
-  onUpdateProject: (project: Project) => void;
-  onDeleteProject: (projectId: string) => void;
-  onAddTask: (task: any) => void;
-  onUpdateTask: (task: any) => void;
+  onAddTask: (task: Omit<Task, "id" | "created_at" | "updated_at">) => void;
+  onUpdateTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
 }
 
-export function MilestonesSection({ 
-  milestones, 
-  projects,
-  onUpdateProject,
-  onDeleteProject,
+export function MilestonesSection({
+  milestones,
   onAddTask,
   onUpdateTask,
-  onDeleteTask
+  onDeleteTask,
 }: MilestonesSectionProps) {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [milestoneFormOpen, setMilestoneFormOpen] = useState(false);
 
   const calculateDaysRemaining = (date: string) => {
     const today = new Date();
@@ -34,128 +29,109 @@ export function MilestonesSection({
     return diffDays;
   };
 
-  const getDaysRemainingClass = (days: number) => {
-    if (days < 0) return 'text-red-500';
-    if (days <= 7) return 'text-orange-500';
-    if (days <= 30) return 'text-yellow-500';
-    return 'text-green-500';
-  };
-
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
-  // Sort milestones by date and take the three closest ones
-  const sortedMilestones = [...milestones]
-    .sort((a, b) => {
-      const daysA = calculateDaysRemaining(a.date);
-      const daysB = calculateDaysRemaining(b.date);
-      return daysA - daysB;
-    })
-    .slice(0, 3);
-
-  const handleMilestoneClick = (milestone: Milestone) => {
-    if (milestone.project_id) {
-      const project = projects.find(p => p.id === milestone.project_id);
-      if (project) {
-        setSelectedProject(project);
-      }
+  const sortedMilestones = [...milestones].sort((a, b) => {
+    // First sort by completion status
+    if (a.is_completed !== b.is_completed) {
+      return a.is_completed ? 1 : -1;
     }
-  };
-
-  const getProjectDetails = (projectId: string | undefined) => {
-    if (!projectId) return { name: 'Unknown Project', color: 'gray' };
-    const project = projects.find(p => p.id === projectId);
-    return {
-      name: project?.name || 'Unknown Project',
-      color: project?.color || 'gray'
-    };
-  };
+    // Then sort by date
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 
   return (
-    <>
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold mb-2 flex items-center gap-2 text-muted-foreground">
-          <Flag className="h-4 w-4" />
-          Upcoming Milestones
-        </h2>
-        
-        <div className="grid grid-cols-3 gap-3">
-          {sortedMilestones.map((milestone) => {
-            const daysRemaining = calculateDaysRemaining(milestone.date);
-            const isOverdue = daysRemaining < 0;
-            const projectDetails = getProjectDetails(milestone.project_id);
-            
-            return (
-              <div
-                key={milestone.id}
-                onClick={() => handleMilestoneClick(milestone)}
-                className={cn(
-                  "p-2 rounded-md cursor-pointer transition-colors bg-white shadow-sm",
-                  "hover:bg-accent/50",
-                  milestone.is_completed && "opacity-50",
-                  "border-2"
-                )}
-                style={{
-                  borderColor: milestone.is_main ? undefined : projectDetails.color
-                }}
-              >
-                <div className="flex flex-col h-full">
-                  <div className="flex-1">
-                    <h3 className="font-medium line-clamp-1">{milestone.title}</h3>
-                    {milestone.project_id && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <Folder className="h-3 w-3" />
-                        <span className="line-clamp-1">{projectDetails.name}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs mt-1">
-                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      {formatDate(milestone.date)}
-                    </span>
-                    <span className={cn(
-                      "font-medium ml-auto",
-                      getDaysRemainingClass(daysRemaining)
-                    )}>
-                      {isOverdue 
-                        ? `${Math.abs(daysRemaining)}d overdue`
-                        : `${daysRemaining}d`}
-                    </span>
-                  </div>
-                  {milestone.is_main && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary mt-1 self-start">
-                      Main
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {milestones.length === 0 && (
-            <div className="col-span-3 text-center py-4 text-muted-foreground text-sm">
-              <p>No milestones yet</p>
-            </div>
-          )}
-        </div>
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Milestones</h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setMilestoneFormOpen(true)}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Milestone
+        </Button>
       </div>
 
-      {selectedProject && (
-        <ProjectDetailView
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-          onUpdateProject={onUpdateProject}
-          onDeleteProject={onDeleteProject}
-          onAddTask={onAddTask}
-          onUpdateTask={onUpdateTask}
-          onDeleteTask={onDeleteTask}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sortedMilestones.map((milestone) => {
+          const daysRemaining = calculateDaysRemaining(milestone.date);
+          const isOverdue = daysRemaining < 0 && !milestone.is_completed;
+          
+          return (
+            <div
+              key={milestone.id}
+              className={`p-4 rounded-lg border ${
+                milestone.is_completed
+                  ? 'bg-muted/50 border-muted'
+                  : isOverdue
+                  ? 'border-destructive/50'
+                  : 'border-border'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-medium">{milestone.title}</h3>
+                  {milestone.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {milestone.description}
+                    </p>
+                  )}
+                </div>
+                {milestone.is_completed && (
+                  <Check className="h-4 w-4 text-green-500" />
+                )}
+              </div>
+              
+              <div className="mt-4 flex items-center justify-between">
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  {formatDate(milestone.date)}
+                </div>
+                {!milestone.is_completed && (
+                  <span
+                    className={`text-sm px-2 py-1 rounded-full ${
+                      isOverdue
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-primary/10 text-primary'
+                    }`}
+                  >
+                    {isOverdue
+                      ? `${Math.abs(daysRemaining)} days overdue`
+                      : `${daysRemaining} days remaining`}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {milestones.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>No milestones yet. Add one to get started!</p>
+        </div>
       )}
-    </>
+
+      <MilestoneForm
+        open={milestoneFormOpen}
+        onClose={() => setMilestoneFormOpen(false)}
+        onSave={(milestone) => {
+          // Handle milestone creation
+          setMilestoneFormOpen(false);
+          toast({
+            title: "Milestone created",
+            description: "Your milestone has been created successfully.",
+          });
+        }}
+      />
+    </div>
   );
 } 

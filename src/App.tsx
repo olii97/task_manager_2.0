@@ -9,7 +9,6 @@ import { MotionConfig } from "framer-motion";
 import IntroScreen from "@/components/intro/IntroScreen";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
 import { ProfileInitializer } from "@/components/auth/ProfileInitializer";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
@@ -57,14 +56,6 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route
                 path="/"
-                element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/tasks"
                 element={
                   <ProtectedRoute>
                     <Tasks />

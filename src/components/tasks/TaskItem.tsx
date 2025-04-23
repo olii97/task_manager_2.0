@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Task, priorityColors, priorityEmojis, priorityBackgroundColors } from "@/types/tasks";
+import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyLevelIcons, TaskCategory } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,10 @@ import { motion } from "framer-motion";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { FloatingXP } from "@/components/animations/FloatingXP";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
-import { Project } from "@/types/projects";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
@@ -21,14 +22,19 @@ const taskCategories = {
   'Connect': { label: 'Connect', icon: Users, color: 'text-green-500' }
 } as const;
 
+const taskCategoryIcons: Record<TaskCategory, string> = {
+  'Consume': '📚',
+  'Create': '🎨',
+  'Care': '🌱',
+  'Connect': '🤝'
+};
+
 interface TaskItemProps {
   task: Task;
-  onEditTask: (task: Task) => void;
-  projects?: Project[];
-  isDragging?: boolean;
+  onEdit: () => void;
 }
 
-export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskItemProps) {
+export function TaskItem({ task, onEdit }: TaskItemProps) {
   const queryClient = useQueryClient();
   const [showConfetti, setShowConfetti] = useState(false);
   const [showXP, setShowXP] = useState(false);
@@ -108,10 +114,8 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
   // Get the priority background color
   const priorityBgClass = priorityBackgroundColors[task.priority];
 
-  // Find the project if it exists
-  const taskProject = task.project_id ? projects.find(p => p.id === task.project_id) : undefined;
-
   const categoryInfo = task.category ? taskCategories[task.category] : null;
+  const categoryIcon = task.category ? taskCategoryIcons[task.category] : '';
 
   return (
     <>
@@ -135,88 +139,88 @@ export function TaskItem({ task, onEditTask, projects = [], isDragging }: TaskIt
         layout
         whileHover={{ scale: 1.01 }}
         transition={{ duration: 0.2 }}
-      >
-        <Card className={cn(
-          "group flex items-start gap-2 rounded-lg border p-3 mb-2 bg-card hover:border-accent transition-colors",
-          isDragging && "opacity-50",
+        className={cn(
+          "flex items-start gap-2 w-full",
           task.is_completed && "opacity-50",
-          taskProject?.color ? `border-l-4 ${taskProject.color}` : '',
           priorityBgClass
-        )}>
-          <div className="flex-shrink-0 mr-3 mt-1">
-            <Checkbox 
-              ref={checkboxRef as any}
-              checked={task.is_completed} 
-              onCheckedChange={handleCheckboxChange}
-              aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
-              className={task.is_completed ? "task-complete" : ""}
-            />
-          </div>
-          
-          <div className="flex-grow">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-gray-500' : ''}`}>
-                {task.title}
+        )}
+      >
+        <div className="flex-shrink-0 mr-3 mt-1">
+          <Checkbox 
+            ref={checkboxRef as any}
+            checked={task.is_completed} 
+            onCheckedChange={handleCheckboxChange}
+            aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
+            className={task.is_completed ? "task-complete" : ""}
+          />
+        </div>
+        
+        <div className="flex-grow">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`text-sm font-medium ${task.is_completed ? 'line-through text-gray-500' : ''}`}>
+              {task.title}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {categoryInfo && (
+                <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
+                  <categoryInfo.icon className="h-4 w-4" />
+                </div>
+              )}
+              {categoryIcon && (
+                <div className={cn("flex items-center", taskCategories[task.category].color)} title={taskCategories[task.category].label}>
+                  {categoryIcon}
+                </div>
+              )}
+              <span className={cn("text-xs px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
+                P{task.priority}
               </span>
-              <div className="flex items-center gap-1.5">
-                {categoryInfo && (
-                  <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
-                    <categoryInfo.icon className="h-4 w-4" />
-                  </div>
-                )}
-                <span className={cn("text-xs px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
-                  P{task.priority}
-                </span>
-                {taskProject && (
-                  <div className="flex items-center text-muted-foreground" title={taskProject.name}>
-                    <Folder className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
             </div>
-            {task.description && (
-              <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
-                {task.description}
-              </p>
-            )}
+          </div>
+          {task.description && (
+            <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
+              {task.description}
+            </p>
+          )}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
             {task.due_date && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+              <Badge variant="outline" className="gap-1">
                 <Calendar className="h-3 w-3" />
-                <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
-              </div>
+                {format(new Date(task.due_date), 'MMM d')}
+              </Badge>
             )}
           </div>
-          
-          <div className="flex items-center gap-1">
-            {!task.is_completed && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
-                title="Focus Mode"
-                onClick={handleStartPomodoro}
-              >
-                <Play className="h-4 w-4" />
-              </Button>
-            )}
+        </div>
+        
+        <div className="flex items-center gap-1">
+          {!task.is_completed && (
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8" 
-              onClick={() => onEditTask(task)}
+              className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+              title="Focus Mode"
+              onClick={handleStartPomodoro}
             >
-              <Pencil className="h-4 w-4" />
+              <Play className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-destructive" 
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </Card>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={onEdit}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-destructive" 
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </motion.div>
     </>
   );

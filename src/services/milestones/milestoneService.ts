@@ -1,33 +1,12 @@
 import { supabase } from "@/supabaseClient";
-import { Milestone } from "@/types/milestones";
+import { Milestone, CreateMilestone, UpdateMilestone } from "@/types/milestones";
 import { toast } from "@/hooks/use-toast";
 
-/**
- * Fetch all milestones for a project
- */
-export const fetchProjectMilestones = async (projectId: string): Promise<Milestone[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('milestones')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('is_main', { ascending: false })
-      .order('date', { ascending: true });
-      
-    if (error) throw error;
-    
-    return data.map(m => ({
-      ...m,
-      is_main: m.is_main ?? false
-    })) as Milestone[];
-  } catch (error) {
-    console.error('Error fetching milestones:', error);
-    throw error;
-  }
-};
+// Define a type for creating milestones, excluding database-generated fields
+type CreateMilestone = Omit<Milestone, 'id' | 'created_at' | 'updated_at'>;
 
 /**
- * Fetch all milestones for a user
+ * Fetch all milestones for a specific user
  */
 export const fetchMilestones = async (userId: string): Promise<Milestone[]> => {
   try {
@@ -35,46 +14,39 @@ export const fetchMilestones = async (userId: string): Promise<Milestone[]> => {
       .from('milestones')
       .select('*')
       .eq('user_id', userId)
-      .order('is_main', { ascending: false }) // Main milestones first
-      .order('date', { ascending: true }); // Then by date
-      
+      .order('date', { ascending: true });
+
     if (error) throw error;
-    
-    return data.map(m => ({
-      ...m,
-      is_main: m.is_main ?? false
-    })) as Milestone[];
+    return data as Milestone[];
   } catch (error) {
     console.error('Error fetching milestones:', error);
     throw error;
   }
 };
 
-/**
- * Add a new milestone
- */
-type CreateMilestone = Omit<Milestone, 'id' | 'created_at' | 'updated_at'>;
+// Fetch milestones for a specific project - REMOVED as projects are removed
+// export const fetchProjectMilestones = async (projectId: string): Promise<Milestone[]> => {
+//   // ... removed code ...
+// };
 
+/**
+ * Add a new milestone for a user
+ */
 export const addMilestone = async (milestone: CreateMilestone): Promise<Milestone> => {
   try {
-    const milestoneData = {
-      ...milestone,
-      is_main: milestone.is_main ?? false, 
-    };
-    
     const { data, error } = await supabase
       .from('milestones')
-      .insert(milestoneData)
-      .select('*')
+      .insert(milestone)
+      .select()
       .single();
-      
+
     if (error) throw error;
-    
+
     toast({
-      title: "Milestone added",
-      description: "Your milestone has been added successfully.",
+      title: "Milestone created",
+      description: "Your milestone has been created successfully.",
     });
-    
+
     return data as Milestone;
   } catch (error) {
     console.error('Error adding milestone:', error);
@@ -85,10 +57,8 @@ export const addMilestone = async (milestone: CreateMilestone): Promise<Mileston
 /**
  * Update an existing milestone
  */
-type UpdateMilestone = Partial<Omit<Milestone, 'id' | 'created_at' | 'updated_at' | 'project_id' | 'user_id'>>;
-
 export const updateMilestone = async (
-  milestoneId: string, 
+  milestoneId: string,
   updates: UpdateMilestone
 ): Promise<Milestone> => {
   try {
@@ -96,16 +66,16 @@ export const updateMilestone = async (
       .from('milestones')
       .update(updates)
       .eq('id', milestoneId)
-      .select('*')
+      .select()
       .single();
-      
+
     if (error) throw error;
-    
+
     toast({
       title: "Milestone updated",
       description: "Your milestone has been updated successfully.",
     });
-    
+
     return data as Milestone;
   } catch (error) {
     console.error('Error updating milestone:', error);
@@ -122,9 +92,9 @@ export const deleteMilestone = async (milestoneId: string): Promise<void> => {
       .from('milestones')
       .delete()
       .eq('id', milestoneId);
-      
+
     if (error) throw error;
-    
+
     toast({
       title: "Milestone deleted",
       description: "Your milestone has been deleted successfully.",

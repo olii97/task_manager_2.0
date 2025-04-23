@@ -13,8 +13,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Briefcase, Home, Calendar } from "lucide-react";
-import { Project } from "@/types/projects";
+import { Zap, Battery, BookOpen, Users, Wrench, Heart, Calendar, Briefcase, Home } from "lucide-react";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen },
@@ -23,30 +22,23 @@ const taskCategories = {
   'Connect': { label: 'Connect', icon: Users }
 } as const;
 
-const taskTypes = {
-  'work': { label: 'Work', icon: Briefcase },
-  'personal': { label: 'Personal', icon: Home }
-} as const;
-
 interface TaskFormProps {
   open: boolean;
   onClose: () => void;
   onSave: (taskData: Partial<Task>) => void;
   task?: Task;
   title: string;
-  projects?: Project[];
 }
 
-export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: TaskFormProps) {
+export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) {
   const [formData, setFormData] = useState<Partial<Task>>({
     title: "",
     description: "",
-    priority: 4,
+    priority: undefined,
     energy_level: undefined,
-    project_id: undefined,
     category: undefined,
-    task_type: 'work',
     due_date: undefined,
+    task_type: "personal",
   });
 
   useEffect(() => {
@@ -56,21 +48,19 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
         description: task.description || "",
         priority: task.priority,
         energy_level: task.energy_level,
-        project_id: task.project_id,
         category: task.category,
-        task_type: task.task_type,
         due_date: task.due_date,
+        task_type: task.task_type || "personal",
       });
     } else {
       setFormData({
         title: "",
         description: "",
-        priority: 4,
+        priority: undefined,
         energy_level: undefined,
-        project_id: undefined,
         category: undefined,
-        task_type: 'work',
         due_date: undefined,
+        task_type: "personal",
       });
     }
   }, [task, open]);
@@ -88,22 +78,17 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
     setFormData((prev) => ({ ...prev, energy_level: value as 'high' | 'low' }));
   };
 
-  const handleProjectChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, project_id: value === "none" ? undefined : value }));
-  };
-
   const handleCategoryChange = (value: TaskCategory) => {
     console.log('Category changed to:', value);
     setFormData((prev) => ({ ...prev, category: value }));
   };
 
-  const handleTaskTypeChange = (value: TaskType) => {
-    console.log('Task type changed to:', value);
-    setFormData((prev) => ({ ...prev, task_type: value }));
-  };
-
   const handleDueDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, due_date: e.target.value }));
+  };
+
+  const handleTaskTypeChange = (value: TaskType) => {
+    setFormData((prev) => ({ ...prev, task_type: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -134,6 +119,32 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
           </div>
           
           <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Task Type
+            </label>
+            <RadioGroup
+              value={formData.task_type}
+              onValueChange={handleTaskTypeChange}
+              className="flex space-x-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="work" id="work" />
+                <Label htmlFor="work" className="flex items-center cursor-pointer">
+                  <Briefcase className="h-4 w-4 mr-1 text-blue-500" />
+                  Work
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="personal" id="personal" />
+                <Label htmlFor="personal" className="flex items-center cursor-pointer">
+                  <Home className="h-4 w-4 mr-1 text-green-500" />
+                  Personal
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+          
+          <div className="space-y-2">
             <label htmlFor="description" className="text-sm font-medium">
               Description (Optional)
             </label>
@@ -149,7 +160,7 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
 
           <div className="space-y-2">
             <label htmlFor="category" className="text-sm font-medium">
-              Category
+              Category (Optional)
             </label>
             <Select
               value={formData.category}
@@ -186,7 +197,7 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
           
           <div className="space-y-2">
             <label htmlFor="priority" className="text-sm font-medium">
-              Priority
+              Priority (Optional)
             </label>
             <Select
               value={formData.priority?.toString()}
@@ -207,7 +218,7 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
           
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              Energy Level
+              Energy Level (Optional)
             </label>
             <RadioGroup
               value={formData.energy_level}
@@ -229,55 +240,6 @@ export function TaskForm({ open, onClose, onSave, task, title, projects = [] }: 
                 </Label>
               </div>
             </RadioGroup>
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Task Type
-            </label>
-            <RadioGroup
-              value={formData.task_type}
-              onValueChange={handleTaskTypeChange}
-              className="flex space-x-2"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="work" id="work" />
-                <Label htmlFor="work" className="flex items-center cursor-pointer">
-                  <Briefcase className="h-4 w-4 mr-1" />
-                  Work
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="personal" id="personal" />
-                <Label htmlFor="personal" className="flex items-center cursor-pointer">
-                  <Home className="h-4 w-4 mr-1" />
-                  Personal
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="project" className="text-sm font-medium flex items-center">
-              <Folder className="h-4 w-4 mr-1" />
-              Project (Optional)
-            </label>
-            <Select
-              value={formData.project_id || "none"}
-              onValueChange={handleProjectChange}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {Array.isArray(projects) && projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           
           <div className="space-y-2">

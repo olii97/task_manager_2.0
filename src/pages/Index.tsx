@@ -7,7 +7,6 @@ import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchProjects } from "@/services/projects/projectService";
 
 const Index = () => {
   const { session } = useAuth();
@@ -33,13 +32,6 @@ const Index = () => {
     enabled: !!userId,
   });
 
-  // Fetch projects
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects", userId],
-    queryFn: () => fetchProjects(userId!),
-    enabled: !!userId,
-  });
-
   return (
     <div className="container py-6">
       {/* Main content area - tasks */}
@@ -61,7 +53,6 @@ const Index = () => {
         onSave={editingTask ? handleUpdateTask : handleAddTask}
         task={editingTask}
         title={editingTask ? "Edit Task" : "Add New Task"}
-        projects={projects}
       />
 
       {/* Task Planner Dialog */}
@@ -70,7 +61,6 @@ const Index = () => {
         onClose={() => setPlannerOpen(false)}
         tasks={tasks}
         onAddTask={() => setTaskFormOpen(true)}
-        projects={projects}
       />
     </div>
   );

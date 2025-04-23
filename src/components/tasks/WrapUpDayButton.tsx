@@ -35,7 +35,7 @@ export function WrapUpDayButton() {
       <Button
         variant="outline"
         size="sm"
-        className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-800 border-slate-700"
+        className="wrap-up-day-trigger flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-800 border-slate-700"
         onClick={() => setShowDaySummary(true)}
       >
         <MoonStar className="h-4 w-4" />

@@ -11,12 +11,11 @@ export interface Task {
   is_scheduled_today: boolean;
   completion_date?: string;
   due_date?: string;
-  project_id?: string;
   created_at: string;
   updated_at: string;
   user_id: string;
   category?: TaskCategory;
-  task_type: TaskType;
+  task_type?: TaskType;
 }
 
 export const priorityLabels: Record<number, string> = {

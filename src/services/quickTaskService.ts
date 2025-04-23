@@ -1,7 +1,6 @@
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Task, TaskCategory, TaskType } from "@/types/tasks";
-import { Project } from "@/types/projects";
+import { Task, TaskCategory } from "@/types/tasks";
 import { getOpenAIClient } from './openaiClientService';
 
 // Get the client-side API key from environment variables
@@ -17,7 +16,6 @@ Given a task description, analyze it and return a structured response with the f
 3. Priority level (1-4, where 1 is highest priority)
 4. Energy level required (high/low)
 5. Category (must be one of: Consume, Create, Care, Connect)
-6. Task Type (must be either: work, personal)
 
 Categories are defined as:
 - Consume: Tasks involving learning, reading, watching, or absorbing information
@@ -25,21 +23,16 @@ Categories are defined as:
 - Care: Tasks involving self-care, maintenance, or organization
 - Connect: Tasks involving communication, relationships, or collaboration
 
-Task Types are defined as:
-- work: Tasks related to your job, professional development, or business
-- personal: Tasks related to your personal life, hobbies, family, or self-improvement
-
 Format your response as JSON with these fields:
 {
   "title": string,
   "description": string | null,
   "priority": number (1-4),
   "energy_level": "high" | "low",
-  "category": "Consume" | "Create" | "Care" | "Connect",
-  "task_type": "work" | "personal"
+  "category": "Consume" | "Create" | "Care" | "Connect"
 }`;
 
-export async function analyzeTaskText(text: string, projects: Project[] = []): Promise<Omit<Task, "id" | "created_at" | "updated_at">> {
+export async function analyzeTaskText(text: string): Promise<Omit<Task, "id" | "created_at" | "updated_at">> {
   console.log('Starting task analysis for:', text);
   
   try {
@@ -59,7 +52,6 @@ export async function analyzeTaskText(text: string, projects: Project[] = []): P
         priority: 4,
         energy_level: 'low',
         category: 'Create' as TaskCategory,
-        task_type: 'personal' as TaskType,
         is_completed: false,
         is_scheduled_today: false,
         user_id: '', // This will be set by the task service
@@ -86,7 +78,6 @@ export async function analyzeTaskText(text: string, projects: Project[] = []): P
       priority: result.priority || 4,
       energy_level: result.energy_level || 'low',
       category: result.category || 'Create',
-      task_type: result.task_type || 'personal',
       is_completed: false,
       is_scheduled_today: false,
       user_id: '', // This will be set by the task service
@@ -111,7 +102,6 @@ export async function analyzeTaskText(text: string, projects: Project[] = []): P
       priority: 4,
       energy_level: 'low',
       category: 'Create' as TaskCategory,
-      task_type: 'personal' as TaskType,
       is_completed: false,
       is_scheduled_today: false,
       user_id: '', // This will be set by the task service
@@ -120,7 +110,7 @@ export async function analyzeTaskText(text: string, projects: Project[] = []): P
 }
 
 /* NEW: Bulk Task Analysis Function */
-export async function analyzeBulkTasksText(text: string, projects: Project[] = []): Promise<Omit<Task, "id" | "created_at" | "updated_at">[]> {
+export async function analyzeBulkTasksText(text: string): Promise<Omit<Task, "id" | "created_at" | "updated_at">[]> {
   const BULK_SYSTEM_PROMPT = `You are a task analyzer that helps categorize and structure multiple tasks in bulk.
 Given several bullet points (each on a new line), analyze each bullet point and return a JSON array where each element is an object with the following keys:
 {
@@ -128,10 +118,9 @@ Given several bullet points (each on a new line), analyze each bullet point and 
   "description": string | null,
   "priority": number (1-4),
   "energy_level": "high" | "low",
-  "category": "Consume" | "Create" | "Care" | "Connect",
-  "task_type": "work" | "personal"
+  "category": "Consume" | "Create" | "Care" | "Connect"
 }
-If a bullet point lacks sufficient detail, use default values (title: bullet point text, description: "", priority: 4, energy_level: "low", category: "Create", task_type: "personal").
+If a bullet point lacks sufficient detail, use default values (title: bullet point text, description: "", priority: 4, energy_level: "low", category: "Create").
 Your output must be valid JSON and should not include any markdown formatting.`;
   
   console.log('Starting bulk task analysis for:', text);
@@ -153,7 +142,6 @@ Your output must be valid JSON and should not include any markdown formatting.`;
         priority: 4,
         energy_level: 'low',
         category: 'Create',
-        task_type: 'personal',
         is_completed: false,
         is_scheduled_today: false,
         user_id: '',
@@ -201,7 +189,6 @@ Your output must be valid JSON and should not include any markdown formatting.`;
       priority: 4,
       energy_level: 'low',
       category: 'Create',
-      task_type: 'personal',
       is_completed: false,
       is_scheduled_today: false,
       user_id: '',
