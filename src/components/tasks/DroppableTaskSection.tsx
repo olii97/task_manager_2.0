@@ -3,7 +3,7 @@ import { Task } from "@/types/tasks";
 import { Droppable } from "react-beautiful-dnd";
 import { DraggableTaskItem } from "./DraggableTaskItem";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { Project } from "@/types/projects";
@@ -36,6 +36,11 @@ export function DroppableTaskSection({
   projects = []
 }: DroppableTaskSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  const getProjectName = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || 'Unknown Project';
+  };
 
   // Define the droppable content
   const droppableContent = (
@@ -77,37 +82,81 @@ export function DroppableTaskSection({
   // If collapsible is true, render with collapsible wrapper
   if (collapsible) {
     return (
-      <div className={cn("rounded-lg border bg-card p-4 shadow-sm", className)}>
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-                  {isOpen ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              {icon}
-              <h3 className="text-lg font-semibold">{title}</h3>
-              <span className="text-sm text-muted-foreground">({tasks.length})</span>
-            </div>
-            {onAddTask && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onAddTask}
-                className="h-8 w-8 p-0"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="sr-only">Add task</span>
-              </Button>
-            )}
+      <div className={cn(
+        "border rounded-lg p-4 flex flex-col",
+        className,
+        droppableId === 'backlog' ? 'h-[600px]' : 'h-[200px]'
+      )}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {icon}
+            <h3 className="font-semibold">{title}</h3>
           </div>
-          <CollapsibleContent className="pt-2">{droppableContent}</CollapsibleContent>
-        </Collapsible>
+          {droppableId === 'backlog' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(!isOpen)}
+              className="h-8 w-8"
+            >
+              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          )}
+        </div>
+
+        <Droppable droppableId={droppableId}>
+          {(provided) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={cn(
+                "flex-1 overflow-y-auto",
+                droppableId === 'backlog' && !isOpen && "overflow-hidden"
+              )}
+              style={{
+                maxHeight: droppableId === 'backlog' && !isOpen ? '0' : 'none'
+              }}
+            >
+              {tasks.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <p>{emptyMessage}</p>
+                  {onAddTask && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2"
+                      onClick={onAddTask}
+                    >
+                      Add Task
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {tasks.map((task, index) => (
+                    <div
+                      key={task.id}
+                      onClick={() => onEditTask(task)}
+                      className="p-2 border rounded-md cursor-pointer hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium line-clamp-1">{task.title}</h4>
+                          {task.project_id && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {getProjectName(task.project_id)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       </div>
     );
   }

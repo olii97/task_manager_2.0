@@ -28,6 +28,7 @@ import { Project } from "@/types/projects";
 import { fetchProjects, getProjectTasks } from "@/services/projects/projectService";
 import { MilestonesSection } from '@/components/tasks/MilestonesSection';
 import { fetchMilestones } from '@/services/milestones/milestoneService';
+import { Separator } from '@/components/ui/separator';
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -320,7 +321,27 @@ const Tasks = () => {
       </div>
 
       {/* Add Milestones Section */}
-      <MilestonesSection milestones={milestones} />
+      <MilestonesSection 
+        milestones={milestones} 
+        projects={projects}
+        onUpdateProject={(project) => {
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
+        }}
+        onDeleteProject={(projectId) => {
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
+        }}
+        onAddTask={handleAddTask}
+        onUpdateTask={handleEditTask}
+        onDeleteTask={(taskId) => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        }}
+      />
+
+      {/* Add Header and Separator here */}
+      <div className="my-6">
+        <h2 className="text-lg font-semibold mb-4">Daily Tasks</h2>
+        <Separator />
+      </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -355,9 +376,10 @@ const Tasks = () => {
             tasks={backlogTasks}
             onAddTask={() => setTaskFormOpen(true)}
             onEditTask={handleEditTask}
-            icon={<ClipboardList className="h-5 w-5" />}
+            icon={<ClipboardList className="h-5 w-5 text-slate-500" />}
             emptyMessage="Your backlog is empty. Add some tasks!"
             projects={projects}
+            collapsible={false}
             defaultOpen={true}
           />
         </div>

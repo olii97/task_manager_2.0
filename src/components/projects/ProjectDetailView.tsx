@@ -19,6 +19,7 @@ import {
   deleteMilestone 
 } from '@/services/milestones/milestoneService';
 import { useAuth } from '@/components/AuthProvider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
@@ -30,9 +31,9 @@ const taskCategories = {
 interface ProjectDetailViewProps {
   project: Project;
   onClose: () => void;
-  onUpdateProject: (project: Project) => void;
+  onUpdateProject: (updates: Partial<Project>) => void;
   onDeleteProject: (projectId: string) => void;
-  onAddTask: (task: Task) => void;
+  onAddTask: (task: Omit<Task, "id" | "created_at" | "updated_at">) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
 }
@@ -139,6 +140,23 @@ export function ProjectDetailView({
     }
   };
 
+  const handleAddTaskClick = () => {
+    if (!user) return;
+    onAddTask({
+      title: "New Task",
+      description: "",
+      priority: 2,
+      task_type: project.project_type,
+      category: "Create",
+      is_completed: false,
+      is_scheduled_today: false,
+      user_id: user.id,
+      project_id: project.id,
+      energy_level: undefined,
+      due_date: null
+    });
+  };
+
   const handleAddMilestone = async () => {
     if (!newMilestone.trim() || !user) {
       toast({
@@ -156,6 +174,7 @@ export function ProjectDetailView({
         date: new Date().toISOString().split('T')[0],
         description: '',
         is_completed: false,
+        is_main: false,
         user_id: user.id
       });
 
@@ -185,6 +204,10 @@ export function ProjectDetailView({
     } catch (error) {
       console.error('Error deleting milestone:', error);
     }
+  };
+
+  const handleSaveProjectType = (value: 'work' | 'personal') => {
+    updateProjectMutation({ project_type: value });
   };
 
   return (
@@ -219,6 +242,33 @@ export function ProjectDetailView({
                     </Button>
                   </div>
                 )}
+              </div>
+
+              {/* Project Type Selection */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-sm text-muted-foreground">Project Type:</span>
+                <Select
+                  value={editedProject.project_type}
+                  onValueChange={handleSaveProjectType}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="work">
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4" />
+                        <span>Work</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="personal">
+                      <div className="flex items-center gap-2">
+                        <Home className="h-4 w-4" />
+                        <span>Personal</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {isEditing ? (
@@ -314,7 +364,7 @@ export function ProjectDetailView({
                 
                 {/* Add Task Button at the bottom */}
                 <div className="mt-6 flex justify-center">
-                  <Button onClick={() => onAddTask(project.tasks[0])} className="w-full max-w-xs">
+                  <Button onClick={handleAddTaskClick} className="w-full max-w-xs">
                     <Plus className="h-4 w-4 mr-1" />
                     Add Task
                   </Button>

@@ -1,4 +1,5 @@
 import { Task } from './tasks';
+import { TaskType } from './tasks';
 
 export interface Project {
   id: string;
@@ -8,6 +9,7 @@ export interface Project {
   updated_at: string;
   user_id: string;
   color?: string;
+  project_type: TaskType;
   tasks?: Task[];
   milestones?: {
     id: string;
