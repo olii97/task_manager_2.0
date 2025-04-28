@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Briefcase, Home, Sparkles } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DaySummaryProps {
   open: boolean;
@@ -25,11 +25,14 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
   const [progressItems, setProgressItems] = useState(['', '', '']);
   const [successItems, setSuccessItems] = useState(['', '', '']);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [momentaryConfetti, setMomentaryConfetti] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
+  const [isReadyToAnimate, setIsReadyToAnimate] = useState(false);
 
   // Filter tasks into work and personal
   const workTasks = completedTasks.filter(task => task.task_type === 'work');
   const personalTasks = completedTasks.filter(task => task.task_type === 'personal');
+  const totalTasks = completedTasks.length;
 
   // Reset animation state when dialog opens
   useEffect(() => {
@@ -39,29 +42,47 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
       setShowProgress(false);
       setShowSuccess(false);
       setAnimationComplete(false);
-      
+      setMomentaryConfetti(false);
+      setShowConfetti(false);
+      setIsReadyToAnimate(false);
+
       // Start task animation after a short delay
       setTimeout(() => {
+        setIsReadyToAnimate(true);
         setActiveTaskIndex(0);
-      }, 600);
+      }, 500);
+    } else {
+      setIsReadyToAnimate(false);
     }
   }, [open]);
 
-  // Handle task animation sequence
+  // Handle task animation sequence and per-task confetti
   useEffect(() => {
-    if (activeTaskIndex >= 0 && activeTaskIndex < completedTasks.length) {
-      const timer = setTimeout(() => {
+    if (activeTaskIndex >= 0 && activeTaskIndex < totalTasks) {
+      // Trigger momentary confetti for the appearing task
+      setMomentaryConfetti(true);
+      const confettiTimer = setTimeout(() => setMomentaryConfetti(false), 1000); // Confetti for 1 second
+      
+      // Proceed to the next task
+      const taskTimer = setTimeout(() => {
         setActiveTaskIndex(activeTaskIndex + 1);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else if (activeTaskIndex === completedTasks.length) {
-      // All tasks have been animated
-      const timer = setTimeout(() => {
+      }, 300); // Delay between tasks
+      
+      return () => {
+        clearTimeout(confettiTimer);
+        clearTimeout(taskTimer);
+      };
+    } else if (activeTaskIndex === totalTasks && totalTasks > 0) {
+      // All tasks have been animated, show effort section
+      const effortTimer = setTimeout(() => {
         setShowEffort(true);
       }, 500);
-      return () => clearTimeout(timer);
+      return () => clearTimeout(effortTimer);
+    } else if (totalTasks === 0 && open) {
+      // If no tasks, show effort section immediately
+      setShowEffort(true);
     }
-  }, [activeTaskIndex, completedTasks.length]);
+  }, [activeTaskIndex, totalTasks, open]);
 
   // Show progress section after effort section is filled
   useEffect(() => {
@@ -83,7 +104,7 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
     }
   }, [progressItems, showProgress]);
 
-  // Show confetti when all sections are filled
+  // Show FINAL confetti when all reflection sections are filled
   useEffect(() => {
     if (
       effortItems.every(item => item.trim().length > 0) &&
@@ -91,15 +112,16 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
       successItems.every(item => item.trim().length > 0) &&
       showSuccess
     ) {
-      setShowConfetti(true);
+      setShowConfetti(true); // Trigger final confetti
       setAnimationComplete(true);
       const timer = setTimeout(() => {
         setShowConfetti(false);
-      }, 3000);
+      }, 3000); // Show final confetti for 3 seconds
       return () => clearTimeout(timer);
     }
   }, [effortItems, progressItems, successItems, showSuccess]);
 
+  // Handlers for text areas (keep unchanged)
   const handleUpdateEffortItem = (index: number, value: string) => {
     const newItems = [...effortItems];
     newItems[index] = value;
@@ -120,11 +142,17 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
 
   return (
     <>
-      <ConfettiEffect isActive={showConfetti} />
+      {/* Separate confetti for per-task and final celebration */} 
+      <ConfettiEffect isActive={momentaryConfetti} duration={500} particleCount={50} />
+      <ConfettiEffect isActive={showConfetti} duration={3000} /> 
+
       <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-background">
           <div className="p-6 space-y-6 flex flex-col">
-            <h2 className="text-2xl font-semibold text-center">Day Summary</h2>
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold">Day Summary</h2>
+              <p className="text-muted-foreground">You completed {totalTasks} tasks today!</p>
+            </div>
             
             <div className="grid grid-cols-2 gap-6">
               {/* Work Tasks */}
@@ -133,37 +161,37 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
                   <Briefcase className="h-5 w-5 mr-2 text-blue-500" />
                   <h3 className="text-lg font-medium">Work Tasks</h3>
                 </div>
-                <div className="space-y-2 min-h-[200px]">
-                  {workTasks.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      No work tasks completed today.
-                    </p>
-                  ) : (
-                    workTasks.map((task, index) => (
-                      <AnimatePresence key={task.id}>
-                        {activeTaskIndex > index && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <Card className="shadow-sm">
-                              <CardContent className="p-3">
-                                <div className="flex items-center">
-                                  <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-sm truncate">{task.title}</p>
-                                  </div>
+                <ScrollArea className="h-[250px] rounded-md border">
+                  <div className="space-y-2 p-4">
+                    {workTasks.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">
+                        No work tasks completed today.
+                      </p>
+                    ) : (
+                      isReadyToAnimate &&
+                      workTasks.slice(0, activeTaskIndex).map((task) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                          layout
+                        >
+                          <Card className="shadow-sm">
+                            <CardContent className="p-3">
+                              <div className="flex items-center">
+                                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="font-medium text-sm truncate">{task.title}</p>
                                 </div>
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    ))
-                  )}
-                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
 
               {/* Personal Tasks */}
@@ -172,48 +200,49 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
                   <Home className="h-5 w-5 mr-2 text-purple-500" />
                   <h3 className="text-lg font-medium">Personal Tasks</h3>
                 </div>
-                <div className="space-y-2 min-h-[200px]">
-                  {personalTasks.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      No personal tasks completed today.
-                    </p>
-                  ) : (
-                    personalTasks.map((task, index) => (
-                      <AnimatePresence key={task.id}>
-                        {activeTaskIndex > index && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <Card className="shadow-sm">
-                              <CardContent className="p-3">
-                                <div className="flex items-center">
-                                  <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-sm truncate">{task.title}</p>
-                                  </div>
+                <ScrollArea className="h-[250px] rounded-md border">
+                  <div className="space-y-2 p-4">
+                    {personalTasks.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">
+                        No personal tasks completed today.
+                      </p>
+                    ) : (
+                      isReadyToAnimate &&
+                      personalTasks.slice(0, activeTaskIndex).map((task) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                          layout
+                        >
+                          <Card className="shadow-sm">
+                            <CardContent className="p-3">
+                              <div className="flex items-center">
+                                <CheckCircle2 className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="font-medium text-sm truncate">{task.title}</p>
                                 </div>
-                              </CardContent>
-                            </Card>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    ))
-                  )}
-                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
 
             {/* Reflection Boxes */}
-            <div className="grid grid-cols-3 gap-4 mt-6">
+            {/* Ensure these appear smoothly without causing layout shifts */}
+            <div className="grid grid-cols-3 gap-4 mt-6 min-h-[180px]"> {/* Added min-height */} 
               {/* Effort */}
               <AnimatePresence>
                 {showEffort && (
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.5 }}
                     className="space-y-2"
@@ -239,8 +268,8 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
               <AnimatePresence>
                 {showProgress && (
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.5 }}
                     className="space-y-2"
@@ -266,8 +295,8 @@ export function DaySummary({ open, onClose, completedTasks }: DaySummaryProps) {
               <AnimatePresence>
                 {showSuccess && (
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.5 }}
                     className="space-y-2"

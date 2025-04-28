@@ -50,7 +50,7 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           placeholder="Add task with AI"
           value={taskText}
           onChange={(e) => setTaskText(e.target.value)}
-          className="pl-8 h-8 text-sm"
+          className="pl-8 h-8 text-sm border-solid border-2 border-purple-200 focus:border-purple-400 hover:border-purple-300 transition-colors bg-white"
           disabled={isProcessing}
         />
       </div>

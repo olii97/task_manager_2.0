@@ -16,6 +16,7 @@ Given a task description, analyze it and return a structured response with the f
 3. Priority level (1-4, where 1 is highest priority)
 4. Energy level required (high/low)
 5. Category (must be one of: Consume, Create, Care, Connect)
+6. Task Type (must be one of: work, personal). Infer this based on common contexts (e.g., meetings, reports are work; groceries, hobbies are personal). Default to 'personal' if unsure.
 
 Categories are defined as:
 - Consume: Tasks involving learning, reading, watching, or absorbing information
@@ -29,7 +30,8 @@ Format your response as JSON with these fields:
   "description": string | null,
   "priority": number (1-4),
   "energy_level": "high" | "low",
-  "category": "Consume" | "Create" | "Care" | "Connect"
+  "category": "Consume" | "Create" | "Care" | "Connect",
+  "task_type": "work" | "personal"
 }`;
 
 export async function analyzeTaskText(text: string): Promise<Omit<Task, "id" | "created_at" | "updated_at">> {
@@ -52,6 +54,7 @@ export async function analyzeTaskText(text: string): Promise<Omit<Task, "id" | "
         priority: 4,
         energy_level: 'low',
         category: 'Create' as TaskCategory,
+        task_type: 'personal', // Default task type in fallback
         is_completed: false,
         is_scheduled_today: false,
         user_id: '', // This will be set by the task service
@@ -72,12 +75,17 @@ export async function analyzeTaskText(text: string): Promise<Omit<Task, "id" | "
     const result = JSON.parse(completion.choices[0].message.content || '{}');
     console.log('Parsed result:', result);
 
+    // Validate task_type, default to 'personal' if invalid or missing
+    const validTaskTypes = ['work', 'personal'];
+    const taskType = validTaskTypes.includes(result.task_type) ? result.task_type : 'personal';
+
     const taskData = {
       title: result.title || text,
       description: result.description || '',
       priority: result.priority || 4,
       energy_level: result.energy_level || 'low',
       category: result.category || 'Create',
+      task_type: taskType, // Use the validated/defaulted task type
       is_completed: false,
       is_scheduled_today: false,
       user_id: '', // This will be set by the task service
@@ -102,6 +110,7 @@ export async function analyzeTaskText(text: string): Promise<Omit<Task, "id" | "
       priority: 4,
       energy_level: 'low',
       category: 'Create' as TaskCategory,
+      task_type: 'personal', // Default task type in error fallback
       is_completed: false,
       is_scheduled_today: false,
       user_id: '', // This will be set by the task service

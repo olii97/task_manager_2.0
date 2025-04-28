@@ -18,8 +18,14 @@ export function DraggableTaskItem({ task, index, onEdit }: DraggableTaskItemProp
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
+          style={{
+            ...provided.draggableProps.style,
+            // Remove default browser drag preview
+            transform: snapshot.isDragging ? provided.draggableProps.style?.transform : "translate(0, 0)",
+          }}
           className={cn(
-            snapshot.isDragging && "shadow-lg"
+            "transition-shadow",
+            snapshot.isDragging && "shadow-lg rounded-lg"
           )}
         >
           <TaskItem task={task} onEdit={onEdit} />
