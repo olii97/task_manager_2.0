@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyLevelIcons, TaskCategory } from "@/types/tasks";
+import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyLevelIcons, TaskCategory, TaskType } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar } from "lucide-react";
+import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -28,6 +28,12 @@ const taskCategoryIcons: Record<TaskCategory, string> = {
   'Care': '🌱',
   'Connect': '🤝'
 };
+
+// Task Type Icons
+const taskTypeIcons = {
+  'work': { icon: Briefcase, color: 'text-blue-500' },
+  'personal': { icon: Home, color: 'text-green-500' }
+} as const;
 
 interface TaskItemProps {
   task: Task;
@@ -116,6 +122,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
   const categoryInfo = task.category ? taskCategories[task.category] : null;
   const categoryIcon = task.category ? taskCategoryIcons[task.category] : '';
+  const taskTypeInfo = task.task_type ? taskTypeIcons[task.task_type] : taskTypeIcons['personal'];
 
   return (
     <>
@@ -140,9 +147,10 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         whileHover={{ scale: 1.01 }}
         transition={{ duration: 0.2 }}
         className={cn(
-          "flex items-start gap-2 w-full",
+          "flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
           task.is_completed && "opacity-50",
-          priorityBgClass
+          priorityBgClass,
+          priorityColors[task.priority]
         )}
       >
         <div className="flex-shrink-0 mr-3 mt-1">
@@ -161,19 +169,16 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
               {task.title}
             </span>
             <div className="flex items-center gap-1.5">
+              {/* Task Type Icon */}
+              <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
+                <taskTypeInfo.icon className="h-3.5 w-3.5" />
+              </div>
+              {/* Only show the Lucide icon for the category */}
               {categoryInfo && (
                 <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
                   <categoryInfo.icon className="h-4 w-4" />
                 </div>
               )}
-              {categoryIcon && (
-                <div className={cn("flex items-center", taskCategories[task.category].color)} title={taskCategories[task.category].label}>
-                  {categoryIcon}
-                </div>
-              )}
-              <span className={cn("text-xs px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
-                P{task.priority}
-              </span>
             </div>
           </div>
           {task.description && (

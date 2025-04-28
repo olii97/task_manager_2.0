@@ -19,7 +19,6 @@ export function DraggableTaskItem({ task, index, onEdit }: DraggableTaskItemProp
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={cn(
-            "rounded-lg border bg-card p-3",
             snapshot.isDragging && "shadow-lg"
           )}
         >
