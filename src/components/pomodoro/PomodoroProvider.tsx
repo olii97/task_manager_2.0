@@ -10,7 +10,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { 
   createPomodoroSession, 
   getPomodoroStats,
-  completePomodoroSession
+  completePomodoroSession,
+  logPomodoroDistraction
 } from "@/services/pomodoroService";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_WORK_DURATION, DEFAULT_BREAK_DURATION, DEFAULT_LONG_BREAK_DURATION, DEFAULT_SESSIONS_BEFORE_LONG_BREAK } from "@/constants";
@@ -32,6 +33,12 @@ interface TimerSettings {
   sessionsBeforeLongBreak: number;
 }
 
+interface PomodoroDistraction {
+  id: string;
+  description: string;
+  timestamp: string;
+}
+
 interface PomodoroContextProps {
   timerSettings: TimerSettings;
   setTimerSettings: (settings: TimerSettings) => void;
@@ -48,8 +55,11 @@ interface PomodoroContextProps {
   completePomodoro: () => Promise<any>;
   autoCompleteTask: boolean;
   setAutoCompleteTask: (autoComplete: boolean) => void;
-  // Add new properties for PomodoroTimer
   startPomodoro: (task: Task) => void;
+  currentSessionId: string | null;
+  logDistraction: (params: { session_id: string; description: string; timestamp: string }) => Promise<void>;
+  distractions: PomodoroDistraction[];
+  setDistractions: React.Dispatch<React.SetStateAction<PomodoroDistraction[]>>;
 }
 
 // Create the context with a default value
@@ -75,6 +85,10 @@ const PomodoroContext = createContext<PomodoroContextProps>({
   autoCompleteTask: false,
   setAutoCompleteTask: () => {},
   startPomodoro: () => {},
+  currentSessionId: null,
+  logDistraction: () => Promise.resolve(),
+  distractions: [],
+  setDistractions: () => {},
 });
 
 interface PomodoroProviderProps {
@@ -90,6 +104,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
   const [completedCount, setCompletedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [autoCompleteTask, setAutoCompleteTask] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const { settings, userUpdateSettings } = useSettings();
 
   const [timerSettings, setTimerSettings] = useState({
@@ -173,45 +188,73 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
     }
   }, [session]);
 
-  const startPomodoro = useCallback((task: Task) => {
-    setSelectedTask({
-      id: task.id,
-      title: task.title
-    });
-    setIsTimerRunning(true);
-    
-    // Track the event
-    if (session?.user) {
+  const startPomodoro = useCallback(async (task: Task) => {
+    if (!session?.user) return;
+
+    try {
+      setIsLoading(true);
+      // Create a new pomodoro session
+      const { session: newSession, error } = await createPomodoroSession({
+        user_id: session.user.id,
+        duration_minutes: timerSettings.workDuration,
+        task_id: task.id,
+        completed: false
+      });
+
+      if (error) throw error;
+      if (!newSession) throw new Error('Failed to create session');
+
+      setCurrentSessionId(newSession.id);
+      setSelectedTask({
+        id: task.id,
+        title: task.title
+      });
+      setIsTimerRunning(true);
+      
+      // Track the event
       trackPomodoroEvent({
         user_id: session.user.id,
         event_type: 'pomodoro_started',
         task_id: task.id
       });
+    } catch (error) {
+      console.error('Error starting pomodoro:', error);
+      toast({
+        title: "Error",
+        description: "Could not start the pomodoro session.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [session]);
+  }, [session, timerSettings.workDuration, toast]);
 
-  const startNextSession = useCallback(() => {
-    setCurrentSession((prevSession) => prevSession + 1);
-  }, []);
+  const logDistraction = useCallback(async (params: { session_id: string; description: string; timestamp: string }) => {
+    if (!currentSessionId) return;
 
-  const resetSession = useCallback(() => {
-    setCurrentSession(1);
-  }, []);
+    try {
+      await logPomodoroDistraction({
+        session_id: params.session_id,
+        description: params.description
+      });
+    } catch (error) {
+      console.error('Error logging distraction:', error);
+      toast({
+        title: "Error",
+        description: "Could not log the distraction.",
+        variant: "destructive"
+      });
+    }
+  }, [currentSessionId, toast]);
 
-  // Modified function to fix the Task type issue
   const completePomodoro = useCallback(async () => {
-    if (!session?.user || !selectedTask) return;
+    if (!session?.user || !currentSessionId) return;
     
     try {
       setIsLoading(true);
       
       // Complete the pomodoro session
-      const completedSession = await createPomodoroSession({
-        user_id: session.user.id,
-        duration_minutes: timerSettings.workDuration,
-        task_id: selectedTask.id,
-        completed: true
-      });
+      await completePomodoroSession(currentSessionId);
       
       toast({
         title: "Pomodoro completed!",
@@ -225,7 +268,7 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
       addUserXP(session.user.id, 5, 'Completed a pomodoro session');
       
       // Optionally mark task as completed
-      if (autoCompleteTask) {
+      if (autoCompleteTask && selectedTask) {
         await markTaskComplete(selectedTask.id);
         toast({
           title: "Task marked as complete",
@@ -235,8 +278,8 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
       
       // Reset for next session
       setSelectedTask(null);
+      setCurrentSessionId(null);
       
-      return completedSession;
     } catch (error) {
       console.error('Error completing pomodoro:', error);
       toast({
@@ -244,11 +287,10 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
         description: "Could not save your pomodoro session.",
         variant: "destructive"
       });
-      return null;
     } finally {
       setIsLoading(false);
     }
-  }, [session, selectedTask, timerSettings.workDuration, autoCompleteTask, toast]);
+  }, [session, currentSessionId, timerSettings.workDuration, autoCompleteTask, selectedTask, toast]);
 
   return (
     <PomodoroContext.Provider
@@ -269,6 +311,10 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
         autoCompleteTask,
         setAutoCompleteTask,
         startPomodoro,
+        currentSessionId,
+        logDistraction,
+        distractions: [],
+        setDistractions: () => {},
       }}
     >
       {children}

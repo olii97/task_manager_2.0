@@ -1,9 +1,9 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { DailySummary } from '@/types/wrapup';
 import { format } from 'date-fns';
 import { Task } from '@/types/tasks';
 import { JournalEntry, mapDatabaseEntryToJournalEntry } from '@/types/journal';
+import { WrapUpData } from "@/types/wrapup";
 
 export interface PomodoroStats {
   completed_count: number;
@@ -164,5 +164,46 @@ export const getPomodoroStats = async (userId: string): Promise<PomodoroStats> =
       total_minutes: 0,
       streak_days: 0
     };
+  }
+};
+
+export const getWrapUpData = async (userId: string): Promise<WrapUpData> => {
+  try {
+    // Get completed tasks
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .gte('completed_at', new Date().toISOString().split('T')[0]);
+
+    if (tasksError) {
+      console.error('Error fetching tasks:', tasksError);
+      throw tasksError;
+    }
+
+    // Get journal entries
+    const { data: journalEntries, error: journalError } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', new Date().toISOString().split('T')[0])
+      .order('created_at', { ascending: false });
+
+    if (journalError) {
+      console.error('Error fetching journal entries:', journalError);
+      throw journalError;
+    }
+
+    // Format the data
+    const wrapUpData: WrapUpData = {
+      completed_tasks: tasks as Task[],
+      journal_entries: journalEntries as JournalEntry[],
+    };
+
+    return wrapUpData;
+  } catch (error) {
+    console.error('Error in getWrapUpData:', error);
+    throw error;
   }
 };

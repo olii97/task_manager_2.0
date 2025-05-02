@@ -5,10 +5,9 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronRight, ChevronDown } from "lucide-react";
-import { Project } from "@/types/projects";
 
 interface TaskSectionProps {
-  title: string;
+  title: string | React.ReactNode;
   tasks: Task[];
   onAddTask?: () => void;
   onEditTask: (task: Task) => void;
@@ -17,7 +16,6 @@ interface TaskSectionProps {
   defaultOpen?: boolean;
   emptyMessage?: string;
   className?: string;
-  projects?: Project[];
 }
 
 export function TaskSection({ 
@@ -30,7 +28,6 @@ export function TaskSection({
   defaultOpen = true,
   emptyMessage = "No tasks found.",
   className = "",
-  projects = []
 }: TaskSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
@@ -72,8 +69,7 @@ export function TaskSection({
               <TaskItem
                 key={task.id}
                 task={task}
-                onEditTask={onEditTask}
-                projects={projects}
+                onEdit={() => onEditTask(task)}
               />
             ))
           )}
@@ -103,8 +99,7 @@ export function TaskSection({
           <TaskItem
             key={task.id}
             task={task}
-            onEditTask={onEditTask}
-            projects={projects}
+            onEdit={() => onEditTask(task)}
           />
         ))
       )}

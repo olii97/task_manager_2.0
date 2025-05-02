@@ -9,21 +9,13 @@ import { MotionConfig } from "framer-motion";
 import IntroScreen from "@/components/intro/IntroScreen";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
 import { ProfileInitializer } from "@/components/auth/ProfileInitializer";
-import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Goals from "./pages/Goals";
-import Strava from "./pages/Strava";
 import Tasks from "./pages/Tasks";
-import Intentions from "./pages/Intentions";
-import IntentionsEdit from "./pages/IntentionsEdit";
 import NotFound from "./pages/NotFound";
-import MorningRitual from "./pages/MorningRitual";
-import { QuarterEndReminder } from "./components/QuarterEndReminder";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 import { TabBarTimer } from "./components/pomodoro/TabBarTimer";
-import Calendar from "./pages/Calendar";
 
 const queryClient = new QueryClient();
 
@@ -57,7 +49,6 @@ const App = () => (
         <AuthProvider>
           <PomodoroProvider>
             <ProfileInitializer />
-            <QuarterEndReminder />
             <PomodoroBlurOverlay />
             <PomodoroTimer />
             <TabBarTimer />
@@ -67,71 +58,7 @@ const App = () => (
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/goals"
-                element={
-                  <ProtectedRoute>
-                    <Goals />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/intentions"
-                element={
-                  <ProtectedRoute>
-                    <Intentions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/intentions/edit"
-                element={
-                  <ProtectedRoute>
-                    <IntentionsEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/intentions/edit/:id"
-                element={
-                  <ProtectedRoute>
-                    <IntentionsEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/strava"
-                element={
-                  <ProtectedRoute>
-                    <Strava />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/tasks"
-                element={
-                  <ProtectedRoute>
                     <Tasks />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/calendar"
-                element={
-                  <ProtectedRoute>
-                    <Calendar />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/morning-ritual"
-                element={
-                  <ProtectedRoute>
-                    <MorningRitual />
                   </ProtectedRoute>
                 }
               />

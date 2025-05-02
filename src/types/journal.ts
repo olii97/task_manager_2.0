@@ -1,4 +1,3 @@
-
 import { Json } from "@/integrations/supabase/types";
 
 export interface ReflectionEntry {
@@ -23,17 +22,19 @@ export interface JournalNutrition {
 export interface JournalEntry {
   id: string;
   user_id: string;
-  date: string;
+  content: string;
   mood: number;
   energy: number;
-  reflection: string | null;
-  reflections?: ReflectionEntry[] | null;
-  challenges: string | null;
-  intentions: string | null;
-  gratitude: string | null;
-  nutrition: JournalNutrition | null;
   created_at: string;
   updated_at: string;
+  title: string;
+  is_morning_entry: boolean;
+  is_evening_entry: boolean;
+  gratitude: string | null;
+  highlights: string | null;
+  improvements: string | null;
+  learnings: string | null;
+  wins: string | null;
 }
 
 export const mapDatabaseEntryToJournalEntry = (dbEntry: any): JournalEntry => {

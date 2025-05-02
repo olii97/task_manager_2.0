@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
 import { analyzeTaskText } from "@/services/quickTaskService";
 import { toast } from "@/hooks/use-toast";
-import { Project } from "@/types/projects";
 
 interface QuickTaskInputProps {
   onTaskCreated: (task: any) => void;
-  projects?: Project[];
 }
 
-export function QuickTaskInput({ onTaskCreated, projects = [] }: QuickTaskInputProps) {
+export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
   const [taskText, setTaskText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -29,7 +27,7 @@ export function QuickTaskInput({ onTaskCreated, projects = [] }: QuickTaskInputP
 
     setIsProcessing(true);
     try {
-      const taskData = await analyzeTaskText(taskText, projects);
+      const taskData = await analyzeTaskText(taskText);
       onTaskCreated(taskData);
       setTaskText("");
       toast({
@@ -52,7 +50,7 @@ export function QuickTaskInput({ onTaskCreated, projects = [] }: QuickTaskInputP
           placeholder="Add task with AI"
           value={taskText}
           onChange={(e) => setTaskText(e.target.value)}
-          className="pl-8 h-8 text-xs"
+          className="pl-8 h-8 text-sm border-solid border-2 border-purple-200 focus:border-purple-400 hover:border-purple-300 transition-colors bg-white"
           disabled={isProcessing}
         />
       </div>
@@ -61,7 +59,7 @@ export function QuickTaskInput({ onTaskCreated, projects = [] }: QuickTaskInputP
         disabled={isProcessing} 
         size="sm" 
         variant="secondary"
-        className="h-8 px-3 text-xs"
+        className="h-8 px-3 text-xs whitespace-nowrap"
       >
         {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create"}
       </Button>

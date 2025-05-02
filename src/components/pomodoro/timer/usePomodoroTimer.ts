@@ -1,8 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { usePomodoro } from '../PomodoroProvider';
-import { PomodoroState, PomodoroStatus } from '@/types/pomodoro';
+import { PomodoroState, PomodoroStatus, PomodoroDistraction } from '@/types/pomodoro';
+import { logPomodoroDistraction } from '@/services/pomodoroService';
+import { updateTask } from '@/services/tasks';
 
-export const usePomodoroTimer = () => {
+interface UsePomodoroTimerProps {
+  onComplete?: () => void;
+}
+
+export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => {
   const {
     timerSettings,
     selectedTask,
@@ -10,6 +16,11 @@ export const usePomodoroTimer = () => {
     completedCount,
     completePomodoro,
     setIsTimerRunning,
+    currentSession,
+    setCurrentSession,
+    currentSessionId,
+    logDistraction,
+    setDistractions
   } = usePomodoro();
 
   const [state, setState] = useState<PomodoroState>({
@@ -77,52 +88,55 @@ export const usePomodoroTimer = () => {
     let lastTickTime = Date.now();
     
     const timerLoop = () => {
-      // Calculate elapsed time since last tick
       const now = Date.now();
       const elapsed = now - lastTickTime;
       
-      // Only update if more than 1000ms have passed
       if (elapsed >= 1000) {
         const newState = { ...stateRef.current };
-        
-        // Number of seconds to decrement (handles case where browser throttles in background)
         const decrementAmount = Math.floor(elapsed / 1000);
         
         if (newState.timeRemaining <= decrementAmount) {
-          // Timer completed
           newState.timeRemaining = 0;
           
           if (!newState.isBreak) {
             // Work timer completed
             newState.status = 'completed';
             setState(newState);
+            setShowConfetti(true);
+            setTimeout(() => {
+              setShowConfetti(false);
+            }, 3000);
             completePomodoro();
+            if (onComplete) {
+              onComplete();
+            }
           } else {
-            // Break timer completed
+            // Break timer completed - prepare for next work session
             newState.isBreak = false;
-            newState.status = 'idle' as PomodoroStatus;
+            newState.status = 'running';
             newState.timeRemaining = timerSettingsRef.current.workDuration * 60;
             newState.originalDuration = timerSettingsRef.current.workDuration * 60;
+            newState.startTimestamp = Date.now();
             setState(newState);
-            setIsTimerRunning(false);
+            // Keep the timer running for the next session
+            lastTickTime = now;
+            rafIdRef.current = requestAnimationFrame(timerLoop);
           }
           return;
         } else {
-          // Decrement timer by calculated amount
           newState.timeRemaining -= decrementAmount;
-          lastTickTime = now - (elapsed % 1000); // Keep remainder for accurate timing
+          lastTickTime = now - (elapsed % 1000);
           setState(newState);
         }
       }
       
-      // Continue the loop only if timer is still running
       if (isRunningRef.current && stateRef.current.status === 'running') {
         rafIdRef.current = requestAnimationFrame(timerLoop);
       }
     };
     
     rafIdRef.current = requestAnimationFrame(timerLoop);
-  }, [completePomodoro, setIsTimerRunning]);
+  }, [completePomodoro, setIsTimerRunning, onComplete]);
 
   // Initialize timer and handle countdown
   useEffect(() => {
@@ -260,10 +274,13 @@ export const usePomodoroTimer = () => {
     }));
   };
 
-  const addDistraction = (description: string) => {
-    console.log('Distraction logged:', description);
-    // In a real implementation, this would save the distraction to the database
-  };
+  const handleAddDistraction = useCallback(() => {
+    setShowDistractionDialog(true);
+  }, []);
+
+  const handleCancelDistraction = useCallback(() => {
+    setShowDistractionDialog(false);
+  }, []);
 
   const startBreak = () => {
     setState(prev => ({
@@ -271,11 +288,12 @@ export const usePomodoroTimer = () => {
       isBreak: true,
       timeRemaining: timerSettings.breakDuration * 60,
       originalDuration: timerSettings.breakDuration * 60,
-      status: 'running' as PomodoroStatus,
+      status: 'running',
       startTimestamp: Date.now(),
       pausedTimestamp: undefined
     }));
     setIsTimerRunning(true);
+    setShowCompletionDialog(false);
   };
 
   const skipBreak = () => {
@@ -284,22 +302,12 @@ export const usePomodoroTimer = () => {
       isBreak: false,
       timeRemaining: timerSettings.workDuration * 60,
       originalDuration: timerSettings.workDuration * 60,
-      status: 'idle',
-      startTimestamp: undefined,
+      status: 'running',
+      startTimestamp: Date.now(),
       pausedTimestamp: undefined
     }));
-    setIsTimerRunning(false);
+    setIsTimerRunning(true);
     setShowCompletionDialog(false);
-  };
-
-  const handleAddDistraction = (description: string) => {
-    addDistraction(description);
-    setShowDistractionDialog(false);
-    
-    // Auto resume after logging distraction
-    if (state.status === 'paused') {
-      resumePomodoro();
-    }
   };
 
   const handleStartBreak = () => {
@@ -311,15 +319,27 @@ export const usePomodoroTimer = () => {
     skipBreak();
   };
 
-  const handleLogDistraction = () => {
-    pausePomodoro();
-    setShowDistractionDialog(true);
-  };
+  const setTimerToFiveSeconds = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      timeRemaining: 5,
+      originalDuration: prev.originalDuration
+    }));
+  }, []);
 
-  const cancelDistraction = () => {
-    setShowDistractionDialog(false);
-    resumePomodoro();
-  };
+  const completeCurrentTask = useCallback(async () => {
+    if (!state.currentTask) return;
+
+    await updateTask(state.currentTask.id, {
+      is_completed: true,
+      completion_date: new Date().toISOString()
+    });
+
+    setState(prev => ({
+      ...prev,
+      currentTask: undefined
+    }));
+  }, [state.currentTask]);
 
   return {
     state,
@@ -335,8 +355,10 @@ export const usePomodoroTimer = () => {
     handleAddDistraction,
     handleStartBreak,
     handleSkipBreak,
-    handleLogDistraction,
-    cancelDistraction,
-    isTimerRunning
+    handleCancelDistraction,
+    isTimerRunning,
+    setTimerToFiveSeconds,
+    completeCurrentTask,
+    handleLogDistraction: logDistraction
   };
 };

@@ -13,7 +13,6 @@ import { TaskForm } from "@/components/tasks/TaskForm";
 import { toast } from "@/hooks/use-toast";
 import { TasksLoadingState } from "@/components/tasks/TasksLoadingState";
 import { TasksHeader } from "@/components/tasks/TasksHeader";
-import { TasksDownloadButton } from "@/components/tasks/TasksDownloadButton";
 import { TodaysSections } from "@/components/tasks/TodaysSections";
 import { TaskBacklog } from "@/components/tasks/TaskBacklog";
 import { CompletedTasks } from "@/components/tasks/CompletedTasks";
@@ -24,9 +23,7 @@ import { DroppableTaskSection } from "@/components/tasks/DroppableTaskSection";
 import { Zap, Battery, ClipboardList } from "lucide-react";
 import { WeeklyTaskReflection } from "@/components/tasks/WeeklyTaskReflection";
 import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/tasks/taskReflectionService";
-import { ProjectList } from "@/components/projects/ProjectList";
-import { Project } from "@/types/projects";
-import { fetchProjects, getProjectTasks } from "@/services/projects/projectService";
+import { Separator } from '@/components/ui/separator';
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -38,35 +35,12 @@ const Tasks = () => {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [showWeeklyReflection, setShowWeeklyReflection] = useState(false);
   const [weeklyCompletedTasks, setWeeklyCompletedTasks] = useState<Task[]>([]);
-  const [projectTaskCounts, setProjectTaskCounts] = useState<Record<string, number>>({});
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", userId],
     queryFn: () => fetchTasks(userId!),
     enabled: !!userId,
   });
-
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery({
-    queryKey: ["projects", userId],
-    queryFn: () => fetchProjects(userId!),
-    enabled: !!userId,
-  });
-
-  useEffect(() => {
-    if (!projects.length) return;
-    
-    const loadTaskCounts = async () => {
-      const counts: Record<string, number> = {};
-      
-      for (const project of projects) {
-        counts[project.id] = tasks.filter(task => task.project_id === project.id).length;
-      }
-      
-      setProjectTaskCounts(counts);
-    };
-    
-    loadTaskCounts();
-  }, [projects, tasks]);
 
   const { mutate: addTaskMutation } = useMutation({
     mutationFn: (newTask: Omit<Task, "id" | "created_at" | "updated_at">) => 
@@ -115,9 +89,9 @@ const Tasks = () => {
       is_completed: false,
       is_scheduled_today: false,
       user_id: userId!,
+      category: taskData.category,
+      due_date: taskData.due_date,
       task_type: taskData.task_type || 'personal',
-      project_id: taskData.project_id,
-      category: taskData.category
     });
   };
 
@@ -132,7 +106,8 @@ const Tasks = () => {
         priority: taskData.priority,
         energy_level: taskData.energy_level,
         category: taskData.category,
-        project_id: taskData.project_id,
+        due_date: taskData.due_date,
+        task_type: taskData.task_type,
       },
     });
   };
@@ -306,10 +281,13 @@ const Tasks = () => {
           onResetSchedule={handleResetSchedule}
           onPlanTasks={() => setPlannerOpen(true)}
           onQuickTaskCreated={handleQuickTaskCreated}
-          onWeeklyReflection={handleWeeklyReflection}
-          projects={projects}
         />
-        <TasksDownloadButton tasks={tasks} projects={projects} />
+      </div>
+
+      {/* Daily Tasks Section */}
+      <div className="my-6">
+        <h2 className="text-lg font-semibold mb-4">Daily Tasks</h2>
+        <Separator />
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -323,7 +301,6 @@ const Tasks = () => {
             icon={<Zap className="h-5 w-5 text-energy-high" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-high/20"
-            projects={projects}
           />
 
           {/* Low Energy Tasks */}
@@ -335,7 +312,6 @@ const Tasks = () => {
             icon={<Battery className="h-5 w-5 text-energy-low" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-low/20"
-            projects={projects}
           />
 
           {/* Backlog */}
@@ -345,9 +321,10 @@ const Tasks = () => {
             tasks={backlogTasks}
             onAddTask={() => setTaskFormOpen(true)}
             onEditTask={handleEditTask}
-            icon={<ClipboardList className="h-5 w-5" />}
+            icon={<ClipboardList className="h-5 w-5 text-slate-500" />}
             emptyMessage="Your backlog is empty. Add some tasks!"
-            projects={projects}
+            collapsible={false}
+            defaultOpen={true}
           />
         </div>
       </DragDropContext>
@@ -355,7 +332,6 @@ const Tasks = () => {
       <TodaysCompletedTasks
         tasks={completedTasks}
         onEditTask={handleEditTask}
-        projects={projects}
       />
 
       {previouslyCompletedTasks.length > 0 && (
@@ -363,18 +339,8 @@ const Tasks = () => {
           tasks={previouslyCompletedTasks} 
           onEditTask={handleEditTask} 
           limit={10}
-          projects={projects}
         />
       )}
-
-      {/* Project section */}
-      <ProjectList 
-        projects={projects} 
-        taskCounts={projectTaskCounts}
-        tasks={tasks}
-        onAddTask={handleAddTask}
-        onEditTask={handleEditTask}
-      />
 
       {/* Task Form Dialog */}
       <TaskForm
@@ -386,7 +352,6 @@ const Tasks = () => {
         onSave={editingTask ? handleUpdateTask : handleAddTask}
         task={editingTask}
         title={editingTask ? "Edit Task" : "Add New Task"}
-        projects={projects}
       />
 
       {/* Task Planner Dialog */}
@@ -399,7 +364,6 @@ const Tasks = () => {
             setPlannerOpen(false);
             setTaskFormOpen(true);
           }}
-          projects={projects}
         />
       )}
 
