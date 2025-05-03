@@ -24,6 +24,7 @@ interface DroppableTaskSectionProps {
   defaultOpen?: boolean;
   className?: string;
   tooltip?: React.ReactNode;
+  id?: string;
 }
 
 export function DroppableTaskSection({
@@ -38,11 +39,12 @@ export function DroppableTaskSection({
   defaultOpen = false,
   className,
   tooltip,
+  id,
 }: DroppableTaskSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
     return (
-    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}>
+    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} id={id}>
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

@@ -326,6 +326,7 @@ const Tasks = () => {
                 </div>
               </>
             }
+            id="high-energy-section"
           />
 
           {/* Low Energy Tasks */}
@@ -343,6 +344,7 @@ const Tasks = () => {
                 <p>Tasks that require less mental effort and can be completed during lower energy periods of your day. Good for afternoons or when you need a break from high-intensity work.</p>
               </>
             }
+            id="low-energy-section"
           />
 
           {/* Backlog */}
@@ -367,6 +369,7 @@ const Tasks = () => {
                 </ul>
               </>
             }
+            id="backlog-section"
           />
         </div>
       </DragDropContext>

@@ -4,11 +4,17 @@ import ReactConfetti from "react-confetti";
 interface ConfettiEffectProps {
   isActive: boolean;
   particleCount?: number;
+  sourcePosition?: {
+    x: number;
+    y: number;
+    width: number;
+  };
 }
 
 export const ConfettiEffect = ({ 
   isActive, 
-  particleCount = 100 
+  particleCount = 200,
+  sourcePosition
 }: ConfettiEffectProps) => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -36,6 +42,22 @@ export const ConfettiEffect = ({
 
   if (!isActive) return null;
 
+  // Choose appropriate source position
+  let sourceX = containerSize.width / 2; // Default to center
+  let sourceY = 0; // Default to top
+  let sourceWidth = containerSize.width * 0.5; // Default width
+
+  // If custom source position is provided and valid
+  if (sourcePosition && sourcePosition.x && sourcePosition.y) {
+    sourceX = sourcePosition.x;
+    sourceY = sourcePosition.y;
+    
+    // Use custom width if provided, otherwise use default
+    if (sourcePosition.width) {
+      sourceWidth = sourcePosition.width;
+    }
+  }
+
   return (
     <div 
       ref={containerRef}
@@ -55,15 +77,20 @@ export const ConfettiEffect = ({
         height={containerSize.height}
         recycle={false}
         numberOfPieces={particleCount}
-        gravity={0.3}
-        initialVelocityY={20}
+        gravity={0.15}
+        initialVelocityY={-15} // Upward initial movement, but gentler
         confettiSource={{
-          x: containerSize.width / 2,
-          y: containerSize.height / 2,
-          w: 0,
+          x: sourceX,
+          y: sourceY,
+          w: sourceWidth,
           h: 0
         }}
-        colors={["#FFD700", "#FFA500", "#FF4500", "#7CFC00", "#00FFFF", "#FF00FF"]}
+        colors={[
+          "#FFD700", "#FFA500", "#FF4500", 
+          "#7CFC00", "#00FFFF", "#FF00FF",
+          "#FF0000", "#00FF00", "#0000FF",
+          "#FFFF00", "#00FFFF", "#FF00FF"
+        ]}
       />
     </div>
   );

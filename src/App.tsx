@@ -18,6 +18,7 @@ import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 import { TabBarTimer } from "./components/pomodoro/TabBarTimer";
+import { GlobalConfettiProvider } from './components/animations/GlobalConfettiContext';
 
 const queryClient = new QueryClient();
 
@@ -69,22 +70,24 @@ const App = () => (
         <ToastCleaner />
         <AuthProvider>
           <PomodoroProvider>
-            <ProfileInitializer />
-            <PomodoroBlurOverlay />
-            <PomodoroTimer />
-            <TabBarTimer />
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Tasks />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <GlobalConfettiProvider>
+              <ProfileInitializer />
+              <PomodoroBlurOverlay />
+              <PomodoroTimer />
+              <TabBarTimer />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Tasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </GlobalConfettiProvider>
           </PomodoroProvider>
         </AuthProvider>
       </MotionConfig>

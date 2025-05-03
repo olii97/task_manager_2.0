@@ -18,14 +18,14 @@ export const addTaskCompletionXP = async (
     const { id, dismiss } = toast({
       title: "+20 XP!",
       description: "You earned XP for completing a high-priority task!",
-      className: "bg-yellow-100 border-yellow-400",
-      duration: 1500, // Auto dismiss after 1.5 seconds
+      className: "bg-yellow-100 border-yellow-400 font-medium",
+      duration: 4000, // Increased from 1500 to 4000ms for longer display time
     });
     
     // Force dismiss the toast after a fixed time as a backup
     setTimeout(() => {
       dismiss();
-    }, 2000);
+    }, 4500); // Increased from 2000 to 4500ms
   } catch (error) {
     console.error("Error adding XP:", error);
   }
