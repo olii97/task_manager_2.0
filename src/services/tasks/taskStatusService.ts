@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/tasks";
 import { addTaskCompletionXP } from "./taskXpService";
@@ -27,7 +26,9 @@ export const completeTask = async (
 
     // Add XP if task is completed and is P1
     if (isCompleted && data.priority === 1) {
-      await addTaskCompletionXP(data.user_id, data.title);
+      // Use Promise.resolve to decouple this from the main task completion flow
+      // This avoids potential toast notification issues blocking the UI
+      Promise.resolve().then(() => addTaskCompletionXP(data.user_id, data.title));
     }
 
     return data as Task;

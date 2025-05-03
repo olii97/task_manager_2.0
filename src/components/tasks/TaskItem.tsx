@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyLevelIcons, TaskCategory, TaskType } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -7,13 +7,12 @@ import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Tra
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
-import { FloatingXP } from "@/components/animations/FloatingXP";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { toast, useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useConfetti } from "@/components/animations/GlobalConfettiContext";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
@@ -42,22 +41,63 @@ interface TaskItemProps {
 
 export function TaskItem({ task, onEdit }: TaskItemProps) {
   const queryClient = useQueryClient();
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [showXP, setShowXP] = useState(false);
-  const [xpPosition, setXpPosition] = useState({ x: 0, y: 0 });
   const checkboxRef = useRef<HTMLButtonElement>(null);
   const { startPomodoro } = usePomodoro();
+  const { toast } = useToast();
+  const toastIdRef = useRef<string | null>(null);
+  const { showConfetti } = useConfetti();
+  const taskItemRef = useRef<HTMLDivElement>(null);
+
+  const getSectionId = () => {
+    if (task.energy_level === 'high') return 'high-energy-section';
+    if (task.energy_level === 'low') return 'low-energy-section';
+    return 'backlog-section';
+  };
+
+  // Function to trigger confetti based on task energy level
+  const triggerConfetti = () => {
+    // Get window dimensions
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // Define positions for different energy levels
+    let sourceX = windowWidth / 2; // Default center
+    let sourceY = windowHeight * 0.2; // Default near top
+    
+    if (task.energy_level === 'high') {
+      // Position for high energy section - left side
+      sourceX = windowWidth * 0.25; // 25% from left
+      sourceY = windowHeight * 0.25; // 25% from top
+    } else if (task.energy_level === 'low') {
+      // Position for low energy section - center
+      sourceX = windowWidth * 0.5; // Center
+      sourceY = windowHeight * 0.25; // 25% from top
+    } else {
+      // Position for backlog - right side
+      sourceX = windowWidth * 0.75; // 75% from left
+      sourceY = windowHeight * 0.25; // 25% from top
+    }
+    
+    // Show confetti with the calculated position
+    showConfetti({
+      sourceX,
+      sourceY,
+      sourceWidth: windowWidth * 0.4 // 40% of screen width
+    });
+  };
 
   const { mutate: onToggleComplete } = useMutation({
     mutationFn: ({ taskId, isCompleted }: { taskId: string; isCompleted: boolean }) => 
       completeTask(taskId, isCompleted),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       
       // Only show effects when completing a task
       if (variables.isCompleted) {
-        // Show the toast with duration
-        toast({
+        // Trigger the confetti with position based on task type
+        triggerConfetti();
+
+        // Show toast
+        const { id } = toast({
           description: (
             <div className="flex items-center gap-3 font-semibold">
               <span className="text-lg text-green-400">+20 XP</span>
@@ -66,9 +106,25 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
             </div>
           ),
           className: "bg-black/80 border-green-500/50 text-white",
-          duration: 2000, // Auto dismiss after 2 seconds
+          duration: 3000,
         });
+        
+        toastIdRef.current = id;
+
+        // Immediately invalidate queries
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      } else {
+        // If not completing, just invalidate immediately
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
       }
+    },
+    onError: (error) => {
+      console.error("Error completing task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task status.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -81,25 +137,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
   const handleCheckboxChange = (checked: boolean | string) => {
     const isCompleted = checked === "indeterminate" ? false : !!checked;
-
-    // Trigger effects immediately on checkbox change if completing
-    if (isCompleted && checkboxRef.current) {
-      const rect = checkboxRef.current.getBoundingClientRect();
-      const position = { 
-        x: rect.left + window.scrollX + rect.width / 2, 
-        y: rect.top + window.scrollY + rect.height / 2
-      };
-      setXpPosition(position);
-      setShowXP(true);
-      setShowConfetti(true);
-
-      // Hide confetti after duration
-      setTimeout(() => {
-        setShowConfetti(false);
-      }, 1500);
-    }
     
-    // Call the mutation
     onToggleComplete({
       taskId: task.id,
       isCompleted: isCompleted
@@ -128,120 +166,99 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const taskTypeInfo = task.task_type ? taskTypeIcons[task.task_type] : taskTypeIcons['personal'];
 
   return (
-    <>
-      <ConfettiEffect 
-        isActive={showConfetti} 
-        particleCount={100} // Increased particle count for more visible effect
-      /> 
-      
-      {showXP && (
-        <FloatingXP 
-          amount={20} 
-          position={xpPosition} 
-          onComplete={() => setShowXP(false)} 
-        />
+    <motion.div
+      ref={taskItemRef}
+      initial={task.is_completed ? { opacity: 0.8 } : { opacity: 1 }}
+      animate={task.is_completed ? 
+        { opacity: 0.7, x: 0 } : 
+        { opacity: 1, x: 0 }
+      }
+      exit={{ opacity: 0, x: -10 }}
+      layout
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.2 }}
+      className={cn(
+        "relative flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
+        task.is_completed && "opacity-50",
+        priorityBgClass
       )}
+    >
+      <div className="flex-shrink-0 mr-3 mt-1">
+        <Checkbox 
+          ref={checkboxRef as any}
+          checked={task.is_completed} 
+          onCheckedChange={handleCheckboxChange}
+          aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
+          className={task.is_completed ? "task-complete" : ""}
+        />
+      </div>
       
-      <motion.div
-        initial={task.is_completed ? { opacity: 0.8 } : { opacity: 1 }}
-        animate={task.is_completed ? 
-          { opacity: 0.7, x: 0 } : 
-          { opacity: 1, x: 0 }
-        }
-        exit={{ opacity: 0, x: -10 }}
-        layout
-        whileHover={{ scale: 1.01 }}
-        transition={{ duration: 0.2 }}
-        className={cn(
-          "relative flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
-          task.is_completed && "opacity-50",
-          priorityBgClass
-        )}
-      >
-        {/* Position ConfettiEffect inside the task container */}
-        {showConfetti && (
-          <div className="absolute inset-0 overflow-hidden">
-            <ConfettiEffect isActive={true} particleCount={150} />
-          </div>
-        )}
-
-        <div className="flex-shrink-0 mr-3 mt-1">
-          <Checkbox 
-            ref={checkboxRef as any}
-            checked={task.is_completed} 
-            onCheckedChange={handleCheckboxChange}
-            aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
-            className={task.is_completed ? "task-complete" : ""}
-          />
-        </div>
-        
-        <div className="flex-grow">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={cn(
-              "text-sm font-medium",
-              task.is_completed ? "line-through text-gray-500" : "text-slate-900"
-            )}>
-              {task.title}
-            </span>
-            <div className="flex items-center gap-1.5">
-              {/* Task Type Icon */}
-              <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
-                <taskTypeInfo.icon className="h-3.5 w-3.5" />
-              </div>
-              {/* Only show the Lucide icon for the category */}
-              {categoryInfo && (
-                <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
-                  <categoryInfo.icon className="h-4 w-4" />
-                </div>
-              )}
+      <div className="flex-grow">
+        <div className="flex items-center gap-2 mb-1">
+          <span className={cn(
+            "text-sm font-medium",
+            task.is_completed ? "line-through text-gray-500" : "text-slate-900"
+          )}>
+            {task.title}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {/* Task Type Icon */}
+            <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
+              <taskTypeInfo.icon className="h-3.5 w-3.5" />
             </div>
-          </div>
-          {task.description && (
-            <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
-              {task.description}
-            </p>
-          )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
-            {task.due_date && (
-              <Badge variant="outline" className="gap-1">
-                <Calendar className="h-3 w-3" />
-                {format(new Date(task.due_date), 'MMM d')}
-              </Badge>
+            {/* Only show the Lucide icon for the category */}
+            {categoryInfo && (
+              <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
+                <categoryInfo.icon className="h-4 w-4" />
+              </div>
             )}
           </div>
         </div>
-        
-        <div className="flex items-center gap-1">
-          {!task.is_completed && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
-                title="Focus Mode"
-                onClick={handleStartPomodoro}
-              >
-                <Play className="h-4 w-4" />
-              </Button>
-            )}
+        {task.description && (
+          <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
+            {task.description}
+          </p>
+        )}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
+          {task.due_date && (
+            <Badge variant="outline" className="gap-1">
+              <Calendar className="h-3 w-3" />
+              {format(new Date(task.due_date), 'MMM d')}
+            </Badge>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-1">
+        {!task.is_completed && (
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8" 
-            onClick={onEdit}
+              className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+              title="Focus Mode"
+              onClick={handleStartPomodoro}
             >
-              <Pencil className="h-4 w-4" />
+              <Play className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-destructive" 
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-      </motion.div>
-    </>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+          onClick={onEdit}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-destructive" 
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+    </motion.div>
   );
 }

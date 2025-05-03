@@ -20,15 +20,18 @@ import { TodaysCompletedTasks } from "@/components/tasks/TodaysCompletedTasks";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { DroppableTaskSection } from "@/components/tasks/DroppableTaskSection";
-import { Zap, Battery, ClipboardList } from "lucide-react";
+import { Zap, Battery, ClipboardList, Timer } from "lucide-react";
 import { WeeklyTaskReflection } from "@/components/tasks/WeeklyTaskReflection";
 import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/tasks/taskReflectionService";
 import { Separator } from '@/components/ui/separator';
+import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
+import { getPomodoroStats } from "@/services/pomodoroService";
 
 const Tasks = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
   const queryClient = useQueryClient();
+  const { completedCount } = usePomodoro();
 
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
@@ -286,7 +289,13 @@ const Tasks = () => {
 
       {/* Daily Tasks Section */}
       <div className="my-6">
-        <h2 className="text-lg font-semibold mb-4">Daily Tasks</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Daily Tasks</h2>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Timer className="h-4 w-4" />
+            <span>{completedCount} Pomodoros Today</span>
+          </div>
+        </div>
         <Separator />
       </div>
 
@@ -301,6 +310,23 @@ const Tasks = () => {
             icon={<Zap className="h-5 w-5 text-energy-high" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-high/20"
+            tooltip={
+              <>
+                <p className="font-semibold mb-1">High Energy Tasks</p>
+                <p className="mb-1">Tasks that require significant mental focus, attention, and energy. Best completed during your peak energy hours.</p>
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="font-semibold mb-1">Pomodoro Timer</p>
+                  <p className="mb-1">For focused work:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Click the ▶️ button on any task</li>
+                    <li>Work in 25-minute focused sessions</li>
+                    <li>Take 5-minute breaks between sessions</li>
+                    <li>Complete 4 sessions to earn rewards</li>
+                  </ul>
+                </div>
+              </>
+            }
+            id="high-energy-section"
           />
 
           {/* Low Energy Tasks */}
@@ -312,6 +338,13 @@ const Tasks = () => {
             icon={<Battery className="h-5 w-5 text-energy-low" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-low/20"
+            tooltip={
+              <>
+                <p className="font-semibold mb-1">Low Energy Tasks</p>
+                <p>Tasks that require less mental effort and can be completed during lower energy periods of your day. Good for afternoons or when you need a break from high-intensity work.</p>
+              </>
+            }
+            id="low-energy-section"
           />
 
           {/* Backlog */}
@@ -325,6 +358,18 @@ const Tasks = () => {
             emptyMessage="Your backlog is empty. Add some tasks!"
             collapsible={false}
             defaultOpen={true}
+            tooltip={
+              <>
+                <p className="font-semibold mb-1">Backlog</p>
+                <p className="mb-1">Your collection of tasks that need to be completed but aren't scheduled for today.</p>
+                <p>To plan your day:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Drag tasks from backlog to High or Low Energy sections</li>
+                  <li>Or use the "Plan Today" button to organize multiple tasks at once</li>
+                </ul>
+              </>
+            }
+            id="backlog-section"
           />
         </div>
       </DragDropContext>

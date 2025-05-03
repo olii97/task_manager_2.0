@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast, useToast } from "@/hooks/use-toast";
 
 // XP related functions
 export const addTaskCompletionXP = async (
@@ -16,11 +15,17 @@ export const addTaskCompletionXP = async (
         reason: `Completed P1 task: ${taskTitle}`,
       });
 
-    toast({
+    const { id, dismiss } = toast({
       title: "+20 XP!",
       description: "You earned XP for completing a high-priority task!",
-      className: "bg-yellow-100 border-yellow-400",
+      className: "bg-yellow-100 border-yellow-400 font-medium",
+      duration: 4000, // Increased from 1500 to 4000ms for longer display time
     });
+    
+    // Force dismiss the toast after a fixed time as a backup
+    setTimeout(() => {
+      dismiss();
+    }, 4500); // Increased from 2000 to 4500ms
   } catch (error) {
     console.error("Error adding XP:", error);
   }

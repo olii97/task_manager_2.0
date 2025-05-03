@@ -1,9 +1,15 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Info } from "lucide-react";
 import { analyzeTaskText } from "@/services/quickTaskService";
 import { toast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface QuickTaskInputProps {
   onTaskCreated: (task: any) => void;
@@ -53,6 +59,31 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
           className="pl-8 h-8 text-sm border-solid border-2 border-purple-200 focus:border-purple-400 hover:border-purple-300 transition-colors bg-white"
           disabled={isProcessing}
         />
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                type="button" 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                onClick={(e) => e.preventDefault()}
+              >
+                <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[300px] p-3 text-xs">
+              <p className="font-semibold mb-1">AI Task Creation</p>
+              <p className="mb-1">Enter a task description and the AI will automatically:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>Create a clear, concise title</li>
+                <li>Determine the priority level (1-4)</li>
+                <li>Set the appropriate energy level (high/low)</li>
+                <li>Categorize the task (Consume, Create, Care, Connect)</li>
+                <li>Identify if it's work or personal</li>
+              </ul>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
       <Button 
         type="submit" 

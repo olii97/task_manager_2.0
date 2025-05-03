@@ -9,6 +9,8 @@ import { MotionConfig } from "framer-motion";
 import IntroScreen from "@/components/intro/IntroScreen";
 import { useIntroScreen } from "@/hooks/useIntroScreen";
 import { ProfileInitializer } from "@/components/auth/ProfileInitializer";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 import Auth from "./pages/Auth";
 import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
@@ -16,8 +18,27 @@ import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
 import { TabBarTimer } from "./components/pomodoro/TabBarTimer";
+import { GlobalConfettiProvider } from './components/animations/GlobalConfettiContext';
 
 const queryClient = new QueryClient();
+
+// Component to clear any stuck toast notifications
+function ToastCleaner() {
+  const { dismiss } = useToast();
+  
+  useEffect(() => {
+    // Clear all toasts when component mounts
+    const clearToasts = () => dismiss();
+    clearToasts();
+    
+    // Also set a periodic cleanup to catch any stuck toasts
+    const intervalId = setInterval(clearToasts, 15000);
+    
+    return () => clearInterval(intervalId);
+  }, [dismiss]);
+  
+  return null;
+}
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
@@ -46,24 +67,27 @@ const App = () => (
       <MotionConfig reducedMotion="user">
         <Toaster />
         <Sonner />
+        <ToastCleaner />
         <AuthProvider>
           <PomodoroProvider>
-            <ProfileInitializer />
-            <PomodoroBlurOverlay />
-            <PomodoroTimer />
-            <TabBarTimer />
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Tasks />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <GlobalConfettiProvider>
+              <ProfileInitializer />
+              <PomodoroBlurOverlay />
+              <PomodoroTimer />
+              <TabBarTimer />
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <Tasks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </GlobalConfettiProvider>
           </PomodoroProvider>
         </AuthProvider>
       </MotionConfig>

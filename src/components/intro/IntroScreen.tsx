@@ -8,11 +8,105 @@ interface IntroScreenProps {
   onComplete: () => void;
 }
 
+// Generate random positions for the rockets
+const generateRocketPositions = (count: number) => {
+  const positions = [];
+  
+  // Additional left-side rockets (add 3 more on the left)
+  for (let i = 0; i < 3; i++) {
+    // Left side rockets between 5% and 30% from the left
+    const xPosition = Math.random() * 25 + 5; // 5% to 30% from left
+    
+    // Vertical position starts below the screen
+    const yPosition = Math.random() * 20 + 100; // 100% to 120% from top
+    
+    // Slight random rotation
+    const rotation = (Math.random() * 20) - 10; // -10° to +10°
+    
+    // Size variation
+    const size = Math.random() * 0.5 + 0.7; // 0.7x to 1.2x base size
+    
+    // Launch delay
+    const delay = Math.random() * 0.5;
+    
+    positions.push({
+      x: xPosition,
+      y: yPosition,
+      rotation,
+      size,
+      delay
+    });
+  }
+  
+  // Additional right-side rockets (add 3 more on the right)
+  for (let i = 0; i < 3; i++) {
+    // Right side rockets between 70% and 95% from the left
+    const xPosition = Math.random() * 25 + 70; // 70% to 95% from left
+    
+    // Vertical position starts below the screen
+    const yPosition = Math.random() * 20 + 100; // 100% to 120% from top
+    
+    // Slight random rotation
+    const rotation = (Math.random() * 20) - 10; // -10° to +10°
+    
+    // Size variation
+    const size = Math.random() * 0.5 + 0.7; // 0.7x to 1.2x base size
+    
+    // Launch delay
+    const delay = Math.random() * 0.5;
+    
+    positions.push({
+      x: xPosition,
+      y: yPosition,
+      rotation,
+      size,
+      delay
+    });
+  }
+  
+  // Distributed rockets on both sides
+  for (let i = 0; i < count; i++) {
+    // Determine if this rocket will be on the left or right side (avoiding the middle)
+    const isLeftSide = Math.random() > 0.5; // Even distribution now that we have dedicated rockets
+    
+    // For left side rockets, position them between 10% and 30% from the left
+    // For right side rockets, position them between 70% and 90% from the left
+    const xPosition = isLeftSide 
+      ? Math.random() * 20 + 10 // 10% to 30% from left
+      : Math.random() * 20 + 70; // 70% to 90% from left
+    
+    // Vertical position starts below the screen
+    const yPosition = Math.random() * 20 + 100; // 100% to 120% from top
+    
+    // Slight random rotation
+    const rotation = (Math.random() * 20) - 10; // -10° to +10°
+    
+    // Size variation
+    const size = Math.random() * 0.5 + 0.7; // 0.7x to 1.2x base size
+    
+    // Launch delay
+    const delay = Math.random() * 0.5;
+    
+    positions.push({
+      x: xPosition,
+      y: yPosition,
+      rotation,
+      size,
+      delay
+    });
+  }
+  
+  return positions;
+};
+
 const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
   const { session } = useAuth();
   const [showButton, setShowButton] = useState(false);
-  const [isRocketLaunching, setIsRocketLaunching] = useState(false);
+  const [isRocketsLaunching, setIsRocketsLaunching] = useState(false);
   const userName = session?.user?.user_metadata?.name || 'there';
+  
+  // Generate 7 random rocket positions
+  const rocketPositions = React.useMemo(() => generateRocketPositions(7), []);
   
   // Show the button after the text animation completes
   useEffect(() => {
@@ -25,7 +119,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
 
   const handleGetStarted = () => {
     // Trigger rocket animation before completing
-    setIsRocketLaunching(true);
+    setIsRocketsLaunching(true);
     
     // Complete after rocket animation starts
     setTimeout(() => {
@@ -41,23 +135,52 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
         exit={{ opacity: 0 }}
         transition={{ duration: 1 }}
       >
-        {/* Animated Rocket */}
-        <motion.div
-          className="absolute"
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ 
-            y: isRocketLaunching ? -1000 : 0,
-            opacity: isRocketLaunching ? 0 : 1,
-            scale: isRocketLaunching ? 0.5 : 1 
-          }}
-          transition={{ 
-            y: { duration: 1.5, ease: [0.4, 0, 0.2, 1] },
-            opacity: { duration: 1.2 },
-            scale: { duration: 1.5 }
-          }}
-        >
-          <Rocket className="h-16 w-16 text-yellow-300 transform rotate-0" />
-        </motion.div>
+        {/* Multiple animated rockets */}
+        {rocketPositions.map((position, index) => (
+          <motion.div
+            key={index}
+            className="absolute"
+            style={{
+              left: `${position.x}%`,
+              bottom: `-50px`, // Start below the screen
+            }}
+            initial={{ 
+              y: 0, 
+              opacity: 0,
+              rotate: position.rotation
+            }}
+            animate={{ 
+              y: isRocketsLaunching ? -2000 : -position.y * 5, // fly higher if launching
+              opacity: isRocketsLaunching ? 0 : 0.8,
+              scale: isRocketsLaunching ? 0.2 : position.size,
+            }}
+            transition={{ 
+              y: { 
+                duration: 3 + position.delay, 
+                ease: [0.4, 0, 0.2, 1],
+                delay: position.delay,
+                repeat: isRocketsLaunching ? 0 : Infinity,
+                repeatType: "reverse"
+              },
+              opacity: { 
+                duration: 1, 
+                delay: position.delay
+              },
+              scale: { 
+                duration: 1.5,
+                delay: position.delay 
+              }
+            }}
+          >
+            <Rocket 
+              className="text-yellow-300" 
+              style={{ 
+                height: `${4 * position.size}rem`,
+                width: `${4 * position.size}rem`,
+              }}
+            />
+          </motion.div>
+        ))}
         
         <div className="text-center px-6 max-w-2xl">
           <motion.h1 

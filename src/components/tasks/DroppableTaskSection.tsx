@@ -1,10 +1,16 @@
 import React from "react";
 import { Task } from "@/types/tasks";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Info } from "lucide-react";
 import { DraggableTaskItem } from "./DraggableTaskItem";
 import { Droppable } from "react-beautiful-dnd";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DroppableTaskSectionProps {
   droppableId: string;
@@ -17,6 +23,8 @@ interface DroppableTaskSectionProps {
   collapsible?: boolean;
   defaultOpen?: boolean;
   className?: string;
+  tooltip?: React.ReactNode;
+  id?: string;
 }
 
 export function DroppableTaskSection({
@@ -30,17 +38,38 @@ export function DroppableTaskSection({
   collapsible = true,
   defaultOpen = false,
   className,
+  tooltip,
+  id,
 }: DroppableTaskSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
     return (
-    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}>
+    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} id={id}>
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               {icon}
               <h3 className="text-lg font-semibold">{title}</h3>
               <span className="text-sm text-muted-foreground">({tasks.length})</span>
+              
+              {tooltip && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button 
+                        type="button" 
+                        className="ml-1"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px] p-3 text-xs">
+                      {tooltip}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             {onAddTask && (
               <Button
