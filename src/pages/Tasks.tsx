@@ -20,15 +20,18 @@ import { TodaysCompletedTasks } from "@/components/tasks/TodaysCompletedTasks";
 import { TaskPlanner } from "@/components/tasks/TaskPlanner";
 import { DragDropContext, DropResult } from "react-beautiful-dnd";
 import { DroppableTaskSection } from "@/components/tasks/DroppableTaskSection";
-import { Zap, Battery, ClipboardList } from "lucide-react";
+import { Zap, Battery, ClipboardList, Timer } from "lucide-react";
 import { WeeklyTaskReflection } from "@/components/tasks/WeeklyTaskReflection";
 import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/tasks/taskReflectionService";
 import { Separator } from '@/components/ui/separator';
+import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
+import { getPomodoroStats } from "@/services/pomodoroService";
 
 const Tasks = () => {
   const { session } = useAuth();
   const userId = session?.user.id;
   const queryClient = useQueryClient();
+  const { completedCount } = usePomodoro();
 
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
@@ -286,7 +289,13 @@ const Tasks = () => {
 
       {/* Daily Tasks Section */}
       <div className="my-6">
-        <h2 className="text-lg font-semibold mb-4">Daily Tasks</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Daily Tasks</h2>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Timer className="h-4 w-4" />
+            <span>{completedCount} Pomodoros Today</span>
+          </div>
+        </div>
         <Separator />
       </div>
 

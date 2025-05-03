@@ -11,7 +11,7 @@ import { ConfettiEffect } from "@/components/animations/ConfettiEffect";
 import { FloatingXP } from "@/components/animations/FloatingXP";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { cn } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
+import { toast, useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
@@ -47,6 +47,8 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const [xpPosition, setXpPosition] = useState({ x: 0, y: 0 });
   const checkboxRef = useRef<HTMLButtonElement>(null);
   const { startPomodoro } = usePomodoro();
+  const { dismiss } = useToast();
+  const toastIdRef = useRef<string | null>(null);
 
   const { mutate: onToggleComplete } = useMutation({
     mutationFn: ({ taskId, isCompleted }: { taskId: string; isCompleted: boolean }) => 
@@ -56,8 +58,8 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
       
       // Only show effects when completing a task
       if (variables.isCompleted) {
-        // Show the toast with duration
-        toast({
+        // Store the toast ID so we can dismiss it if needed
+        const { id } = toast({
           description: (
             <div className="flex items-center gap-3 font-semibold">
               <span className="text-lg text-green-400">+20 XP</span>
@@ -66,8 +68,18 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
             </div>
           ),
           className: "bg-black/80 border-green-500/50 text-white",
-          duration: 2000, // Auto dismiss after 2 seconds
+          duration: 1500, // Reduced from 2000 to 1500ms for faster auto-dismiss
         });
+        
+        toastIdRef.current = id;
+        
+        // Force dismiss the toast after a fixed time as a backup
+        setTimeout(() => {
+          if (toastIdRef.current) {
+            dismiss(toastIdRef.current);
+            toastIdRef.current = null;
+          }
+        }, 2000);
       }
     }
   });
