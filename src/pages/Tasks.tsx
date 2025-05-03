@@ -310,6 +310,22 @@ const Tasks = () => {
             icon={<Zap className="h-5 w-5 text-energy-high" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-high/20"
+            tooltip={
+              <>
+                <p className="font-semibold mb-1">High Energy Tasks</p>
+                <p className="mb-1">Tasks that require significant mental focus, attention, and energy. Best completed during your peak energy hours.</p>
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="font-semibold mb-1">Pomodoro Timer</p>
+                  <p className="mb-1">For focused work:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Click the ▶️ button on any task</li>
+                    <li>Work in 25-minute focused sessions</li>
+                    <li>Take 5-minute breaks between sessions</li>
+                    <li>Complete 4 sessions to earn rewards</li>
+                  </ul>
+                </div>
+              </>
+            }
           />
 
           {/* Low Energy Tasks */}
@@ -321,6 +337,12 @@ const Tasks = () => {
             icon={<Battery className="h-5 w-5 text-energy-low" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-low/20"
+            tooltip={
+              <>
+                <p className="font-semibold mb-1">Low Energy Tasks</p>
+                <p>Tasks that require less mental effort and can be completed during lower energy periods of your day. Good for afternoons or when you need a break from high-intensity work.</p>
+              </>
+            }
           />
 
           {/* Backlog */}
@@ -334,6 +356,17 @@ const Tasks = () => {
             emptyMessage="Your backlog is empty. Add some tasks!"
             collapsible={false}
             defaultOpen={true}
+            tooltip={
+              <>
+                <p className="font-semibold mb-1">Backlog</p>
+                <p className="mb-1">Your collection of tasks that need to be completed but aren't scheduled for today.</p>
+                <p>To plan your day:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Drag tasks from backlog to High or Low Energy sections</li>
+                  <li>Or use the "Plan Today" button to organize multiple tasks at once</li>
+                </ul>
+              </>
+            }
           />
         </div>
       </DragDropContext>
