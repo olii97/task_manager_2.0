@@ -190,9 +190,24 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
 
   const startPomodoro = useCallback(async (task: Task) => {
     if (!session?.user) return;
-
+    console.log(`[PomodoroProvider] startPomodoro called for task: ${task.id} - ${task.title}`);
+    
+    // Early exit if already running to prevent multiple sessions
+    if (isTimerRunning) {
+      console.log('[PomodoroProvider] Timer is already running, ignoring request.');
+      return;
+    }
+    
     try {
       setIsLoading(true);
+      console.log('[PomodoroProvider] Calling createPomodoroSession...');
+      
+      // First update the selected task (this should happen immediately)
+      setSelectedTask({
+        id: task.id,
+        title: task.title
+      });
+      
       // Create a new pomodoro session
       const { session: newSession, error } = await createPomodoroSession({
         user_id: session.user.id,
@@ -201,14 +216,20 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
         completed: false
       });
 
-      if (error) throw error;
-      if (!newSession) throw new Error('Failed to create session');
+      if (error) {
+        console.error('[PomodoroProvider] createPomodoroSession failed:', error);
+        throw error;
+      }
+      if (!newSession) {
+        console.error('[PomodoroProvider] createPomodoroSession returned no session.');
+        throw new Error('Failed to create session');
+      }
 
+      console.log(`[PomodoroProvider] createPomodoroSession SUCCESS. New session ID: ${newSession.id}`);
       setCurrentSessionId(newSession.id);
-      setSelectedTask({
-        id: task.id,
-        title: task.title
-      });
+      
+      // Start the timer (this should happen after session creation)
+      console.log('[PomodoroProvider] Setting isTimerRunning to true.');
       setIsTimerRunning(true);
       
       // Track the event
@@ -218,16 +239,19 @@ export const PomodoroProvider: React.FC<PomodoroProviderProps> = ({ children }) 
         task_id: task.id
       });
     } catch (error) {
-      console.error('Error starting pomodoro:', error);
+      console.error('[PomodoroProvider] Error starting pomodoro:', error);
+      // Reset the selected task if there was an error
+      setSelectedTask(null);
       toast({
         title: "Error",
         description: "Could not start the pomodoro session.",
         variant: "destructive"
       });
     } finally {
+      console.log('[PomodoroProvider] Setting isLoading to false.');
       setIsLoading(false);
     }
-  }, [session, timerSettings.workDuration, toast]);
+  }, [session, timerSettings.workDuration, toast, isTimerRunning]);
 
   const logDistraction = useCallback(async (params: { session_id: string; description: string; timestamp: string }) => {
     if (!currentSessionId) return;

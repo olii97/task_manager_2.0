@@ -26,6 +26,7 @@ import { shouldShowWeeklyReflection, getWeeklyCompletedTasks } from "@/services/
 import { Separator } from '@/components/ui/separator';
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { getPomodoroStats } from "@/services/pomodoroService";
+import { TaskTicker } from "@/components/tasks/TaskTicker";
 
 const Tasks = () => {
   const { session } = useAuth();
@@ -296,7 +297,11 @@ const Tasks = () => {
             <span>{completedCount} Pomodoros Today</span>
           </div>
         </div>
-        <Separator />
+        <Separator className="mb-4" />
+        
+        {/* Temporarily hiding TaskTicker
+        <TaskTicker className="mb-6" />
+        */}
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>

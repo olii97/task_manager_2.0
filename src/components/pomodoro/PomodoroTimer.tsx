@@ -38,8 +38,9 @@ export const PomodoroTimer: React.FC = () => {
     }
   });
 
-  // Don't render if not active
-  if (!isTimerRunning && state.status === 'idle') {
+  // Don't render if not active - this is causing problems
+  // Only hide the timer when it's completely idle and not running
+  if (!isTimerRunning && state.status === 'idle' && !state.currentTask) {
     return null;
   }
 
