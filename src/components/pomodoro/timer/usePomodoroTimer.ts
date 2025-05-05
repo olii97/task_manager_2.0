@@ -44,6 +44,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
   const timerSettingsRef = useRef(timerSettings);
   const rafIdRef = useRef<number | null>(null);
   const isRunningRef = useRef(isTimerRunning);
+  const animationStartedRef = useRef(false);
 
   // Update refs when values change
   useEffect(() => {
@@ -107,6 +108,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
               setShowConfetti(false);
             }, 3000);
             completePomodoro();
+            animationStartedRef.current = false;
             if (onComplete) {
               onComplete();
             }
@@ -132,6 +134,8 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       
       if (isRunningRef.current && stateRef.current.status === 'running') {
         rafIdRef.current = requestAnimationFrame(timerLoop);
+      } else {
+        animationStartedRef.current = false;
       }
     };
     
@@ -140,7 +144,9 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
 
   // Initialize timer and handle countdown
   useEffect(() => {
+    console.log(`[usePomodoroTimer] useEffect triggered. isTimerRunning: ${isTimerRunning}, state.status: ${state.status}`);
     if (isTimerRunning && state.status === 'running') {
+      console.log('[usePomodoroTimer] Timer condition met, starting animation.');
       // Set or update the start timestamp when the timer starts running
       if (!state.startTimestamp) {
         setState(prev => ({
@@ -150,10 +156,16 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
         }));
       }
       
-      startTimerAnimation();
+      // Only start animation if it's not already running
+      if (!animationStartedRef.current) {
+        startTimerAnimation();
+        animationStartedRef.current = true;
+      }
     } else if (rafIdRef.current && !isTimerRunning) {
+      console.log('[usePomodoroTimer] Timer condition NOT met or timer stopped, cancelling animation frame.');
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
+      animationStartedRef.current = false;
       
       // Store the pause timestamp
       if (state.status === 'paused') {
@@ -164,13 +176,15 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       }
     }
     
+    console.log('[usePomodoroTimer] useEffect finished.');
     return () => {
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
+        animationStartedRef.current = false;
       }
     };
-  }, [isTimerRunning, state.status, state.startTimestamp, startTimerAnimation]);
+  }, [isTimerRunning, state.status, state.startTimestamp]);
 
   // Update state when selected task changes
   useEffect(() => {
@@ -209,7 +223,9 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
 
   // Update status and sessions count when isTimerRunning changes
   useEffect(() => {
+    console.log(`[usePomodoroTimer] Status effect: isTimerRunning=${isTimerRunning}, status=${state.status}`);
     if (isTimerRunning !== (state.status === 'running')) {
+      console.log(`[usePomodoroTimer] Updating status: ${isTimerRunning ? 'running' : state.status === 'running' ? 'paused' : 'idle'}`);
       setState(prev => ({
         ...prev,
         status: isTimerRunning ? 'running' : prev.status === 'running' ? 'paused' : 'idle',
@@ -251,6 +267,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       status: 'paused',
       pausedTimestamp: Date.now()
     }));
+    animationStartedRef.current = false;
   };
 
   const resumePomodoro = () => {
@@ -272,6 +289,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       startTimestamp: undefined,
       pausedTimestamp: undefined
     }));
+    animationStartedRef.current = false;
   };
 
   const handleAddDistraction = useCallback(() => {
@@ -334,6 +352,11 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       is_completed: true,
       completion_date: new Date().toISOString()
     });
+
+    // Add a ticker message for the completed task
+    if (window.addTickerMessage) {
+      window.addTickerMessage(`TASK COMPLETED: ${state.currentTask.title}`);
+    }
 
     setState(prev => ({
       ...prev,

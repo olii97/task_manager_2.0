@@ -84,6 +84,11 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
       sourceY,
       sourceWidth: windowWidth * 0.4 // 40% of screen width
     });
+    
+    // Add a ticker message for the completed task
+    if (window.addTickerMessage) {
+      window.addTickerMessage(`TASK COMPLETED: ${task.title}`);
+    }
   };
 
   const { mutate: onToggleComplete } = useMutation({
