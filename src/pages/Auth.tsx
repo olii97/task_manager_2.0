@@ -1,20 +1,34 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const Auth = () => {
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "signup") {
+      setIsSignUp(true);
+    } else if (mode === "login") {
+      setIsSignUp(false);
+    }
+
+    const emailFromParams = searchParams.get("email");
+    if (emailFromParams) {
+      setEmail(decodeURIComponent(emailFromParams));
+    }
+  }, [searchParams]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +51,10 @@ const Auth = () => {
           password,
         });
         if (error) throw error;
-        navigate("/");
+        toast({
+          title: "Signed In!",
+          description: "Welcome back! Redirecting...",
+        });
       }
     } catch (error: any) {
       toast({

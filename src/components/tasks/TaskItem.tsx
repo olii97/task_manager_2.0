@@ -142,7 +142,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
   const handleCheckboxChange = (checked: boolean | string) => {
     const isCompleted = checked === "indeterminate" ? false : !!checked;
-    
+
     onToggleComplete({
       taskId: task.id,
       isCompleted: isCompleted
@@ -171,99 +171,99 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   const taskTypeInfo = task.task_type ? taskTypeIcons[task.task_type] : taskTypeIcons['personal'];
 
   return (
-    <motion.div
+      <motion.div
       ref={taskItemRef}
-      initial={task.is_completed ? { opacity: 0.8 } : { opacity: 1 }}
-      animate={task.is_completed ? 
-        { opacity: 0.7, x: 0 } : 
-        { opacity: 1, x: 0 }
-      }
-      exit={{ opacity: 0, x: -10 }}
-      layout
-      whileHover={{ scale: 1.01 }}
-      transition={{ duration: 0.2 }}
-      className={cn(
-        "relative flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
-        task.is_completed && "opacity-50",
-        priorityBgClass
-      )}
-    >
-      <div className="flex-shrink-0 mr-3 mt-1">
-        <Checkbox 
-          ref={checkboxRef as any}
-          checked={task.is_completed} 
-          onCheckedChange={handleCheckboxChange}
-          aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
-          className={task.is_completed ? "task-complete" : ""}
-        />
-      </div>
-      
-      <div className="flex-grow">
-        <div className="flex items-center gap-2 mb-1">
-          <span className={cn(
-            "text-sm font-medium",
-            task.is_completed ? "line-through text-gray-500" : "text-slate-900"
-          )}>
-            {task.title}
-          </span>
-          <div className="flex items-center gap-1.5">
-            {/* Task Type Icon */}
-            <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
-              <taskTypeInfo.icon className="h-3.5 w-3.5" />
-            </div>
-            {/* Only show the Lucide icon for the category */}
-            {categoryInfo && (
-              <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
-                <categoryInfo.icon className="h-4 w-4" />
+        initial={task.is_completed ? { opacity: 0.8 } : { opacity: 1 }}
+        animate={task.is_completed ? 
+          { opacity: 0.7, x: 0 } : 
+          { opacity: 1, x: 0 }
+        }
+        exit={{ opacity: 0, x: -10 }}
+        layout
+        whileHover={{ scale: 1.01 }}
+        transition={{ duration: 0.2 }}
+        className={cn(
+          "relative flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
+          task.is_completed && "opacity-50",
+          priorityBgClass
+        )}
+      >
+        <div className="flex-shrink-0 mr-3 mt-1">
+          <Checkbox 
+            ref={checkboxRef as any}
+            checked={task.is_completed} 
+            onCheckedChange={handleCheckboxChange}
+            aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
+            className={task.is_completed ? "task-complete" : ""}
+          />
+        </div>
+        
+        <div className="flex-grow">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={cn(
+              "text-sm font-medium",
+              task.is_completed ? "line-through text-gray-500" : "text-slate-900"
+            )}>
+              {task.title}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {/* Task Type Icon */}
+              <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
+                <taskTypeInfo.icon className="h-3.5 w-3.5" />
               </div>
+              {/* Only show the Lucide icon for the category */}
+              {categoryInfo && (
+                <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
+                  <categoryInfo.icon className="h-4 w-4" />
+                </div>
+              )}
+            </div>
+          </div>
+          {task.description && (
+            <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
+              {task.description}
+            </p>
+          )}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
+            {task.due_date && (
+              <Badge variant="outline" className="gap-1">
+                <Calendar className="h-3 w-3" />
+                {format(new Date(task.due_date), 'MMM d')}
+              </Badge>
             )}
           </div>
         </div>
-        {task.description && (
-          <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
-            {task.description}
-          </p>
-        )}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
-          {task.due_date && (
-            <Badge variant="outline" className="gap-1">
-              <Calendar className="h-3 w-3" />
-              {format(new Date(task.due_date), 'MMM d')}
-            </Badge>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-1">
-        {!task.is_completed && (
+        
+        <div className="flex items-center gap-1">
+          {!task.is_completed && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+                title="Focus Mode"
+                onClick={handleStartPomodoro}
+              >
+                <Play className="h-4 w-4" />
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
-              title="Focus Mode"
-              onClick={handleStartPomodoro}
+              className="h-8 w-8" 
+            onClick={onEdit}
             >
-              <Play className="h-4 w-4" />
+              <Pencil className="h-4 w-4" />
             </Button>
-          )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8" 
-          onClick={onEdit}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-destructive" 
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-    </motion.div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-destructive" 
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+      </motion.div>
   );
 }

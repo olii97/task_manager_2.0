@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      navigate("/auth");
+      navigate("/landing");
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -52,14 +52,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth state changed:", _event, session ? "exists" : "null");
+      console.log("Auth state changed:", _event, session ? "session" : "no session");
       setSession(session);
-      if (!session) {
-        navigate("/auth");
+      setLoading(false);
+
+      if (session) {
+        if (window.location.pathname === '/landing' || window.location.pathname.startsWith('/auth')) {
+          console.log("Session found, redirecting from landing/auth to /");
+          navigate("/");
+        }
+      } else {
+        if (window.location.pathname !== '/landing' && !window.location.pathname.startsWith('/auth')) {
+          console.log("No session, redirecting to /landing");
+          navigate("/landing");
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   return (
