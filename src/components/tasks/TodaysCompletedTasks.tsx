@@ -1,7 +1,7 @@
 import React from "react";
 import { Task, TaskCategory } from "@/types/tasks";
 import { TaskSection } from './TaskSection';
-import { CheckSquare, Brain, Heart, BookOpen, Users, Zap, Battery, Briefcase, Home } from "lucide-react";
+import { CheckSquare, Brain, Heart, BookOpen, Users, Zap, Battery, Briefcase, Home, Wrench } from "lucide-react";
 import { format, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -18,15 +18,6 @@ interface KPIData {
   byCategory: Partial<Record<TaskCategory, number>>;
   byEnergyLevel: Record<string, number>;
 }
-
-type IconComponent = typeof Brain;
-
-const categoryIcons: Record<TaskCategory, IconComponent> = {
-  Create: Brain,
-  Care: Heart,
-  Consume: BookOpen,
-  Connect: Users,
-};
 
 const calculateKPIs = (tasks: Task[]): KPIData => {
   const kpis: KPIData = {
@@ -57,13 +48,13 @@ const calculateKPIs = (tasks: Task[]): KPIData => {
 const renderCategoryIcon = (category: TaskCategory) => {
   switch (category) {
     case 'Create':
-      return <Brain className="h-4 w-4" />;
+      return <Wrench className="h-4 w-4 text-purple-500" />;
     case 'Care':
-      return <Heart className="h-4 w-4" />;
+      return <Heart className="h-4 w-4 text-pink-500" />;
     case 'Consume':
-      return <BookOpen className="h-4 w-4" />;
+      return <BookOpen className="h-4 w-4 text-blue-500" />;
     case 'Connect':
-      return <Users className="h-4 w-4" />;
+      return <Users className="h-4 w-4 text-green-500" />;
   }
 };
 
@@ -154,9 +145,10 @@ export function TodaysCompletedTasks({ tasks, onEditTask }: TodaysCompletedTasks
           {/* Categories */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
             {Object.entries(stats.categories).map(([category, count]) => (
-              <div key={category} className="flex items-center gap-1">
+              <div key={category} className="flex items-center gap-2">
                 {renderCategoryIcon(category as TaskCategory)}
-                <span>{count}</span>
+                <span className="font-medium">{category}</span>
+                <Badge variant="secondary">{count}</Badge>
               </div>
             ))}
           </div>

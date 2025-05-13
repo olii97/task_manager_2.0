@@ -4,10 +4,12 @@ interface FeatureSectionProps {
   title: string;
   description: React.ReactNode; // Allow JSX for description
   imagePlaceholder?: boolean; // New prop for image placeholder
+  videoSrc?: string; // New prop for video source
+  imageSrc?: string; // New prop for image source
   className?: string;
 }
 
-export function FeatureSection({ title, description, imagePlaceholder, className }: FeatureSectionProps) {
+export function FeatureSection({ title, description, imagePlaceholder, videoSrc, imageSrc, className }: FeatureSectionProps) {
   return (
     <div className={`py-12 sm:py-16 lg:py-20 ${className || ''}`}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -20,7 +22,31 @@ export function FeatureSection({ title, description, imagePlaceholder, className
           </div>
         </div>
 
-        {imagePlaceholder && (
+        {videoSrc && (
+          <div className="mt-10">
+            <video 
+              className="w-full rounded-lg shadow-lg"
+              autoPlay
+              muted
+              loop
+            >
+              <source src={videoSrc} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
+
+        {imageSrc && !videoSrc && (
+          <div className="mt-10">
+            <img 
+              src={imageSrc} 
+              alt={title}
+              className="w-full rounded-lg shadow-lg"
+            />
+          </div>
+        )}
+
+        {imagePlaceholder && !videoSrc && !imageSrc && (
           <div className="mt-10">
             {/* Placeholder for a screenshot/image */}
             <div className="aspect-video bg-slate-100 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center">

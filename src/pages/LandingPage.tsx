@@ -65,7 +65,7 @@ export default function LandingPage() {
               Effortlessly add tasks with our smart AI. It analyzes your input for title, priority, energy, and category. Get organized faster than ever.
             </p>
           )}
-          imagePlaceholder // Add this prop to show the placeholder
+          videoSrc="/QuickAddAI.mp4"
         />
 
         <FeatureSection
@@ -75,7 +75,7 @@ export default function LandingPage() {
               Organize your day by energy levels. Schedule demanding tasks for peak focus and simpler ones for lighter periods, maximizing your productivity flow.
             </p>
           )}
-          imagePlaceholder
+          imageSrc="/HighLow.png"
           className="bg-white/70 backdrop-blur-sm"
         />
 
@@ -86,18 +86,7 @@ export default function LandingPage() {
               Boost productivity with the built-in Pomodoro timer. Work in focused sprints with short breaks to maintain concentration and avoid burnout.
             </p>
           )}
-          imagePlaceholder
-        />
-
-        <FeatureSection
-          title="Customizable Views & Organization"
-          description={(
-            <p>
-              Tailor your task views to your workflow. Drag and drop tasks between backlog, today's energy sections, and completed lists with ease.
-            </p>
-          )}
-          imagePlaceholder
-          className="bg-white/70 backdrop-blur-sm"
+          imageSrc="/Pomodoro.png"
         />
       </main>
 
