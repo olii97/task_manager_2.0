@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Zap, Battery, BookOpen, Users, Wrench, Heart, Calendar, Briefcase, Home } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen },
@@ -159,8 +161,31 @@ export function TaskForm({ open, onClose, onSave, task, title }: TaskFormProps) 
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="category" className="text-sm font-medium">
+            <label htmlFor="category" className="text-sm font-medium flex items-center gap-1">
               Category (Optional)
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 cursor-pointer text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs">
+                    <div className="text-xs text-left space-y-2">
+                      <div>
+                        <span className="font-semibold text-blue-500">Consume:</span> Reading, learning, watching, or absorbing information. Examples: books, articles, videos, podcasts, courses.
+                      </div>
+                      <div>
+                        <span className="font-semibold text-purple-500">Create:</span> Making, building, writing, or producing something new. Examples: coding, writing, designing, crafting, cooking.
+                      </div>
+                      <div>
+                        <span className="font-semibold text-pink-500">Care:</span> Self-care, health, wellness, or helping others. Examples: exercise, meditation, doctor appointments, helping family/friends.
+                      </div>
+                      <div>
+                        <span className="font-semibold text-green-500">Connect:</span> Socializing, networking, or building relationships. Examples: meetings, calls, events, social gatherings, emails.
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </label>
             <Select
               value={formData.category}

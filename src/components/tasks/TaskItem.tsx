@@ -3,7 +3,7 @@ import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyL
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home, Check } from "lucide-react";
+import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home, Check, Info } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -13,6 +13,7 @@ import { toast, useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useConfetti } from "@/components/animations/GlobalConfettiContext";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
