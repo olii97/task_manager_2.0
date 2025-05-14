@@ -1,12 +1,12 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyLevelIcons, TaskCategory, TaskType } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home, Check, Info } from "lucide-react";
+import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home, Check, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { cn } from "@/lib/utils";
 import { toast, useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ interface TaskItemProps {
 }
 
 export function TaskItem({ task, onEdit }: TaskItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const queryClient = useQueryClient();
   const checkboxRef = useRef<HTMLButtonElement>(null);
   const { startPomodoro } = usePomodoro();
@@ -167,28 +168,42 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   // Get the priority background color
   const priorityBgClass = priorityBackgroundColors[task.priority];
 
+  const handleToggleExpand = (e: React.MouseEvent) => {
+    // Don't expand if clicking on the checkbox or buttons
+    if (
+      e.target instanceof Node &&
+      (checkboxRef.current?.contains(e.target) || 
+       (e.target as HTMLElement).closest('button'))
+    ) {
+      return;
+    }
+    setIsExpanded(!isExpanded);
+  };
+
   const categoryInfo = task.category ? taskCategories[task.category] : null;
   const categoryIcon = task.category ? taskCategoryIcons[task.category] : '';
   const taskTypeInfo = task.task_type ? taskTypeIcons[task.task_type] : taskTypeIcons['personal'];
 
   return (
-      <motion.div
+    <motion.div
       ref={taskItemRef}
-        initial={task.is_completed ? { opacity: 0.8 } : { opacity: 1 }}
-        animate={task.is_completed ? 
-          { opacity: 0.7, x: 0 } : 
-          { opacity: 1, x: 0 }
-        }
-        exit={{ opacity: 0, x: -10 }}
-        layout
-        whileHover={{ scale: 1.01 }}
-        transition={{ duration: 0.2 }}
-        className={cn(
-          "relative flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
-          task.is_completed && "opacity-50",
-          priorityBgClass
-        )}
-      >
+      initial={task.is_completed ? { opacity: 0.8 } : { opacity: 1 }}
+      animate={task.is_completed ? 
+        { opacity: 0.7, x: 0 } : 
+        { opacity: 1, x: 0 }
+      }
+      exit={{ opacity: 0, x: -10 }}
+      layout="position"
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.2, layout: { type: "spring", damping: 25, stiffness: 300 } }}
+      className={cn(
+        "relative flex flex-col w-full rounded-lg p-3 mb-2 transition-colors border cursor-pointer",
+        task.is_completed && "opacity-50",
+        priorityBgClass
+      )}
+      onClick={handleToggleExpand}
+    >
+      <div className="flex items-start w-full">
         <div className="flex-shrink-0 mr-3 mt-1">
           <Checkbox 
             ref={checkboxRef as any}
@@ -196,6 +211,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
             onCheckedChange={handleCheckboxChange}
             aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
             className={task.is_completed ? "task-complete" : ""}
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
         
@@ -220,51 +236,87 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
               )}
             </div>
           </div>
-          {task.description && (
-            <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
-              {task.description}
-            </p>
-          )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
-            {task.due_date && (
-              <Badge variant="outline" className="gap-1">
-                <Calendar className="h-3 w-3" />
-                {format(new Date(task.due_date), 'MMM d')}
-              </Badge>
-            )}
-          </div>
         </div>
-        
-        <div className="flex items-center gap-1">
-          {!task.is_completed && (
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 ml-auto flex-shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+        >
+          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-2 pt-2 border-t border-t-gray-100 dark:border-t-gray-800"
+          >
+            {task.description && (
+              <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''} mb-2`}>
+                {task.description}
+              </p>
+            )}
+            
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
+              {task.due_date && (
+                <Badge variant="outline" className="gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(task.due_date), 'MMM d')}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-1 justify-end">
+              {!task.is_completed && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+                  title="Focus Mode"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartPomodoro();
+                  }}
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
-                title="Focus Mode"
-                onClick={handleStartPomodoro}
+                className="h-8 w-8" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
               >
-                <Play className="h-4 w-4" />
+                <Pencil className="h-4 w-4" />
               </Button>
-            )}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-            onClick={onEdit}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-destructive" 
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-      </motion.div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-destructive" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
