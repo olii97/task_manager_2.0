@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import Auth from "./pages/Auth";
 import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
+import LandingPage from "./pages/LandingPage";
 import { PomodoroProvider } from "./components/pomodoro/PomodoroProvider";
 import { PomodoroTimer } from "./components/pomodoro/PomodoroTimer";
 import { PomodoroBlurOverlay } from "./components/pomodoro/PomodoroBlurOverlay";
@@ -50,7 +51,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!session) {
-    return <Navigate to="/auth" />;
+    return <Navigate to="/landing" />;
   }
 
   return (
@@ -59,6 +60,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       <AppHeader />
       {children}
     </>
+  );
+};
+
+const HomeRoute = () => {
+  const { session, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return session ? (
+    <ProtectedRoute>
+      <Tasks />
+    </ProtectedRoute>
+  ) : (
+    <LandingPage />
   );
 };
 
@@ -79,14 +96,8 @@ const App = () => (
                 <TabBarTimer />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <Tasks />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/landing" element={<LandingPage />} />
+                  <Route path="/" element={<HomeRoute />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </TaskTickerProvider>

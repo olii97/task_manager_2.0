@@ -137,9 +137,9 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
       >
         {/* Multiple animated rockets */}
         {rocketPositions.map((position, index) => (
-          <motion.div
+        <motion.div
             key={index}
-            className="absolute"
+          className="absolute"
             style={{
               left: `${position.x}%`,
               bottom: `-50px`, // Start below the screen
@@ -149,12 +149,12 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
               opacity: 0,
               rotate: position.rotation
             }}
-            animate={{ 
+          animate={{ 
               y: isRocketsLaunching ? -2000 : -position.y * 5, // fly higher if launching
               opacity: isRocketsLaunching ? 0 : 0.8,
               scale: isRocketsLaunching ? 0.2 : position.size,
-            }}
-            transition={{ 
+          }}
+          transition={{ 
               y: { 
                 duration: 3 + position.delay, 
                 ease: [0.4, 0, 0.2, 1],
@@ -170,8 +170,8 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                 duration: 1.5,
                 delay: position.delay 
               }
-            }}
-          >
+          }}
+        >
             <Rocket 
               className="text-yellow-300" 
               style={{ 
@@ -179,7 +179,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onComplete }) => {
                 width: `${4 * position.size}rem`,
               }}
             />
-          </motion.div>
+        </motion.div>
         ))}
         
         <div className="text-center px-6 max-w-2xl">

@@ -1,18 +1,19 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Task, priorityColors, priorityEmojis, priorityBackgroundColors, energyLevelIcons, TaskCategory, TaskType } from "@/types/tasks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home, Check } from "lucide-react";
+import { Pencil, Zap, Battery, Folder, BookOpen, Users, Wrench, Heart, Play, Trash2, Calendar, Briefcase, Home, Check, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { completeTask, deleteTask } from "@/services/tasks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePomodoro } from "@/components/pomodoro/PomodoroProvider";
 import { cn } from "@/lib/utils";
 import { toast, useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useConfetti } from "@/components/animations/GlobalConfettiContext";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 
 const taskCategories = {
   'Consume': { label: 'Consume', icon: BookOpen, color: 'text-blue-500' },
@@ -40,6 +41,7 @@ interface TaskItemProps {
 }
 
 export function TaskItem({ task, onEdit }: TaskItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const queryClient = useQueryClient();
   const checkboxRef = useRef<HTMLButtonElement>(null);
   const { startPomodoro } = usePomodoro();
@@ -142,7 +144,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
 
   const handleCheckboxChange = (checked: boolean | string) => {
     const isCompleted = checked === "indeterminate" ? false : !!checked;
-    
+
     onToggleComplete({
       taskId: task.id,
       isCompleted: isCompleted
@@ -166,6 +168,18 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
   // Get the priority background color
   const priorityBgClass = priorityBackgroundColors[task.priority];
 
+  const handleToggleExpand = (e: React.MouseEvent) => {
+    // Don't expand if clicking on the checkbox or buttons
+    if (
+      e.target instanceof Node &&
+      (checkboxRef.current?.contains(e.target) || 
+       (e.target as HTMLElement).closest('button'))
+    ) {
+      return;
+    }
+    setIsExpanded(!isExpanded);
+  };
+
   const categoryInfo = task.category ? taskCategories[task.category] : null;
   const categoryIcon = task.category ? taskCategoryIcons[task.category] : '';
   const taskTypeInfo = task.task_type ? taskTypeIcons[task.task_type] : taskTypeIcons['personal'];
@@ -179,91 +193,130 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         { opacity: 1, x: 0 }
       }
       exit={{ opacity: 0, x: -10 }}
-      layout
+      layout="position"
       whileHover={{ scale: 1.01 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.2, layout: { type: "spring", damping: 25, stiffness: 300 } }}
       className={cn(
-        "relative flex items-start gap-2 w-full rounded-lg p-3 mb-2 transition-colors border",
+        "relative flex flex-col w-full rounded-lg p-3 mb-2 transition-colors border cursor-pointer",
         task.is_completed && "opacity-50",
         priorityBgClass
       )}
+      onClick={handleToggleExpand}
     >
-      <div className="flex-shrink-0 mr-3 mt-1">
-        <Checkbox 
-          ref={checkboxRef as any}
-          checked={task.is_completed} 
-          onCheckedChange={handleCheckboxChange}
-          aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
-          className={task.is_completed ? "task-complete" : ""}
-        />
-      </div>
-      
-      <div className="flex-grow">
-        <div className="flex items-center gap-2 mb-1">
-          <span className={cn(
-            "text-sm font-medium",
-            task.is_completed ? "line-through text-gray-500" : "text-slate-900"
-          )}>
-            {task.title}
-          </span>
-          <div className="flex items-center gap-1.5">
-            {/* Task Type Icon */}
-            <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
-              <taskTypeInfo.icon className="h-3.5 w-3.5" />
-            </div>
-            {/* Only show the Lucide icon for the category */}
-            {categoryInfo && (
-              <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
-                <categoryInfo.icon className="h-4 w-4" />
+      <div className="flex items-start w-full">
+        <div className="flex-shrink-0 mr-3 mt-1">
+          <Checkbox 
+            ref={checkboxRef as any}
+            checked={task.is_completed} 
+            onCheckedChange={handleCheckboxChange}
+            aria-label={task.is_completed ? "Mark as incomplete" : "Mark as complete"}
+            className={task.is_completed ? "task-complete" : ""}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+        
+        <div className="flex-grow">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={cn(
+              "text-sm font-medium",
+              task.is_completed ? "line-through text-gray-500" : "text-slate-900"
+            )}>
+              {task.title}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {/* Task Type Icon */}
+              <div className={cn("flex items-center", taskTypeInfo.color)} title={task.task_type || 'Personal'}>
+                <taskTypeInfo.icon className="h-3.5 w-3.5" />
               </div>
-            )}
+              {/* Only show the Lucide icon for the category */}
+              {categoryInfo && (
+                <div className={cn("flex items-center", categoryInfo.color)} title={categoryInfo.label}>
+                  <categoryInfo.icon className="h-4 w-4" />
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        {task.description && (
-          <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''}`}>
-            {task.description}
-          </p>
-        )}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
-          {task.due_date && (
-            <Badge variant="outline" className="gap-1">
-              <Calendar className="h-3 w-3" />
-              {format(new Date(task.due_date), 'MMM d')}
-            </Badge>
-          )}
-        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 ml-auto flex-shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+        >
+          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
       </div>
-      
-      <div className="flex items-center gap-1">
-        {!task.is_completed && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
-              title="Focus Mode"
-              onClick={handleStartPomodoro}
-            >
-              <Play className="h-4 w-4" />
-            </Button>
-          )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8" 
-          onClick={onEdit}
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-2 pt-2 border-t border-t-gray-100 dark:border-t-gray-800"
           >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-destructive" 
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+            {task.description && (
+              <p className={`text-sm text-gray-600 ${task.is_completed ? 'line-through' : ''} mb-2`}>
+                {task.description}
+              </p>
+            )}
+            
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              {energyLevelIcons[task.energy_level] && <span title="Energy Level">{energyLevelIcons[task.energy_level]}</span>}
+              {task.due_date && (
+                <Badge variant="outline" className="gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(task.due_date), 'MMM d')}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-1 justify-end">
+              {!task.is_completed && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-pomodoro-primary hover:bg-pomodoro-primary/10 hover:text-pomodoro-primary btn-glow"
+                  title="Focus Mode"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartPomodoro();
+                  }}
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+              )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-destructive" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
