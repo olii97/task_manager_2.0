@@ -182,16 +182,16 @@ export function DroppableTaskSection({
                 </DropdownMenuContent>
               </DropdownMenu>
               
-              {onAddTask && (
-                <Button
-                variant="outline"
-                  size="sm"
-                  onClick={onAddTask}
-                className="h-8 px-2"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              )}
+            {onAddTask && (
+              <Button
+              variant="outline"
+                size="sm"
+                onClick={onAddTask}
+              className="h-8 px-2"
+              >
+                <Plus className="h-4 w-4" />
+          </Button>
+        )}
             </div>
       </div>
       

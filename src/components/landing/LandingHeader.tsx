@@ -12,10 +12,10 @@ export function LandingHeader() {
           <span className="text-xl font-bold text-white">Launchpad</span>
         </Link>
         <div className="space-x-2 sm:space-x-4">
-          <Button variant="ghost" asChild className="text-indigo-100 hover:text-white hover:bg-white/10">
+          <Button variant="ghost" asChild className="font-medium text-white hover:bg-white/20 border-2 border-transparent hover:border-white/80">
             <Link to="/auth?mode=signup">Sign up</Link>
           </Button>
-          <Button variant="outline" asChild className="border-indigo-300 text-indigo-100 hover:bg-white/10 hover:text-white hover:border-white">
+          <Button variant="secondary" asChild className="bg-white text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 font-medium border-0">
             <Link to="/auth?mode=login">Log in</Link>
           </Button>
         </div>

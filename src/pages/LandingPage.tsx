@@ -1,19 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { FeatureSection } from '@/components/landing/FeatureSection';
 import { IconBackgroundPattern } from '@/components/landing/IconBackgroundPattern';
 import { Rocket, Brain, Zap, TimerIcon, Eye } from 'lucide-react'; // Updated icons
 
 export default function LandingPage() {
-  const [email, setEmail] = useState('');
   const navigate = useNavigate();
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault();
-    navigate(`/auth?mode=signup&email=${encodeURIComponent(email)}`);
+  const handleSignUpClick = () => {
+    navigate(`/auth?mode=signup`);
   };
 
   return (
@@ -32,28 +29,15 @@ export default function LandingPage() {
             <p className="mt-6 max-w-2xl mx-auto text-lg text-slate-700 sm:text-xl">
               Become less stressed by neatly organizing everything you have to do with Launchpad.
             </p>
-            <form onSubmit={handleSignUp} className="mt-10 max-w-md mx-auto sm:flex sm:justify-center">
-              <label htmlFor="email" className="sr-only">Email address</label>
-              <Input
-                type="email"
-                name="email"
-                id="email"
-                autoComplete="email"
-                required
-                className="w-full px-5 py-3 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500 sm:max-w-xs border-slate-300 rounded-md shadow-sm"
-                placeholder="alice@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <div className="mt-3 rounded-md shadow-sm sm:mt-0 sm:ml-3 sm:flex-shrink-0">
-                <Button 
-                  type="submit" 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 border border-transparent rounded-md font-medium"
-                >
-                  Sign up
-                </Button>
-              </div>
-            </form>
+            <div className="mt-10 max-w-md mx-auto sm:flex sm:justify-center">
+              <Button 
+                type="button" 
+                onClick={handleSignUpClick}
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 border border-transparent rounded-md font-medium text-lg shadow-md"
+              >
+                Sign up for free
+              </Button>
+            </div>
           </div>
         </div>
 
