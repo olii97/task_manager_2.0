@@ -144,9 +144,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
 
   // Initialize timer and handle countdown
   useEffect(() => {
-    console.log(`[usePomodoroTimer] useEffect triggered. isTimerRunning: ${isTimerRunning}, state.status: ${state.status}`);
     if (isTimerRunning && state.status === 'running') {
-      console.log('[usePomodoroTimer] Timer condition met, starting animation.');
       // Set or update the start timestamp when the timer starts running
       if (!state.startTimestamp) {
         setState(prev => ({
@@ -162,7 +160,6 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
         animationStartedRef.current = true;
       }
     } else if (rafIdRef.current && !isTimerRunning) {
-      console.log('[usePomodoroTimer] Timer condition NOT met or timer stopped, cancelling animation frame.');
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
       animationStartedRef.current = false;
@@ -176,7 +173,6 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
       }
     }
     
-    console.log('[usePomodoroTimer] useEffect finished.');
     return () => {
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
@@ -184,7 +180,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
         animationStartedRef.current = false;
       }
     };
-  }, [isTimerRunning, state.status, state.startTimestamp]);
+  }, [isTimerRunning, state.status]);
 
   // Update state when selected task changes
   useEffect(() => {
@@ -211,7 +207,8 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
   // Update state when settings or selected task changes
   useEffect(() => {
     // Only update if not currently running to avoid interrupting active sessions
-    if (state.status !== 'running') {
+    // and ensure it's in a state where a reset is appropriate (e.g. idle or completed)
+    if (state.status === 'idle' || state.status === 'completed') {
       setState(prev => ({
         ...prev,
         timeRemaining: timerSettings.workDuration * 60,
@@ -223,9 +220,7 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
 
   // Update status and sessions count when isTimerRunning changes
   useEffect(() => {
-    console.log(`[usePomodoroTimer] Status effect: isTimerRunning=${isTimerRunning}, status=${state.status}`);
     if (isTimerRunning !== (state.status === 'running')) {
-      console.log(`[usePomodoroTimer] Updating status: ${isTimerRunning ? 'running' : state.status === 'running' ? 'paused' : 'idle'}`);
       setState(prev => ({
         ...prev,
         status: isTimerRunning ? 'running' : prev.status === 'running' ? 'paused' : 'idle',
