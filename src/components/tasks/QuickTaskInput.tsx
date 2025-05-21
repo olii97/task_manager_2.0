@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles, Info } from "lucide-react";
-import { analyzeTaskText } from "@/services/quickTaskService";
+import { callOpenAIProxy } from "@/services/openaiClientService";
 import { toast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -33,15 +33,41 @@ export function QuickTaskInput({ onTaskCreated }: QuickTaskInputProps) {
 
     setIsProcessing(true);
     try {
-      const taskData = await analyzeTaskText(taskText);
+      const openAIResponse = await callOpenAIProxy({ prompt: taskText });
+      
+      let taskData = openAIResponse.content;
+      if (typeof taskData === 'string') {
+        try {
+          taskData = JSON.parse(taskData);
+        } catch (parseError) {
+          console.warn("OpenAI response content was not valid JSON, using as string:", taskData);
+        }
+      }
+
+      if (!taskData || typeof taskData !== 'object' || !taskData.title) {
+          console.error("Processed task data is not in the expected format:", taskData);
+          toast({
+              title: "AI Processing Error",
+              description: "The AI response could not be processed correctly. Please try a different phrasing.",
+              variant: "destructive",
+          });
+          throw new Error("AI response processing error");
+      }
+
       onTaskCreated(taskData);
       setTaskText("");
       toast({
         title: "Success",
         description: `Created task: "${taskData.title}"`,
       });
-    } catch (error) {
-      console.error("Failed to create task:", error);
+    } catch (error: any) {
+      console.error("Failed to create task via AI proxy:", error);
+      const errorMessage = error.message || "An unexpected error occurred. Please try again.";
+      toast({
+        title: "Error Creating Task",
+        description: errorMessage.length < 100 ? errorMessage : "Failed to process task with AI.",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }

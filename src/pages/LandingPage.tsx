@@ -30,14 +30,14 @@ export default function LandingPage() {
               Become less stressed by neatly organizing everything you have to do with Launchpad.
             </p>
             <div className="mt-10 max-w-md mx-auto sm:flex sm:justify-center">
-              <Button 
+                <Button 
                 type="button" 
                 onClick={handleSignUpClick}
                 className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 border border-transparent rounded-md font-medium text-lg shadow-md"
-              >
+                >
                 Sign up for free
-              </Button>
-            </div>
+                </Button>
+              </div>
           </div>
         </div>
 
