@@ -275,15 +275,34 @@ export const usePomodoroTimer = ({ onComplete }: UsePomodoroTimerProps = {}) => 
   };
 
   const stopPomodoro = () => {
-    setIsTimerRunning(false);
-    setState(prev => ({
-      ...prev,
-      status: 'idle',
-      timeRemaining: timerSettings.workDuration * 60,
-      originalDuration: timerSettings.workDuration * 60,
-      startTimestamp: undefined,
-      pausedTimestamp: undefined
-    }));
+    // Use direct state.isBreak from the hook's scope
+    if (state.isBreak) {
+      // Stopping during a BREAK: transition to a new work session
+      setState(prev => ({
+        ...prev,
+        isBreak: false,
+        status: 'running',
+        timeRemaining: timerSettings.workDuration * 60, // Direct from context via timerSettings variable
+        originalDuration: timerSettings.workDuration * 60, // Direct from context
+        startTimestamp: Date.now(),
+        pausedTimestamp: undefined,
+        // currentTask: prev.currentTask, // Task should persist for the new work session
+      }));
+      setIsTimerRunning(true); 
+    } else {
+      // Stopping during a WORK session: go to idle and clear task for UI hiding
+      setIsTimerRunning(false);
+      setState(prev => ({
+        ...prev,
+        status: 'idle',
+        timeRemaining: timerSettings.workDuration * 60, // Direct from context
+        originalDuration: timerSettings.workDuration * 60, // Direct from context
+        isBreak: false,
+        currentTask: undefined, // Clear currentTask
+        startTimestamp: undefined,
+        pausedTimestamp: undefined
+      }));
+    }
     animationStartedRef.current = false;
   };
 
