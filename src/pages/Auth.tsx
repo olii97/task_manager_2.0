@@ -26,7 +26,6 @@ const Auth = () => {
     AUTH_MODES.SIGN_UP : AUTH_MODES.SIGN_IN);
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [authError, setAuthError] = useState<{ message: string; isEmailTaken?: boolean } | null>(null);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false); // New state for email checking
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -51,65 +50,7 @@ const Auth = () => {
     }
   }, [searchParams]);
 
-  // Function to check if email exists
-  const checkIfEmailExists = async (email: string): Promise<boolean> => {
-    setIsCheckingEmail(true);
-    try {
-      // Method 1: Try to sign in with a made-up password
-      // This is a hack, but it works well to determine if an email exists
-      // Supabase will return different error messages for "invalid password" vs "user not found"
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: "CheckingIfEmailExists123!", // This isn't a real attempt to log in, just checking if email exists
-      });
 
-      if (error) {
-        console.log("Email check response:", error.message);
-
-        // If error message mentions "invalid login" or "password" but not "email", 
-        // the email exists but password was wrong (as expected)
-        if (
-          (error.message.toLowerCase().includes("invalid login") || 
-           error.message.toLowerCase().includes("password")) && 
-          !error.message.toLowerCase().includes("user not found") &&
-          !error.message.toLowerCase().includes("email not confirmed")
-        ) {
-          return true; // Email exists
-        }
-        
-        // If error mentions "not found" or specifically says "user not found", email doesn't exist
-        if (error.message.toLowerCase().includes("not found")) {
-          return false; // Email does not exist
-        }
-
-        // Method 2: As a fallback, check if email exists via reset password
-        // Some Supabase configurations might not give clear error messages in the method above
-        // This is a more reliable way to check
-        const { error: resetError, data } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth?mode=reset`,
-        });
-        
-        // Supabase generally returns no error even for non-existent emails when requesting password reset
-        // But if it does return an error like "email not found", we can catch it
-        if (resetError && resetError.message.toLowerCase().includes("not found")) {
-          return false; // Email does not exist
-        }
-        
-        // If we reached here and got no definitive answer, we'll assume email exists
-        // This is safer than allowing duplicates - they can always try to sign up normally if wrong
-        return true;
-      }
-      
-      // If login doesn't give an error (extremely unlikely but possible), email exists
-      return true;
-    } catch (e) {
-      console.error("Error checking email:", e);
-      // In case of unknown errors, we'll err on the side of caution and assume the email exists
-      return true;
-    } finally {
-      setIsCheckingEmail(false);
-    }
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,20 +61,7 @@ const Auth = () => {
       console.log("Auth operation starting - mode:", mode); // Debug log
 
       if (mode === AUTH_MODES.SIGN_UP) {
-        // First check if email already exists
-        const emailExists = await checkIfEmailExists(email);
-        
-        if (emailExists) {
-          // If email exists, show message without attempting signup
-          setAuthError({ 
-            message: "This email already has an account.", 
-            isEmailTaken: true 
-          });
-          setLoading(false);
-          return; // Exit early
-        }
-        
-        // If email doesn't exist, proceed with signup
+        // Proceed with signup and let Supabase handle email validation
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -142,6 +70,18 @@ const Auth = () => {
         if (error) {
           // Debug: Log the exact error for troubleshooting
           console.log("Supabase signup error:", error.message, error);
+          
+          // Handle specific error for existing email
+          if (error.message.toLowerCase().includes("already registered") || 
+              error.message.toLowerCase().includes("user already registered")) {
+            setAuthError({ 
+              message: "This email already has an account.", 
+              isEmailTaken: true 
+            });
+            setLoading(false);
+            return;
+          }
+          
           throw error;
         } else {
           // Sign-up was successful, show confirmation message
@@ -357,22 +297,14 @@ const Auth = () => {
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={handleEmailChange}
-                    required
-                    className={isCheckingEmail ? "pr-10" : ""}
-                    disabled={loading || isCheckingEmail}
-                  />
-                  {isCheckingEmail && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={handleEmailChange}
+                  required
+                  disabled={loading}
+                />
               </div>
 
               {mode !== AUTH_MODES.FORGOT_PASSWORD && (
@@ -398,12 +330,12 @@ const Auth = () => {
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={loading || isCheckingEmail}
+                disabled={loading}
               >
-                {loading || isCheckingEmail ? (
+                {loading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    {isCheckingEmail ? "Checking Email..." : "Loading..."}
+                    Loading...
                   </span>
                 ) : mode === AUTH_MODES.SIGN_UP 
                   ? "Sign Up" 
