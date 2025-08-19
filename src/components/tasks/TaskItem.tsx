@@ -38,10 +38,19 @@ const taskTypeIcons = {
 interface TaskItemProps {
   task: Task;
   onEdit: () => void;
+  isSelected?: boolean;
+  onSelect?: (taskId: string) => void;
 }
 
-export function TaskItem({ task, onEdit }: TaskItemProps) {
+export function TaskItem({ task, onEdit, isSelected = false, onSelect }: TaskItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Auto-expand when selected
+  useEffect(() => {
+    if (isSelected) {
+      setIsExpanded(true);
+    }
+  }, [isSelected]);
   const queryClient = useQueryClient();
   const checkboxRef = useRef<HTMLButtonElement>(null);
   const { startPomodoro } = usePomodoro();
@@ -177,7 +186,14 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
     ) {
       return;
     }
-    setIsExpanded(!isExpanded);
+    
+    // Handle selection if onSelect is provided
+    if (onSelect) {
+      onSelect(task.id);
+    } else {
+      // Fallback to manual toggle if no selection handler
+      setIsExpanded(!isExpanded);
+    }
   };
 
   const categoryInfo = task.category ? taskCategories[task.category] : null;
@@ -197,9 +213,10 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
       whileHover={{ scale: 1.01 }}
       transition={{ duration: 0.2, layout: { type: "spring", damping: 25, stiffness: 300 } }}
       className={cn(
-        "relative flex flex-col w-full rounded-lg p-3 mb-2 transition-colors border cursor-pointer",
+        "relative flex flex-col w-full rounded-lg p-3 mb-2 transition-all duration-200 border cursor-pointer",
         task.is_completed && "opacity-50",
-        priorityBgClass
+        priorityBgClass,
+        isSelected && "border-2 border-blue-500 shadow-lg ring-2 ring-blue-200 bg-blue-50/50"
       )}
       onClick={handleToggleExpand}
     >
@@ -244,7 +261,13 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           className="h-6 w-6 ml-auto flex-shrink-0"
           onClick={(e) => {
             e.stopPropagation();
-            setIsExpanded(!isExpanded);
+            if (isSelected && onSelect) {
+              // If selected, toggle the selection off
+              onSelect(task.id);
+            } else {
+              // Manual toggle for non-selected items
+              setIsExpanded(!isExpanded);
+            }
           }}
         >
           {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

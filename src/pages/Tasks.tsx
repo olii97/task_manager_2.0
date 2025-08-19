@@ -39,6 +39,7 @@ const Tasks = () => {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [showWeeklyReflection, setShowWeeklyReflection] = useState(false);
   const [weeklyCompletedTasks, setWeeklyCompletedTasks] = useState<Task[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["tasks", userId],
@@ -119,6 +120,47 @@ const Tasks = () => {
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
     setTaskFormOpen(true);
+  };
+
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(selectedTaskId === taskId ? null : taskId);
+  };
+
+  const handleContainerClick = (droppableId: string) => {
+    if (!selectedTaskId) return;
+
+    // Find the selected task
+    const task = tasks.find(t => t.id === selectedTaskId);
+    if (!task) return;
+
+    // Determine the target energy level
+    let targetEnergyLevel: 'high' | 'low';
+    if (droppableId === 'high-energy') {
+      targetEnergyLevel = 'high';
+    } else if (droppableId === 'low-energy') {
+      targetEnergyLevel = 'low';
+    } else {
+      return; // Invalid container
+    }
+
+    // Show feedback toast first with longer duration
+    toast({
+      title: "Task moved",
+      description: `Task moved to ${targetEnergyLevel} energy tasks`,
+      duration: 3000, // 3 seconds
+    });
+
+    // Move the task
+    scheduleTaskMutation({
+      taskId: selectedTaskId,
+      isScheduled: true,
+      energyLevel: targetEnergyLevel
+    });
+
+    // Delay clearing selection to allow animation to complete
+    setTimeout(() => {
+      setSelectedTaskId(null);
+    }, 650); // Slightly longer than animation duration
   };
 
   const handleResetSchedule = () => {
@@ -312,6 +354,9 @@ const Tasks = () => {
             title="Today's High Energy Tasks"
             tasks={highEnergyTasks}
             onEditTask={handleEditTask}
+            selectedTaskId={selectedTaskId}
+            onTaskSelect={handleTaskSelect}
+            onContainerClick={handleContainerClick}
             icon={<Zap className="h-5 w-5 text-energy-high" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-high/20"
@@ -340,6 +385,9 @@ const Tasks = () => {
             title="Today's Low Energy Tasks"
             tasks={lowEnergyTasks}
             onEditTask={handleEditTask}
+            selectedTaskId={selectedTaskId}
+            onTaskSelect={handleTaskSelect}
+            onContainerClick={handleContainerClick}
             icon={<Battery className="h-5 w-5 text-energy-low" />}
             emptyMessage="Drag tasks here or use the Plan Today button."
             className="border-energy-low/20"
@@ -359,6 +407,9 @@ const Tasks = () => {
             tasks={backlogTasks}
             onAddTask={() => setTaskFormOpen(true)}
             onEditTask={handleEditTask}
+            selectedTaskId={selectedTaskId}
+            onTaskSelect={handleTaskSelect}
+            onContainerClick={handleContainerClick}
             icon={<ClipboardList className="h-5 w-5 text-slate-500" />}
             emptyMessage="Your backlog is empty. Add some tasks!"
             collapsible={false}
