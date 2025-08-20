@@ -31,6 +31,9 @@ interface DroppableTaskSectionProps {
   className?: string;
   tooltip?: React.ReactNode;
   id?: string;
+  selectedTaskId?: string | null;
+  onTaskSelect?: (taskId: string) => void;
+  onContainerClick?: (droppableId: string) => void;
 }
 
 type SortOption = {
@@ -52,9 +55,23 @@ export function DroppableTaskSection({
   className,
   tooltip,
   id,
+  selectedTaskId,
+  onTaskSelect,
+  onContainerClick,
 }: DroppableTaskSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
   const [sortOption, setSortOption] = React.useState<string | null>(null);
+  const [isReceivingTask, setIsReceivingTask] = React.useState(false);
+  const animationTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const sortOptions: SortOption[] = [
     {
@@ -114,14 +131,72 @@ export function DroppableTaskSection({
     return [...tasks].sort(selectedOption.sortFn);
   }, [tasks, sortOption, sortOptions]);
 
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Don't handle clicks on interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') || 
+      target.closest('[role="menuitem"]') ||
+      target.closest('.droppable-content') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest('textarea')
+    ) {
+      return;
+    }
+
+    if (selectedTaskId && onContainerClick && (droppableId === 'high-energy' || droppableId === 'low-energy')) {
+      // Clear any existing timeout
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+      
+      // Trigger animation immediately
+      setIsReceivingTask(true);
+      
+      // Call the container click handler
+      onContainerClick(droppableId);
+      
+      // Reset animation with a longer delay to ensure it completes
+      animationTimeoutRef.current = setTimeout(() => {
+        setIsReceivingTask(false);
+        animationTimeoutRef.current = null;
+      }, 800); // Longer duration to ensure animation completes
+    }
+  };
+
+  // Determine if this container should be clickable
+  const isClickable = selectedTaskId && onContainerClick && (droppableId === 'high-energy' || droppableId === 'low-energy');
+
     return (
-    <div className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} id={id}>
+    <div 
+      className={cn(
+        "rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-300", 
+        className,
+        // Animation state - independent of clickable state for consistency
+        isReceivingTask && "ring-4 ring-blue-400/50 shadow-2xl scale-105 bg-blue-50/40 border-blue-400",
+        // Clickable state - only when not animating to avoid conflicts
+        !isReceivingTask && isClickable && "cursor-pointer hover:shadow-lg hover:bg-blue-50/30 hover:border-blue-300"
+      )} 
+      id={id}
+      onClick={handleContainerClick}
+    >
       <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+        <div 
+          className="flex items-center justify-between mb-4"
+        >
+            <div className={cn(
+              "flex items-center gap-2",
+              isReceivingTask && "animate-pulse"
+            )}>
               {icon}
               <h3 className="text-lg font-semibold">{title}</h3>
               <span className="text-sm text-muted-foreground">({tasks.length})</span>
+              {isReceivingTask && (
+                <span className="text-xs text-green-500 font-medium ml-2">
+                  ✨ Moving task...
+                </span>
+              )}
               
               {tooltip && (
                 <TooltipProvider>
@@ -130,7 +205,10 @@ export function DroppableTaskSection({
                       <button 
                         type="button" 
                         className="ml-1"
-                        onClick={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
                       >
                         <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                       </button>
@@ -149,6 +227,7 @@ export function DroppableTaskSection({
                     variant={sortOption ? "default" : "outline"}
                     size="sm"
                     className="h-8 px-2 flex items-center gap-1"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <ArrowUpDown className="h-4 w-4" />
                     {sortOption ? (
@@ -186,7 +265,10 @@ export function DroppableTaskSection({
               <Button
               variant="outline"
                 size="sm"
-                onClick={onAddTask}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddTask && onAddTask();
+                }}
               className="h-8 px-2"
               >
                 <Plus className="h-4 w-4" />
@@ -200,7 +282,7 @@ export function DroppableTaskSection({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-              className="space-y-2"
+              className="space-y-2 droppable-content"
           >
               {sortedTasks.map((task, index) => (
                 <DraggableTaskItem
@@ -208,6 +290,8 @@ export function DroppableTaskSection({
                   task={task}
                   index={index}
                   onEdit={() => onEditTask(task)}
+                  isSelected={selectedTaskId === task.id}
+                  onSelect={onTaskSelect}
                 />
               ))}
             {provided.placeholder}

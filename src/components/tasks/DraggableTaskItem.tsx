@@ -8,9 +8,11 @@ interface DraggableTaskItemProps {
   task: Task;
   index: number;
   onEdit: () => void;
+  isSelected?: boolean;
+  onSelect?: (taskId: string) => void;
 }
 
-export function DraggableTaskItem({ task, index, onEdit }: DraggableTaskItemProps) {
+export function DraggableTaskItem({ task, index, onEdit, isSelected, onSelect }: DraggableTaskItemProps) {
   return (
     <Draggable draggableId={task.id} index={index}>
       {(provided, snapshot) => (
@@ -28,7 +30,12 @@ export function DraggableTaskItem({ task, index, onEdit }: DraggableTaskItemProp
             snapshot.isDragging && "shadow-lg rounded-lg"
           )}
         >
-          <TaskItem task={task} onEdit={onEdit} />
+          <TaskItem 
+            task={task} 
+            onEdit={onEdit} 
+            isSelected={isSelected}
+            onSelect={onSelect}
+          />
         </div>
       )}
     </Draggable>
